@@ -1,0 +1,80 @@
+import * as v from "valibot";
+
+/**
+ * Le format d'event, valide cote app.
+ *
+ * Un event qu'on ne sait pas valider est logge et ignore, jamais affiche a
+ * moitie : une ligne tronquee dans l'interface coute plus cher que son absence,
+ * parce qu'on la croit.
+ *
+ * Ce schema est le miroir de celui du serveur de tools. Les deux doivent bouger
+ * ensemble ; le test unitaire du LiveEvent garde les deux alignes.
+ */
+
+export const LIVE_EVENT_KINDS = [
+  "step",
+  "agent",
+  "tool",
+  "loop",
+  "todo",
+  "question",
+  "answer",
+  "escalation",
+  "message",
+] as const;
+
+export const LIVE_EVENT_STATUSES = ["start", "progress", "ok", "ko", "waiting"] as const;
+
+export const LiveEventSchema = v.object({
+  runId: v.pipe(v.string(), v.minLength(1)),
+  ticketId: v.pipe(v.string(), v.minLength(1)),
+  seq: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  ts: v.pipe(v.string(), v.isoTimestamp()),
+  kind: v.picklist(LIVE_EVENT_KINDS),
+  status: v.picklist(LIVE_EVENT_STATUSES),
+  repo: v.nullable(v.string()),
+  agent: v.nullable(v.string()),
+  tool: v.nullable(v.string()),
+  title: v.pipe(v.string(), v.minLength(3), v.maxLength(200)),
+  detail: v.nullable(v.string()),
+  payload: v.unknown(),
+});
+
+export type LiveEvent = v.InferOutput<typeof LiveEventSchema>;
+
+export type LiveEventKind = (typeof LIVE_EVENT_KINDS)[number];
+
+export function parseEvent(candidate: unknown): LiveEvent | null {
+  const result = v.safeParse(LiveEventSchema, candidate);
+  return result.success ? result.output : null;
+}
+
+export interface PendingQuestion {
+  readonly id: string;
+  readonly question: string;
+  readonly options: readonly string[];
+  readonly askedBy: string | null;
+  readonly askedAt: string;
+}
+
+/** Les 13 points du workflow, dans l'ordre. C'est l'ossature de l'interface. */
+export const STEPS = [
+  { id: "1", label: "Ticket" },
+  { id: "2", label: "Maquettes" },
+  { id: "3", label: "Memoire, large" },
+  { id: "4", label: "Grill fonctionnel" },
+  { id: "5", label: "Perimetre" },
+  { id: "6", label: "Memoire, ciblee" },
+  { id: "7", label: "Grill technique" },
+  { id: "8", label: "Plan" },
+  { id: "9", label: "Gate humain" },
+  { id: "10", label: "Implementation" },
+  { id: "11", label: "Plan memoire" },
+  { id: "12", label: "Ecriture memoire" },
+  { id: "13", label: "Publication" },
+] as const;
+
+/** `10.4` appartient au point 10. */
+export function topLevelStep(step: string): string {
+  return step.split(".")[0] ?? step;
+}

@@ -15,3 +15,7 @@ dist/
 # artefacts de test
 tests/.tmp/
 tests/fixtures/repos/**/node_modules/
+
+# live-shell
+tools/live-shell/dist/
+tools/live-shell/.nitro/
