@@ -1,11 +1,11 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { squadOf } from "../lib/config.ts";
 import { fail } from "../lib/errors.ts";
 import { getTicket as fetchJira } from "../lib/jira.ts";
 import { lockPath } from "../lib/paths.ts";
 import { anyValue, bool, obj, str } from "../lib/schema.ts";
 import { type Json, patchTicketState, readTicketState, ticketStateExists } from "../lib/store.ts";
+import { fuseTicket, normalizeKey } from "../lib/ticket.ts";
 import { type AnyTool, defineTool } from "../lib/tool.ts";
 
 export const stateTools: AnyTool[] = [
@@ -54,32 +54,8 @@ export const stateTools: AnyTool[] = [
     handler: async ({ ticketId, storeOnly }: { ticketId: string; storeOnly?: boolean }) => {
       const key = normalizeKey(ticketId);
       const store = readTicketState(key);
-
-      if (storeOnly) {
-        return { key, squad: squadOf(key), jira: null, store, resumable: store !== null };
-      }
-
-      const jira = await fetchJira(key);
-      return {
-        key,
-        squad: squadOf(key),
-        // Jira fait autorite ici.
-        jira: {
-          title: jira.title,
-          description: jira.description,
-          acceptanceCriteria: jira.acceptanceCriteria,
-          issueType: jira.issueType,
-          status: jira.status,
-          url: jira.url,
-          labels: jira.labels,
-          links: jira.links,
-          attachments: jira.attachments,
-        },
-        // Le store fait autorite la.
-        store,
-        resumable: store !== null,
-        resumeAt: store ? readCursor(store) : null,
-      };
+      const jira = storeOnly ? null : await fetchJira(key);
+      return fuseTicket(key, jira, store);
     },
   }),
 
@@ -126,21 +102,7 @@ export const stateTools: AnyTool[] = [
   }),
 ];
 
-function normalizeKey(input: string): string {
-  const fromUrl = /\/browse\/([A-Za-z][A-Za-z0-9_]*-\d+)/.exec(input);
-  const key = (fromUrl?.[1] ?? input).trim().toUpperCase();
-  squadOf(key); // valide la forme, echoue avec un message clair sinon
-  return key;
-}
 
-/** Le curseur de reprise : phase, etape, repo. Rien d'autre n'est necessaire. */
-function readCursor(state: Json): { phase: unknown; step: unknown; currentRepo: unknown } | null {
-  if (typeof state !== "object" || state === null || Array.isArray(state)) return null;
-  const run = (state as Record<string, Json>).run;
-  if (typeof run !== "object" || run === null || Array.isArray(run)) return null;
-  const record = run as Record<string, Json>;
-  return { phase: record.phase, step: record.step, currentRepo: record.currentRepo };
-}
 
 function safeRead(path: string): string {
   try {

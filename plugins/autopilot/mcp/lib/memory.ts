@@ -77,7 +77,10 @@ export function parseNote(path: string, raw: string): Note {
     fail(`Note sans frontmatter : ${path}.`, "Toute note porte au minimum type, scope et last_verified.");
   }
   const frontmatter = parseYaml<Frontmatter>(match[1]);
-  const body = match[2] ?? "";
+  // La serialisation pose une ligne vide apres le frontmatter et une en fin de
+  // fichier. Les garder ferait qu'une note relue ne serait plus egale a
+  // elle-meme, et le compte de lignes serait faux de deux.
+  const body = (match[2] ?? "").replace(/^\n+/, "").replace(/\n+$/, "");
   assertFrontmatter(path, frontmatter);
   return { path, frontmatter, body, lines: countLines(body) };
 }
