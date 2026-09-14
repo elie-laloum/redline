@@ -1,0 +1,17 @@
+# secrets — présent dès le premier commit, jamais après
+.env
+.env.*
+!.env.example
+
+node_modules/
+dist/
+.turbo/
+.tanstack/
+.output/
+.vite/
+*.log
+.DS_Store
+
+# artefacts de test
+tests/.tmp/
+tests/fixtures/repos/**/node_modules/
