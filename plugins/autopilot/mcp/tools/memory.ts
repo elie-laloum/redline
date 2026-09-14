@@ -215,6 +215,10 @@ export const memoryTools: AnyTool[] = [
       await git(home, ["-c", "user.name=autopilot", "-c", "user.email=autopilot@localhost", "commit", "-m", message]);
       const sha = await git(home, ["rev-parse", "--short", "HEAD"]);
 
+      // Le sha ne peut pas figurer dans le commit qui le produit : cette
+      // derniere ecriture d'etat part donc dans le commit du run suivant. C'est
+      // un decalage d'un run sur ce seul champ, et il est prefere a un second
+      // commit qui ferait perdre l'unicite — c'est elle qui rend le revert sur.
       patchTicketState(ticketId, { memory: { commit: sha } });
       return {
         committed: true,

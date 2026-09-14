@@ -36,7 +36,7 @@ export function run(command: string, options: RunOptions): Promise<RunResult> {
     const child = spawn(command, {
       cwd: options.cwd,
       shell: true,
-      env: { ...process.env, ...options.env, CI: "1", FORCE_COLOR: "0" },
+      env: childEnv(options.env),
     });
 
     let stdout = "";
@@ -85,6 +85,23 @@ export function run(command: string, options: RunOptions): Promise<RunResult> {
       });
     });
   });
+}
+
+/**
+ * Des variables du process courant changent le comportement du process fils
+ * sans qu'on le demande.
+ *
+ * Le cas qui nous a mordu : `NODE_TEST_CONTEXT` est pose par `node --test`, et
+ * un `node --test` lance dans ce contexte **saute les fichiers et sort 0**. Une
+ * suite de tests rendait donc un vert sans avoir rien lance — exactement le
+ * faux vert que le red-checker existe pour attraper.
+ */
+const INHERITED_BUT_HARMFUL = ["NODE_TEST_CONTEXT", "NODE_OPTIONS", "NODE_V8_COVERAGE", "TEST_RUNNER"];
+
+function childEnv(overrides: Readonly<Record<string, string>> | undefined): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env, ...overrides, CI: "1", FORCE_COLOR: "0" };
+  for (const key of INHERITED_BUT_HARMFUL) delete env[key];
+  return env;
 }
 
 export function clip(text: string, keepLines: number): { text: string; truncated: boolean } {

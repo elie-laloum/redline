@@ -170,16 +170,18 @@ export const gitlabTools: AnyTool[] = [
         ref: str("Branche ou tag a suivre."),
         jobs: arr("Jobs a suivre. Omis, ceux du registre sont utilises.", str("Nom de job.")),
         timeoutSeconds: num("Delai maximum. Omis, celui d'autopilot.yaml est utilise."),
+        pollSeconds: num("Intervalle entre deux interrogations du pipeline. 15 par defaut."),
       },
       ["repo", "ref"],
     ),
-    handler: async (input: { repo: string; ref: string; jobs?: string[]; timeoutSeconds?: number }) => {
+    handler: async (input: { repo: string; ref: string; jobs?: string[]; timeoutSeconds?: number; pollSeconds?: number }) => {
       const repo = findRepo(input.repo);
       const result = await gl.watchPipeline({
         projectPath: repo.gitlabProject,
         ref: input.ref,
         jobs: input.jobs ?? repo.ciJobsToWatch,
         timeoutSeconds: input.timeoutSeconds ?? loadConfig().timeouts.ciPipelineSeconds,
+        pollSeconds: input.pollSeconds ?? 15,
       });
       return {
         ...result,
