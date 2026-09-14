@@ -1,0 +1,12 @@
+{
+  "name": "autopilot",
+  "owner": { "name": "Elie Laloum" },
+  "plugins": [
+    {
+      "name": "autopilot",
+      "description": "Developpement autonome depuis un ticket Jira : cadrage et gate humain, TDD adversarial repo par repo dans l'ordre des dependances, capitalisation memoire, puis publication en un seul bloc.",
+      "source": "./plugins/autopilot",
+      "strict": true
+    }
+  ]
+}
