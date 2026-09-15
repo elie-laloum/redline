@@ -39,9 +39,18 @@ const EMPTY: RunSnapshot = { ticketId: null, ticket: null, events: [], question:
  * rattraper les events manques. `seq` est monotone : c'est ce qui permet de
  * detecter un trou, et un trou vaut un rechargement, pas un rafistolage.
  */
+/**
+ * Trois etats, pas deux.
+ *
+ * Avec un booleen, le rendu serveur — qui n'a evidemment pas encore de SSE —
+ * affichait « deconnecte » en rouge sur la premiere frame d'un run qui se porte
+ * bien. On ne crie au probleme qu'apres une vraie tentative ratee.
+ */
+export type Connection = "connecting" | "open" | "closed";
+
 export function useLiveRun(initial: RunSnapshot = EMPTY) {
   const [snapshot, setSnapshot] = useState<RunSnapshot>(initial);
-  const [connected, setConnected] = useState(false);
+  const [connection, setConnection] = useState<Connection>("connecting");
 
   const reload = useCallback(async () => {
     try {
@@ -56,11 +65,11 @@ export function useLiveRun(initial: RunSnapshot = EMPTY) {
     void reload();
     const source = new EventSource("/rpc/stream");
 
-    source.addEventListener("open", () => setConnected(true));
-    source.addEventListener("error", () => setConnected(false));
+    source.addEventListener("open", () => setConnection("open"));
+    source.addEventListener("error", () => setConnection("closed"));
 
     source.addEventListener("snapshot", (message) => {
-      setConnected(true);
+      setConnection("open");
       setSnapshot(JSON.parse((message as MessageEvent).data) as RunSnapshot);
     });
 
@@ -89,20 +98,29 @@ export function useLiveRun(initial: RunSnapshot = EMPTY) {
     return () => source.close();
   }, [reload]);
 
-  const answer = useCallback(async (id: string, value: string) => {
+  const answer = useCallback(async (id: string, answers: Record<string, string>) => {
     await fetch("/rpc/answer", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ id, answer: value }),
+      body: JSON.stringify({ id, answers }),
     });
   }, []);
 
   const derived = useMemo(() => derive(snapshot), [snapshot]);
 
-  return { ...snapshot, ...derived, connected, answer, reload };
+  return { ...snapshot, ...derived, connection, connected: connection === "open", answer, reload };
 }
 
 export interface Derived {
+  /**
+   * Le dernier event, quel que soit son kind : c'est **l'action en cours**.
+   * Le bandeau ne montre rien d'autre — si on doit choisir entre plusieurs
+   * sources pour dire « ou on en est », la derniere chose qui s'est passee est
+   * la seule reponse qui ne ment jamais.
+   */
+  current: LiveEvent | null;
+  /** Une action est en vol : le bandeau tourne. */
+  busy: boolean;
   currentStep: string;
   currentTopStep: string;
   currentRepo: string | null;
@@ -145,7 +163,11 @@ function derive(snapshot: RunSnapshot): Derived {
       lines: ((event.payload as { lines: unknown[] }).lines ?? []).map(String),
     }));
 
+  const current = events.at(-1) ?? null;
+
   return {
+    current,
+    busy: current !== null && ["start", "progress", "waiting"].includes(current.status),
     currentStep,
     currentTopStep,
     currentRepo: ticket?.run?.currentRepo ?? stepEvent?.repo ?? null,

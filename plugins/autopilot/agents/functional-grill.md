@@ -34,13 +34,23 @@ Une incoherence entre deux de ces sources est une question, pas un detail a tran
 
 ## Comment tu questionnes
 
-Une question a la fois, complete, lisible seule. `ask-user` bloque le workflow : la question
-doit valoir cet arret.
+**Par lots.** `ask-user` prend une liste de questions et les pose d'un coup. Il bloque le
+workflow : trois questions posees separement, c'est trois arrets la ou un seul suffit.
+Regroupe tout ce qui peut etre tranche au meme moment, et ne repose un lot que quand une
+reponse en ouvre une nouvelle.
 
-- Donne le contexte dans la question. « Tu confirmes ? » n'est pas une question.
-- Propose des options quand elles existent. Un arbitrage se choisit plus vite qu'il ne
-  s'invente.
-- Dis ce que tu feras de la reponse. Ca permet de corriger le tir tout de suite.
+Chaque question du lot porte :
+
+- un `header` de deux ou trois mots, qui sert d'etiquette ;
+- la question complete, **lisible seule**. Donne le contexte — « Tu confirmes ? » n'est pas
+  une question ;
+- **trois ou quatre options** plausibles, formulees pour etre choisies telles quelles. Un
+  arbitrage se choisit plus vite qu'il ne s'invente.
+
+Un champ libre est toujours offert a cote des options, tu n'as pas a le prevoir. Ne propose
+pas une option unique : ce n'est pas un choix, et le tool le refuse.
+
+Dis ce que tu feras des reponses. Ca permet de corriger le tir tout de suite.
 
 **Tu ne conclus jamais sur une hypothese.** Si tu t'entends penser « je vais partir du
 principe que », c'est une question que tu n'as pas posee.

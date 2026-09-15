@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { parse as parseYaml } from "yaml";
-import { type LiveEvent, type PendingQuestion, parseEvent } from "./event.ts";
+import { type AskQuestion, type LiveEvent, type PendingQuestion, parseEvent } from "./event.ts";
 
 /**
  * L'etat du shell, en memoire, cote serveur.
@@ -16,7 +16,10 @@ type Subscriber = (payload: string) => void;
 
 const events: LiveEvent[] = [];
 const subscribers = new Set<Subscriber>();
-const pending = new Map<string, { question: PendingQuestion; resolve: (answer: string) => void }>();
+const pending = new Map<
+  string,
+  { question: PendingQuestion; resolve: (answers: Record<string, string>) => void }
+>();
 const ignored: { at: string; reason: string }[] = [];
 
 let ticketId: string | null = process.env.AUTOPILOT_TICKET_ID ?? null;
@@ -130,25 +133,40 @@ function broadcast(type: string, data: unknown): void {
  * volontaire, le workflow ne doit pas avancer pendant qu'il attend un arbitrage.
  * Le timeout et le repli terminal sont geres cote tool, pas ici.
  */
-export function ask(question: Omit<PendingQuestion, "id" | "askedAt">): Promise<string> {
+export function ask(
+  input: { questions: readonly AskQuestion[]; askedBy: string | null },
+): Promise<Record<string, string>> {
   const entry: PendingQuestion = {
-    ...question,
+    ...input,
     id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     askedAt: new Date().toISOString(),
   };
-  return new Promise<string>((resolve) => {
+  return new Promise<Record<string, string>>((resolve) => {
     pending.set(entry.id, { question: entry, resolve });
     broadcast("question", entry);
   });
 }
 
-export function answer(id: string, value: string): boolean {
+/**
+ * Le lot ne se rend que complet.
+ *
+ * Repondre a deux questions sur trois debloquerait le workflow sur une reponse
+ * manquante, et l'agent repartirait sur une hypothese — exactement ce que le
+ * blocage sert a empecher.
+ */
+export function answer(id: string, answers: Record<string, string>): { delivered: boolean; missing: string[] } {
   const entry = pending.get(id);
-  if (!entry) return false;
+  if (!entry) return { delivered: false, missing: [] };
+
+  const missing = entry.question.questions
+    .filter((question) => !answers[question.key]?.trim())
+    .map((question) => question.key);
+  if (missing.length > 0) return { delivered: false, missing };
+
   pending.delete(id);
-  entry.resolve(value);
-  broadcast("answer", { id, answer: value });
-  return true;
+  entry.resolve(answers);
+  broadcast("answer", { id, answers });
+  return { delivered: true, missing: [] };
 }
 
 export function pendingQuestion(): PendingQuestion | null {

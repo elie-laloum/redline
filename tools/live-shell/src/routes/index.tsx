@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { Accordion, Badge, Button, Card, CardBody, CardHeader, Empty, type Tone } from "#/components/ui";
+import { ActionBar } from "#/components/action-bar";
+import { QuestionPanel } from "#/components/question-panel";
+import { Accordion, Badge, Card, CardBody, CardHeader, Empty, type Tone } from "#/components/ui";
 import { STEPS } from "#/lib/event";
 import { getSnapshot } from "#/lib/snapshot-fn";
 import { type ScopeEntry, useLiveRun } from "#/lib/use-live-run";
@@ -18,6 +19,14 @@ function LiveShell() {
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-4 p-4 sm:p-6">
+      <ActionBar
+        current={run.current}
+        busy={run.busy}
+        step={run.currentStep}
+        repo={run.currentRepo}
+        connection={run.connection}
+      />
+
       <Header
         ticketKey={ticket?.key ?? run.ticketId ?? "—"}
         title={ticket?.title ?? null}
@@ -160,57 +169,6 @@ function EscalationBanner({ escalation }: { escalation: { step: string; repo: st
         <p className="mt-2 text-xs text-muted-foreground">
           Rien n'a ete publie : ni MR, ni canal, ni transition. Relancer <code>/autopilot-start</code> reprend ici.
         </p>
-      </CardBody>
-    </Card>
-  );
-}
-
-/** Une question prend le focus : le workflow est arrete tant qu'elle est la. */
-function QuestionPanel({
-  question,
-  onAnswer,
-}: {
-  question: { id: string; question: string; options: readonly string[]; askedBy: string | null };
-  onAnswer: (id: string, value: string) => Promise<void>;
-}) {
-  const [value, setValue] = useState("");
-
-  return (
-    <Card className="border-waiting/50 bg-waiting/5">
-      <CardHeader
-        title="Question en attente"
-        aside={question.askedBy ? <Badge tone="waiting">{question.askedBy}</Badge> : null}
-      />
-      <CardBody>
-        <p className="whitespace-pre-wrap text-sm">{question.question}</p>
-
-        {question.options.length > 0 ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {question.options.map((option) => (
-              <Button key={option} onClick={() => void onAnswer(question.id, option)}>
-                {option}
-              </Button>
-            ))}
-          </div>
-        ) : null}
-
-        <form
-          className="mt-3 flex gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!value.trim()) return;
-            void onAnswer(question.id, value.trim());
-            setValue("");
-          }}
-        >
-          <input
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-            placeholder="Ta reponse"
-            className="h-8 flex-1 rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-          <Button type="submit">Repondre</Button>
-        </form>
       </CardBody>
     </Card>
   );

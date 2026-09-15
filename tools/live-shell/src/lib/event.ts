@@ -11,6 +11,13 @@ import * as v from "valibot";
  * ensemble ; le test unitaire du LiveEvent garde les deux alignes.
  */
 
+/**
+ * Le payload est libre par kind, mais il traverse le reseau et le rendu serveur :
+ * il doit donc etre serialisable. `unknown` laissait passer une Date ou une Map,
+ * qui arrivaient cassees de l'autre cote sans que rien ne le dise.
+ */
+export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
+
 export const LIVE_EVENT_KINDS = [
   "step",
   "agent",
@@ -37,7 +44,7 @@ export const LiveEventSchema = v.object({
   tool: v.nullable(v.string()),
   title: v.pipe(v.string(), v.minLength(3), v.maxLength(200)),
   detail: v.nullable(v.string()),
-  payload: v.unknown(),
+  payload: v.custom<JsonValue>(() => true),
 });
 
 export type LiveEvent = v.InferOutput<typeof LiveEventSchema>;
@@ -49,10 +56,33 @@ export function parseEvent(candidate: unknown): LiveEvent | null {
   return result.success ? result.output : null;
 }
 
-export interface PendingQuestion {
-  readonly id: string;
+/**
+ * Une question du lot.
+ *
+ * Toujours des options proposees **et** un champ libre. Les options font que
+ * l'arbitrage courant se tranche d'un clic ; le champ libre existe parce qu'un
+ * agent qui propose quatre reponses peut passer a cote de la bonne, et qu'on ne
+ * veut pas forcer l'humain a choisir la moins fausse.
+ */
+export interface AskQuestion {
+  /** Cle stable, c'est elle qui rapporte la reponse a la question. */
+  readonly key: string;
+  /** Deux ou trois mots, affiches en etiquette. */
+  readonly header: string;
   readonly question: string;
   readonly options: readonly string[];
+}
+
+/**
+ * Un lot de questions, pose en une fois.
+ *
+ * `ask-user` bloque le workflow : poser trois questions l'une apres l'autre,
+ * c'est trois arrets la ou un seul suffit. On groupe tout ce qui peut etre
+ * demande au meme moment.
+ */
+export interface PendingQuestion {
+  readonly id: string;
+  readonly questions: readonly AskQuestion[];
   readonly askedBy: string | null;
   readonly askedAt: string;
 }

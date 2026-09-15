@@ -44,8 +44,10 @@ ne sont pas du contexte, c'est du bruit qui contredira le bon au mauvais moment.
 
 ## Comment tu questionnes
 
-Comme le grill fonctionnel : une question a la fois, complete, avec des options quand elles
-existent. `ask-user` bloque le workflow, la question doit valoir cet arret.
+Comme le grill fonctionnel : **par lots**. `ask-user` prend une liste de questions, chacune
+avec un `header`, la question complete et trois ou quatre options. Il bloque le workflow —
+regroupe donc tout ce qui peut etre tranche au meme moment. Le champ libre est toujours la
+en plus des options.
 
 Une question technique se pose **avec ce que tu as deja verifie**. « J'ai vu que
 `range.tsx:42` fige la borne haute — on l'etend, ou on cree un second composant ? » vaut

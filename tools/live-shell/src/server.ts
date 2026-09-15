@@ -50,28 +50,36 @@ async function rpc(pathname: string, request: Request): Promise<Response> {
     case "/rpc/ask": {
       if (request.method !== "POST") return json({ error: "POST attendu" }, 405);
       const body = (await safeJson(request)) as {
-        question?: string;
-        options?: string[];
+        questions?: { key?: string; header?: string; question?: string; options?: string[] }[];
         askedBy?: string | null;
       } | null;
-      if (!body?.question) return json({ error: "`question` manquante" }, 400);
 
-      // On bloque ici, volontairement, jusqu'a ce que quelqu'un reponde dans
-      // l'interface. Le timeout est cote appelant : c'est lui qui sait a partir
-      // de quand il doit se rabattre sur le terminal.
-      const value = await ask({
-        question: body.question,
-        options: body.options ?? [],
-        askedBy: body.askedBy ?? null,
-      });
-      return json({ answer: value });
+      const questions = (body?.questions ?? [])
+        .filter((entry) => typeof entry?.question === "string" && entry.question.trim())
+        .map((entry, index) => ({
+          key: entry.key?.trim() || `q${index + 1}`,
+          header: entry.header?.trim() || `Question ${index + 1}`,
+          question: String(entry.question).trim(),
+          options: (entry.options ?? []).map(String).filter(Boolean),
+        }));
+
+      if (questions.length === 0) return json({ error: "`questions` vide" }, 400);
+
+      // On bloque ici, volontairement, jusqu'a ce que le lot entier soit
+      // repondu dans l'interface. Le timeout est cote appelant : c'est lui qui
+      // sait a partir de quand il doit se rabattre sur le terminal.
+      const answers = await ask({ questions, askedBy: body?.askedBy ?? null });
+      return json({ answers });
     }
 
     case "/rpc/answer": {
       if (request.method !== "POST") return json({ error: "POST attendu" }, 405);
-      const body = (await safeJson(request)) as { id?: string; answer?: string } | null;
-      if (!body?.id || typeof body.answer !== "string") return json({ error: "`id` et `answer` requis" }, 400);
-      return json({ delivered: answer(body.id, body.answer) });
+      const body = (await safeJson(request)) as { id?: string; answers?: Record<string, string> } | null;
+      if (!body?.id || typeof body.answers !== "object" || body.answers === null) {
+        return json({ error: "`id` et `answers` requis" }, 400);
+      }
+      const result = answer(body.id, body.answers as Record<string, string>);
+      return json(result, result.delivered ? 200 : 409);
     }
 
     case "/rpc/stream":

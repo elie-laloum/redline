@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { resetConfigCache } from "../../plugins/autopilot/mcp/lib/config.ts";
 import { resetEnvCache } from "../../plugins/autopilot/mcp/lib/env.ts";
+import { closeEventLogs, resetSeqCache } from "../../plugins/autopilot/mcp/lib/events.ts";
 import { ToolError } from "../../plugins/autopilot/mcp/lib/errors.ts";
 import { ensureMemoryLayout, serializeNote, type Frontmatter } from "../../plugins/autopilot/mcp/lib/memory.ts";
 import type { ToolContext } from "../../plugins/autopilot/mcp/lib/tool.ts";
@@ -125,6 +126,10 @@ export async function createSandbox(options: SandboxOptions = {}): Promise<Sandb
     },
     async cleanup() {
       await Promise.all([jira.close(), slack.close(), gitlab.close()]);
+      // Le compteur de seq et le descripteur du log vivent dans le process :
+      // sans ca, la sandbox suivante heriterait du fichier de la precedente.
+      closeEventLogs();
+      resetSeqCache();
       for (const key of Object.keys(process.env)) {
         if (!(key in previous)) delete process.env[key];
       }

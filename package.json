@@ -8,7 +8,7 @@
     "test": "node --test --test-concurrency=4 \"tests/unit/*.test.ts\"",
     "test:workflow": "node --test --test-concurrency=1 --test-timeout=600000 \"tests/workflow/*.test.ts\"",
     "test:all": "pnpm test && pnpm test:workflow",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && pnpm --dir tools/live-shell typecheck",
     "eval": "claude plugin eval ./plugins/autopilot --ablation with-without --mocks record --allow-real-servers --allow-tools 'mcp__plugin_autopilot_autopilot__*' --runs 3",
     "live:dev": "pnpm --dir tools/live-shell dev",
     "live:build": "pnpm --dir tools/live-shell build",

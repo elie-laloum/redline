@@ -1,4 +1,5 @@
-import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { closeSync, mkdirSync, openSync, readFileSync, writeFileSync, writeSync } from "node:fs";
+import { Agent, request as httpRequest } from "node:http";
 import { dirname, join } from "node:path";
 import * as v from "valibot";
 import { autopilotHome, eventsPath } from "./paths.ts";
@@ -8,6 +9,13 @@ import { autopilotHome, eventsPath } from "./paths.ts";
  * est logge et ignore, jamais affiche a moitie : une interface qui montre une
  * ligne tronquee est pire qu'une interface qui n'en montre pas.
  */
+
+/**
+ * Le payload est libre par kind, mais il traverse le reseau et le rendu serveur :
+ * il doit donc etre serialisable. `unknown` laissait passer une Date ou une Map,
+ * qui arrivaient cassees de l'autre cote sans que rien ne le dise.
+ */
+export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 
 export const LIVE_EVENT_KINDS = [
   "step",
@@ -37,7 +45,7 @@ export const LiveEventSchema = v.object({
   // pousse « en cours » a rate son event, d'ou la longueur minimale.
   title: v.pipe(v.string(), v.minLength(3), v.maxLength(200)),
   detail: v.nullable(v.string()),
-  payload: v.unknown(),
+  payload: v.custom<JsonValue>(() => true),
 });
 
 export type LiveEvent = v.InferOutput<typeof LiveEventSchema>;
@@ -85,10 +93,33 @@ export function writeLiveSession(session: LiveSession): void {
  * defaillance : s'il est mort, le run continue et l'historique reste complet,
  * et une reprise peut rejouer depuis le debut.
  */
+const openLogs = new Map<string, number>();
+
 export function appendEvent(event: LiveEvent): void {
   const path = eventsPath(event.ticketId);
-  mkdirSync(dirname(path), { recursive: true });
-  appendFileSync(path, `${JSON.stringify(event)}\n`, "utf8");
+  let fd = openLogs.get(path);
+  if (fd === undefined) {
+    mkdirSync(dirname(path), { recursive: true });
+    // Ouvert une fois et garde ouvert : `appendFileSync` refait un open/close a
+    // chaque ligne, ce qui coutait 2,3 ms par event pour une ecriture de 200
+    // octets. L'ecriture reste synchrone, donc la garantie « sur disque avant
+    // d'etre diffuse » ne bouge pas.
+    fd = openSync(path, "a");
+    openLogs.set(path, fd);
+  }
+  writeSync(fd, `${JSON.stringify(event)}\n`);
+}
+
+/** Referme les logs ouverts. Les tests changent de `AUTOPILOT_HOME` en cours de route. */
+export function closeEventLogs(): void {
+  for (const fd of openLogs.values()) {
+    try {
+      closeSync(fd);
+    } catch {
+      // Deja ferme : rien a rattraper.
+    }
+  }
+  openLogs.clear();
 }
 
 export function readEvents(ticketId: string): LiveEvent[] {
@@ -111,25 +142,76 @@ export function readEvents(ticketId: string): LiveEvent[] {
   return events;
 }
 
+/**
+ * Le compteur de sequence, tenu en memoire.
+ *
+ * Il etait relu depuis le fichier a chaque event : O(n) par push, donc O(n²) sur
+ * un run. Mesure sur un log de 172 lignes, c'etait deja 4,4 ms par event contre
+ * 1,8 ms pour le POST — et ca ne fait que grandir. Sur un run de trois heures le
+ * flux aurait fini par trainer visiblement derriere le terminal.
+ *
+ * On ne lit donc le disque qu'une fois par ticket, au premier event du process.
+ */
+const seqCache = new Map<string, number>();
+
 export function nextSeq(ticketId: string): number {
-  const events = readEvents(ticketId);
-  const last = events.at(-1);
-  return last ? last.seq + 1 : 0;
+  const cached = seqCache.get(ticketId);
+  if (cached !== undefined) {
+    const next = cached + 1;
+    seqCache.set(ticketId, next);
+    return next;
+  }
+  // Premier event de ce process : on reprend la ou le fichier s'est arrete, ce
+  // qui garde les seq monotones au travers d'une reprise.
+  const last = readEvents(ticketId).at(-1);
+  const seq = last ? last.seq + 1 : 0;
+  seqCache.set(ticketId, seq);
+  return seq;
 }
 
+/** Les tests rejouent plusieurs runs dans le meme process. */
+export function resetSeqCache(): void {
+  seqCache.clear();
+}
+
+/**
+ * La connexion vers le live shell est gardee ouverte.
+ *
+ * `fetch` rouvre une connexion par appel. Sur un flux d'events c'est une poignee
+ * de main TCP par ligne affichee, pour un serveur qui tourne sur la meme
+ * machine. Un agent keep-alive supprime ce cout.
+ */
+const keepAlive = new Agent({ keepAlive: true, maxSockets: 4, keepAliveMsecs: 30_000 });
+
 /** Best effort, et strictement best effort : une diffusion ratee n'echoue jamais. */
-export async function broadcast(event: LiveEvent, timeoutMs = 2000): Promise<"sent" | "no-session" | "unreachable"> {
+export function broadcast(event: LiveEvent, timeoutMs = 2000): Promise<"sent" | "no-session" | "unreachable"> {
   const session = readLiveSession(event.ticketId);
-  if (!session) return "no-session";
-  try {
-    const response = await fetch(`${session.url}/rpc/event`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(event),
-      signal: AbortSignal.timeout(timeoutMs),
+  if (!session) return Promise.resolve("no-session");
+
+  const body = JSON.stringify(event);
+  const target = new URL(`${session.url}/rpc/event`);
+
+  return new Promise((resolve) => {
+    const request = httpRequest(
+      {
+        agent: keepAlive,
+        hostname: target.hostname,
+        port: target.port,
+        path: target.pathname,
+        method: "POST",
+        timeout: timeoutMs,
+        headers: { "content-type": "application/json", "content-length": Buffer.byteLength(body) },
+      },
+      (response) => {
+        response.resume(); // il faut vider le flux pour rendre la socket au pool
+        response.on("end", () => resolve((response.statusCode ?? 500) < 400 ? "sent" : "unreachable"));
+      },
+    );
+    request.on("error", () => resolve("unreachable"));
+    request.on("timeout", () => {
+      request.destroy();
+      resolve("unreachable");
     });
-    return response.ok ? "sent" : "unreachable";
-  } catch {
-    return "unreachable";
-  }
+    request.end(body);
+  });
 }

@@ -22,69 +22,123 @@ export const humanTools: AnyTool[] = [
   defineTool({
     name: "ask-user",
     description:
-      "Pose une question a l'humain et BLOQUE jusqu'a la reponse. C'est volontaire : le workflow ne doit pas avancer pendant qu'il attend un arbitrage. Deux transports, une seule interface — le live shell quand il tourne, le terminal sinon. N'essaie jamais de choisir le transport toi-meme.",
+      "Pose un LOT de questions a l'humain et BLOQUE jusqu'aux reponses. C'est volontaire : le workflow ne doit pas avancer pendant qu'il attend un arbitrage. Groupe tout ce que tu peux demander au meme moment — trois questions posees separement, c'est trois arrets la ou un seul suffit. Chaque question porte trois ou quatre options ; un champ libre est toujours offert en plus, tu n'as pas a le prevoir. Deux transports, une seule interface : le live shell quand il tourne, le terminal sinon. N'essaie jamais de choisir le transport toi-meme.",
     inputSchema: obj(
       {
-        ticketId: str("Cle Jira, elle rattache la question au run."),
-        question: str("La question, complete et lisible seule. Donne le contexte, ne renvoie pas a un message precedent."),
-        options: arr("Reponses proposees, quand la question est fermee.", str("Une option.")),
-        askedBy: str("Nom de l'agent qui pose la question."),
+        ticketId: str("Cle Jira, elle rattache les questions au run."),
+        questions: arr(
+          "Les questions a poser en une fois. Regroupe tout ce qui peut etre tranche au meme moment.",
+          obj(
+            {
+              key: str("Identifiant court et stable, c'est lui qui rapporte la reponse. Par exemple `periode-defaut`."),
+              header: str("Deux ou trois mots, affiches en etiquette. Par exemple `Periode par defaut`."),
+              question: str("La question, complete et lisible seule. Donne le contexte, ne renvoie pas a un message precedent."),
+              options: arr(
+                "Trois ou quatre reponses plausibles, formulees pour etre choisies telles quelles. Un champ libre s'ajoute tout seul.",
+                str("Une option."),
+              ),
+            },
+            ["key", "header", "question"],
+            { description: "Une question du lot." },
+          ),
+        ),
+        askedBy: str("Nom de l'agent qui pose les questions."),
       },
-      ["ticketId", "question"],
+      ["ticketId", "questions"],
     ),
     handler: async (
-      input: { ticketId: string; question: string; options?: string[]; askedBy?: string },
+      input: {
+        ticketId: string;
+        questions: { key: string; header: string; question: string; options?: string[] }[];
+        askedBy?: string;
+      },
       context: ToolContext,
     ) => {
       const asked = new Date().toISOString();
       const session = readLiveSession(input.ticketId);
       const timeoutMs = loadConfig().timeouts.askUserSeconds * 1000;
 
+      const questions = input.questions.map((entry, index) => ({
+        key: entry.key?.trim() || `q${index + 1}`,
+        header: entry.header?.trim() || `Question ${index + 1}`,
+        question: entry.question.trim(),
+        options: (entry.options ?? []).filter(Boolean),
+      }));
+
+      if (questions.length === 0) fail("`questions` est vide.", "Pose au moins une question.");
+      const thin = questions.filter((entry) => entry.options.length > 0 && entry.options.length < 2);
+      if (thin.length > 0) {
+        fail(
+          `Une seule option proposee sur : ${thin.map((entry) => entry.key).join(", ")}.`,
+          "Une option unique n'est pas un choix. Donnes-en trois ou quatre, ou aucune.",
+        );
+      }
+
       await record(input.ticketId, {
         kind: "question",
         status: "waiting",
         agent: input.askedBy ?? null,
-        title: truncate(input.question, 180),
-        detail: input.options?.length ? `Options : ${input.options.join(" | ")}` : null,
-        payload: { options: input.options ?? [] },
+        title:
+          questions.length === 1
+            ? truncate(questions[0]?.question ?? "", 180)
+            : `${questions.length} questions : ${questions.map((entry) => entry.header).join(", ")}`,
+        detail: questions
+          .map((entry) => `${entry.header} — ${entry.question}${entry.options.length ? `\n  Options : ${entry.options.join(" | ")}` : ""}`)
+          .join("\n\n"),
+        payload: { questions },
       });
 
       // Transport 1 : le live shell, quand il tourne.
       if (session) {
-        const answer = await askLiveShell(session.url, input, timeoutMs);
-        if (answer !== null) {
-          await finishQuestion(input.ticketId, input.askedBy ?? null, answer, "live");
-          return { answer, transport: "live", askedAt: asked };
+        const answers = await askLiveShell(session.url, { questions, askedBy: input.askedBy ?? null }, timeoutMs);
+        if (answers) {
+          await finishQuestion(input.ticketId, input.askedBy ?? null, answers, "live");
+          return { answers, transport: "live", askedAt: asked };
         }
       }
 
       // Transport 2 : le terminal, par elicitation. C'est aussi le repli quand
-      // le live shell ne repond plus.
+      // le live shell ne repond plus. Un champ par question, en une seule
+      // invite : le lot reste un lot.
       if (context.canAskHuman) {
-        const result = await context.askHuman(formatQuestion(input.question, input.options), {
-          answer: { title: "Reponse", description: input.options?.length ? input.options.join(" | ") : undefined },
-        });
+        const fields: Record<string, { title: string; description?: string }> = {};
+        for (const entry of questions) {
+          fields[entry.key] = {
+            title: entry.header,
+            description: entry.options.length > 0 ? entry.options.join(" | ") : undefined,
+          };
+        }
+        const result = await context.askHuman(formatQuestions(questions), fields);
         if (result.action === "accept" && result.content) {
-          const answer = String(result.content.answer ?? "").trim();
-          await finishQuestion(input.ticketId, input.askedBy ?? null, answer, "terminal");
-          return { answer, transport: "terminal", askedAt: asked };
+          const answers: Record<string, string> = {};
+          for (const entry of questions) answers[entry.key] = String(result.content[entry.key] ?? "").trim();
+          const missing = questions.filter((entry) => !answers[entry.key]).map((entry) => entry.key);
+          if (missing.length === 0) {
+            await finishQuestion(input.ticketId, input.askedBy ?? null, answers, "terminal");
+            return { answers, transport: "terminal", askedAt: asked };
+          }
+          return {
+            answers,
+            transport: "terminal",
+            incomplete: missing,
+            note: `Sans reponse sur ${missing.join(", ")}, n'avance pas sur une hypothese : repose la question ou escalade.`,
+          };
         }
         return {
-          answer: null,
+          answers: null,
           transport: "terminal",
           declined: true,
           note: "L'humain n'a pas repondu. N'avance pas sur une hypothese : reformule, ou escalade.",
         };
       }
 
-      // Transport 3 : aucun canal direct. On rend la question a l'agent appelant,
-      // qui la posera dans le fil de conversation. L'interface reste la meme.
+      // Transport 3 : aucun canal direct. On rend les questions a l'agent
+      // appelant, qui les posera dans le fil. L'interface reste la meme.
       return {
-        answer: null,
+        answers: null,
         transport: "caller",
-        question: input.question,
-        options: input.options ?? [],
-        note: "Aucun canal direct disponible. Pose cette question telle quelle a l'humain, puis rappelle ask-user avec la reponse dans `question` sous la forme d'un compte rendu, ou poursuis une fois la reponse obtenue.",
+        questions,
+        note: "Aucun canal direct disponible. Pose ces questions telles quelles a l'humain, en proposant les options, puis poursuis une fois les reponses obtenues.",
       };
     },
   }),
@@ -267,39 +321,57 @@ async function record(ticketId: string, draft: EventDraft): Promise<{ seq: numbe
   return { seq: validated.event.seq, persisted: true, delivery };
 }
 
-async function finishQuestion(ticketId: string, agent: string | null, answer: string, transport: string): Promise<void> {
+async function finishQuestion(
+  ticketId: string,
+  agent: string | null,
+  answers: Record<string, string>,
+  transport: string,
+): Promise<void> {
+  // Un lot repondu compte pour une intervention, pas pour trois : c'est un seul
+  // arret du workflow et un seul aller-retour humain.
   patchTicketState(ticketId, { metrics: { humanInterventions: { __increment: 1 } } });
+  const summary = Object.entries(answers)
+    .map(([key, value]) => `${key} = ${value}`)
+    .join(" · ");
   await record(ticketId, {
     kind: "answer",
     status: "ok",
     agent,
-    title: `Reponse recue (${transport}) : ${truncate(answer, 140)}`,
-    payload: { transport },
+    title: `Reponses recues (${transport}) : ${truncate(summary, 140)}`,
+    detail: Object.entries(answers)
+      .map(([key, value]) => `${key}\n  ${value}`)
+      .join("\n\n"),
+    payload: { transport, answers },
   });
 }
 
 async function askLiveShell(
   url: string,
-  input: { question: string; options?: string[]; askedBy?: string },
+  input: { questions: { key: string; header: string; question: string; options: string[] }[]; askedBy: string | null },
   timeoutMs: number,
-): Promise<string | null> {
+): Promise<Record<string, string> | null> {
   try {
     const response = await fetch(`${url}/rpc/ask`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ question: input.question, options: input.options ?? [], askedBy: input.askedBy ?? null }),
+      body: JSON.stringify(input),
       signal: AbortSignal.timeout(timeoutMs),
     });
     if (!response.ok) return null;
-    const data = (await response.json()) as { answer?: string };
-    return typeof data.answer === "string" ? data.answer : null;
+    const data = (await response.json()) as { answers?: Record<string, string> };
+    return data.answers && typeof data.answers === "object" ? data.answers : null;
   } catch {
     return null;
   }
 }
 
-function formatQuestion(question: string, options?: readonly string[]): string {
-  return options?.length ? `${question}\n\n${options.map((option) => `- ${option}`).join("\n")}` : question;
+function formatQuestions(questions: { header: string; question: string; options: string[] }[]): string {
+  return questions
+    .map((entry) => {
+      const options = entry.options.length > 0 ? `\n${entry.options.map((option) => `- ${option}`).join("\n")}` : "";
+      return `${entry.header}\n${entry.question}${options}`;
+    })
+    .join("\n\n");
 }
 
 async function isAlive(url: string): Promise<boolean> {
