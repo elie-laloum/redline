@@ -12,7 +12,8 @@
     "eval": "claude plugin eval ./plugins/autopilot --ablation with-without --mocks record --allow-real-servers --allow-tools 'mcp__plugin_autopilot_autopilot__*' --runs 3",
     "live:dev": "pnpm --dir tools/live-shell dev",
     "live:build": "pnpm --dir tools/live-shell build",
-    "config:check": "node plugins/autopilot/mcp/scripts/check-config.ts"
+    "config:check": "node plugins/autopilot/mcp/scripts/check-config.ts",
+    "fixtures": "node tests/fixtures/materialize.ts"
   },
   "engines": {
     "node": ">=22.18"

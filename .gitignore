@@ -22,3 +22,6 @@ tools/live-shell/.nitro/
 
 # resultats de `claude plugin eval`
 plugins/autopilot/evals/results/
+
+# depots de fixture materialises a la main (pnpm fixtures)
+tests/.fixtures/

@@ -139,3 +139,21 @@ qu'on vient de modifier.
 Les suites vivent donc dans `plugins/autopilot/evals/`, declarees par
 `experimental.evals` du manifeste. C'est le seul emplacement ou `pnpm eval` evalue le code
 qu'on a sous les yeux.
+
+## Un ecart assume sur les depots de fixture
+
+La note place les faux depots dans `tests/fixtures/repos/`. Un depot git **dans** un depot git
+est un `.git` imbrique, que git ne suit pas sans sous-module ni renommage restaure au
+lancement — c'est-a-dire un generateur, en moins lisible.
+
+Ils sont donc decrits dans `tests/fixtures/repos.ts` et materialises a l'execution, dans un
+dossier temporaire par cas : quatre vrais depots, avec un vrai remote **bare**, des `level`
+differents, une dependance amont/aval, un monorepo, et une suite qu'on peut faire echouer a
+la demande. Chaque test repart d'un depot neuf, sans heriter du tag qu'un test precedent a
+pousse.
+
+Pour les ouvrir a la main :
+
+```
+pnpm fixtures          # les ecrit dans tests/.fixtures/, gitignore
+```
