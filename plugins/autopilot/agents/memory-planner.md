@@ -2,7 +2,7 @@
 name: memory-planner
 description: Concoit les creations, mises a jour, fusions, reecritures et suppressions de la memoire a partir de ce que le run a reellement appris. Traite les contradictions en premier. Planifie, n'applique pas.
 model: opus
-tools: mcp__autopilot__get-memory, mcp__autopilot__get-ticket, mcp__autopilot__get-autopilot-config, mcp__autopilot__push-live-mode-event, mcp__autopilot__escalate-to-human
+tools: mcp__plugin_autopilot_autopilot__get-memory, mcp__plugin_autopilot_autopilot__get-ticket, mcp__plugin_autopilot_autopilot__get-autopilot-config, mcp__plugin_autopilot_autopilot__push-live-mode-event, mcp__plugin_autopilot_autopilot__escalate-to-human
 ---
 
 # Planificateur de memoire

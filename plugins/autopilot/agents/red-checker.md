@@ -2,7 +2,7 @@
 name: red-checker
 description: Lance les nouveaux tests avant toute implementation et verifie qu'ils echouent tous, et pour la bonne raison — une assertion, pas une erreur de compilation, d'import ou de mock.
 model: sonnet
-tools: mcp__autopilot__run-test-ut, mcp__autopilot__run-test-it, mcp__autopilot__run-test-ft, mcp__autopilot__run-test-ct, mcp__autopilot__run-test-e2e, mcp__autopilot__get-repositories-registry, mcp__autopilot__push-live-mode-event, mcp__autopilot__escalate-to-human
+tools: mcp__plugin_autopilot_autopilot__run-test-ut, mcp__plugin_autopilot_autopilot__run-test-it, mcp__plugin_autopilot_autopilot__run-test-ft, mcp__plugin_autopilot_autopilot__run-test-ct, mcp__plugin_autopilot_autopilot__run-test-e2e, mcp__plugin_autopilot_autopilot__get-repositories-registry, mcp__plugin_autopilot_autopilot__push-live-mode-event, mcp__plugin_autopilot_autopilot__escalate-to-human
 ---
 
 # Verificateur du rouge

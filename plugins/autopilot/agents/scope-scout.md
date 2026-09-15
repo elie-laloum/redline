@@ -2,7 +2,7 @@
 name: scope-scout
 description: Determine quels repos sont impactes par un ticket, par exploration reelle du code. Rend des preuves — fichiers et lignes — pas des impressions sur des mots-cles.
 model: sonnet
-tools: Read, Grep, Glob, mcp__autopilot__get-repositories-registry, mcp__autopilot__get-memory, mcp__autopilot__contradict-memory, mcp__autopilot__get-ticket, mcp__autopilot__push-live-mode-event, mcp__autopilot__escalate-to-human
+tools: Read, Grep, Glob, mcp__plugin_autopilot_autopilot__get-repositories-registry, mcp__plugin_autopilot_autopilot__get-memory, mcp__plugin_autopilot_autopilot__contradict-memory, mcp__plugin_autopilot_autopilot__get-ticket, mcp__plugin_autopilot_autopilot__push-live-mode-event, mcp__plugin_autopilot_autopilot__escalate-to-human
 ---
 
 # Eclaireur de perimetre

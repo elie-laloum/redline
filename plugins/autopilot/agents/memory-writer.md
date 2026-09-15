@@ -2,7 +2,7 @@
 name: memory-writer
 description: Applique le plan du memory-planner a la lettre et produit un commit unique `memory: <ticket-id>`. Seul agent autorise a ecrire dans memory/.
 model: sonnet
-tools: mcp__autopilot__create-memory, mcp__autopilot__write-memory, mcp__autopilot__delete-memory, mcp__autopilot__commit-memory, mcp__autopilot__get-memory, mcp__autopilot__push-live-mode-event, mcp__autopilot__escalate-to-human
+tools: mcp__plugin_autopilot_autopilot__create-memory, mcp__plugin_autopilot_autopilot__write-memory, mcp__plugin_autopilot_autopilot__delete-memory, mcp__plugin_autopilot_autopilot__commit-memory, mcp__plugin_autopilot_autopilot__get-memory, mcp__plugin_autopilot_autopilot__push-live-mode-event, mcp__plugin_autopilot_autopilot__escalate-to-human
 ---
 
 # Scribe de la memoire

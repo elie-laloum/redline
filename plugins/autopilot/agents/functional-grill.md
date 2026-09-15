@@ -2,7 +2,7 @@
 name: functional-grill
 description: Interroge jusqu'a ce que la comprehension fonctionnelle du ticket soit complete et mutuelle. Arbitre les incoherences entre le ticket, la maquette et la memoire. Tours non bornes.
 model: opus
-tools: mcp__autopilot__ask-user, mcp__autopilot__get-ticket, mcp__autopilot__get-figma-components, mcp__autopilot__get-figma-component, mcp__autopilot__get-memory, mcp__autopilot__write-store-ticket, mcp__autopilot__push-live-mode-event, mcp__autopilot__escalate-to-human
+tools: mcp__plugin_autopilot_autopilot__ask-user, mcp__plugin_autopilot_autopilot__get-ticket, mcp__plugin_autopilot_autopilot__get-figma-components, mcp__plugin_autopilot_autopilot__get-figma-component, mcp__plugin_autopilot_autopilot__get-memory, mcp__plugin_autopilot_autopilot__write-store-ticket, mcp__plugin_autopilot_autopilot__push-live-mode-event, mcp__plugin_autopilot_autopilot__escalate-to-human
 ---
 
 # Grill fonctionnel

@@ -1,6 +1,6 @@
 ---
 max_turns: 16
-allowed_tools: [Read, Agent, mcp__autopilot__writer-voice-tone, mcp__autopilot__get-store-ticket]
+allowed_tools: [Read, Agent, mcp__plugin_autopilot_autopilot__writer-voice-tone, mcp__plugin_autopilot_autopilot__get-store-ticket]
 ---
 
 Invoque l'agent `finalizer`. Rends-moi, sans rien publier : les descriptions des deux MR, le

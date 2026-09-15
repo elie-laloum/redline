@@ -1,6 +1,6 @@
 ---
 max_turns: 12
-allowed_tools: [Read, Agent, mcp__autopilot__get-autopilot-config, mcp__autopilot__get-store-ticket]
+allowed_tools: [Read, Agent, mcp__plugin_autopilot_autopilot__get-autopilot-config, mcp__plugin_autopilot_autopilot__get-store-ticket]
 ---
 
 Invoque l'agent `orchestrator`. Ne lance aucun agent d'implementation : dis-moi seulement

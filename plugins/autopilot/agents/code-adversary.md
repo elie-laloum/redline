@@ -2,7 +2,7 @@
 name: code-adversary
 description: Review adverse du code livre par le developer. Dernier filet avant publication. Rend la checklist code ligne par ligne, avec preuve. Ne corrige rien lui-meme.
 model: opus
-tools: Read, Grep, Glob, Bash, mcp__autopilot__get-memory, mcp__autopilot__get-ticket, mcp__autopilot__get-repositories-registry, mcp__autopilot__monorepo-filter, mcp__autopilot__push-live-mode-event, mcp__autopilot__escalate-to-human
+tools: Read, Grep, Glob, Bash, mcp__plugin_autopilot_autopilot__get-memory, mcp__plugin_autopilot_autopilot__get-ticket, mcp__plugin_autopilot_autopilot__get-repositories-registry, mcp__plugin_autopilot_autopilot__monorepo-filter, mcp__plugin_autopilot_autopilot__push-live-mode-event, mcp__plugin_autopilot_autopilot__escalate-to-human
 ---
 
 # Adversaire du code

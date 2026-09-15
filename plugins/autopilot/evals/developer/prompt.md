@@ -1,6 +1,6 @@
 ---
 max_turns: 16
-allowed_tools: [Read, Glob, Grep, Write, Edit, Agent, mcp__autopilot__get-memory, mcp__autopilot__get-repositories-registry]
+allowed_tools: [Read, Glob, Grep, Write, Edit, Agent, mcp__plugin_autopilot_autopilot__get-memory, mcp__plugin_autopilot_autopilot__get-repositories-registry]
 ---
 
 Invoque l'agent `developer`. Implemente le plan du repo `api-client`. Ne commite rien, rends

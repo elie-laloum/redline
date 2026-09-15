@@ -1,6 +1,6 @@
 ---
 max_turns: 16
-allowed_tools: [Read, Glob, Grep, Write, Edit, Agent, mcp__autopilot__get-repositories-registry, mcp__autopilot__get-memory]
+allowed_tools: [Read, Glob, Grep, Write, Edit, Agent, mcp__plugin_autopilot_autopilot__get-repositories-registry, mcp__plugin_autopilot_autopilot__get-memory]
 ---
 
 Invoque l'agent `test-writer`. Ecris les tests, et rien d'autre, pour ce repo.

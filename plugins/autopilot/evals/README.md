@@ -25,7 +25,8 @@ pnpm eval
 soit, en clair :
 
 ```
-claude plugin eval . --ablation with-without --mocks record --runs 3
+claude plugin eval ./plugins/autopilot --ablation with-without --mocks record \
+  --allow-real-servers --allow-tools 'mcp__plugin_autopilot_autopilot__*' --runs 3
 ```
 
 Les quatre reglages ne sont pas negociables :
@@ -33,12 +34,14 @@ Les quatre reglages ne sont pas negociables :
 - **`--ablation with-without`** — systematiquement. C'est la seule facon de savoir si l'agent
   apporte quelque chose, ou si Claude ferait aussi bien sans lui. Un cas dont l'ecart est nul
   signale un agent a reecrire, pas un succes.
-- **`--mocks record`** (defaut) — aucun serveur reel ne demarre.
+- **`--allow-real-servers`** — sans lui, le serveur `autopilot` ne demarre pas et chaque
+  agent part avec zero tool, ce qui fait refuser le spawn. Le perimetre reste borne par
+  l'`allowed_tools` de chaque cas, qui ne liste que des tools en lecture. Voir `mocks/README.md`.
 - **`--runs 3`** minimum — une sortie d'agent varie, on ne teste pas une egalite, on **note**
   et on regarde la tendance.
 - **`--threshold`** pour bloquer sur regression.
 
-Filtrer sur un agent : `claude plugin eval . --case doc-scout`.
+Filtrer sur un agent : ajouter `--case doc-scout`.
 
 ## Ce que chaque suite doit prouver
 

@@ -2,7 +2,7 @@
 name: test-adversary
 description: Review adverse des tests livres par le test-writer. Rend la checklist tests ligne par ligne. Ne corrige rien lui-meme. Accepter avec un doute meme minime est un echec.
 model: opus
-tools: Read, Grep, Glob, mcp__autopilot__get-memory, mcp__autopilot__get-ticket, mcp__autopilot__get-repositories-registry, mcp__autopilot__push-live-mode-event, mcp__autopilot__escalate-to-human
+tools: Read, Grep, Glob, mcp__plugin_autopilot_autopilot__get-memory, mcp__plugin_autopilot_autopilot__get-ticket, mcp__plugin_autopilot_autopilot__get-repositories-registry, mcp__plugin_autopilot_autopilot__push-live-mode-event, mcp__plugin_autopilot_autopilot__escalate-to-human
 ---
 
 # Adversaire des tests

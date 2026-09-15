@@ -7,6 +7,18 @@ import { ALL_TOOLS, TOOLS_BY_AGENT } from "../../plugins/autopilot/mcp/registry.
 import { PROJECT_ROOT } from "../helpers.ts";
 
 /**
+ * Claude Code expose les tools d'un plugin sous `mcp__plugin_<plugin>_<serveur>__`,
+ * pas sous le nom du serveur seul. Un frontmatter qui declare le mauvais prefixe
+ * fait spawner l'agent avec zero tool — et le spawn est refuse. Le prefixe est
+ * donc derive du manifeste, jamais recopie a la main.
+ */
+const MANIFEST = JSON.parse(
+  readFileSync(join(PROJECT_ROOT, "plugins", "autopilot", ".claude-plugin", "plugin.json"), "utf8"),
+) as { name: string; mcpServers: Record<string, unknown> };
+const SERVER = Object.keys(MANIFEST.mcpServers)[0] ?? "";
+const PREFIX = `mcp__plugin_${MANIFEST.name}_${SERVER}__`;
+
+/**
  * Un agent ne peut ecrire que dans une seule zone. Cette regle vit dans trois
  * endroits — le frontmatter des agents, la table du registre, le garde-fou du
  * commit — et trois endroits, c'est trois occasions de diverger.
@@ -45,6 +57,19 @@ const TOOL_NAMES = new Set(ALL_TOOLS.map((tool) => tool.name));
 describe("les 15 agents", () => {
   it("sont tous la", () => {
     assert.equal(AGENTS.length, 15, AGENTS.map((agent) => agent.name).join(", "));
+  });
+
+  it("declarent leurs tools sous le prefixe que le plugin expose reellement", () => {
+    // Un mauvais prefixe ne casse rien au chargement : il fait juste spawner
+    // l'agent sans aucun tool. Le symptome apparait au premier run reel.
+    assert.equal(PREFIX, "mcp__plugin_autopilot_autopilot__");
+    for (const agent of AGENTS) {
+      const mcpTools = agent.tools.filter((tool) => tool.startsWith("mcp__"));
+      assert.ok(mcpTools.length > 0, `${agent.name} n'a aucun tool mcp`);
+      for (const tool of mcpTools) {
+        assert.ok(tool.startsWith(PREFIX), `${agent.name} : ${tool} ne porte pas ${PREFIX}`);
+      }
+    }
   });
 
   it("portent un nom qui correspond a leur fichier et a la table des tools", () => {
@@ -87,8 +112,8 @@ describe("les 15 agents", () => {
   it("ne reclament que des tools qui existent", () => {
     for (const agent of AGENTS) {
       for (const tool of agent.tools) {
-        if (!tool.startsWith("mcp__autopilot__")) continue;
-        const bare = tool.replace("mcp__autopilot__", "");
+        if (!tool.startsWith(PREFIX)) continue;
+        const bare = tool.replace(PREFIX, "");
         assert.ok(TOOL_NAMES.has(bare), `${agent.name} reclame ${bare}, qui n'existe pas`);
       }
     }
@@ -97,7 +122,7 @@ describe("les 15 agents", () => {
   it("ont un frontmatter aligne sur la table du registre", () => {
     for (const agent of AGENTS) {
       const declared = new Set(
-        agent.tools.filter((tool) => tool.startsWith("mcp__autopilot__")).map((tool) => tool.replace("mcp__autopilot__", "")),
+        agent.tools.filter((tool) => tool.startsWith(PREFIX)).map((tool) => tool.replace(PREFIX, "")),
       );
       const expected = new Set(TOOLS_BY_AGENT[agent.name] ?? []);
       const missing = [...expected].filter((tool) => !declared.has(tool));
@@ -109,8 +134,8 @@ describe("les 15 agents", () => {
   it("appellent tous push-live-mode-event et escalate-to-human", () => {
     // Pas de cablage central : un agent qui ne pousse pas laisse un trou.
     for (const agent of AGENTS) {
-      assert.ok(agent.tools.includes("mcp__autopilot__push-live-mode-event"), `${agent.name}`);
-      assert.ok(agent.tools.includes("mcp__autopilot__escalate-to-human"), `${agent.name}`);
+      assert.ok(agent.tools.includes(`${PREFIX}push-live-mode-event`), `${agent.name}`);
+      assert.ok(agent.tools.includes(`${PREFIX}escalate-to-human`), `${agent.name}`);
     }
   });
 });
@@ -123,7 +148,7 @@ describe("zones d'ecriture", () => {
     for (const agent of AGENTS) {
       if (writers.has(agent.name)) continue;
       for (const tool of writeTools) {
-        assert.ok(!agent.tools.includes(`mcp__autopilot__${tool}`), `${agent.name} peut ${tool}`);
+        assert.ok(!agent.tools.includes(`${PREFIX}${tool}`), `${agent.name} peut ${tool}`);
       }
       assert.ok(!agent.tools.includes("Write"), `${agent.name} peut Write`);
       assert.ok(!agent.tools.includes("Edit"), `${agent.name} peut Edit`);
@@ -134,7 +159,7 @@ describe("zones d'ecriture", () => {
     for (const agent of AGENTS) {
       if (agent.name === "memory-writer") continue;
       for (const tool of ["create-memory", "write-memory", "delete-memory", "commit-memory"]) {
-        assert.ok(!agent.tools.includes(`mcp__autopilot__${tool}`), `${agent.name} ecrit dans memory/`);
+        assert.ok(!agent.tools.includes(`${PREFIX}${tool}`), `${agent.name} ecrit dans memory/`);
       }
     }
   });
@@ -144,7 +169,7 @@ describe("zones d'ecriture", () => {
     for (const agent of AGENTS) {
       if (agent.name === "finalizer") continue;
       for (const tool of remote) {
-        assert.ok(!agent.tools.includes(`mcp__autopilot__${tool}`), `${agent.name} peut ${tool}`);
+        assert.ok(!agent.tools.includes(`${PREFIX}${tool}`), `${agent.name} peut ${tool}`);
       }
     }
   });
@@ -154,7 +179,7 @@ describe("zones d'ecriture", () => {
     // distante autorisee avant le point 13.
     for (const agent of AGENTS) {
       if (agent.name === "orchestrator") continue;
-      assert.ok(!agent.tools.includes("mcp__autopilot__push-tag"), `${agent.name} peut push-tag`);
+      assert.ok(!agent.tools.includes(`${PREFIX}push-tag`), `${agent.name} peut push-tag`);
     }
     assert.ok(TOOLS_BY_AGENT.orchestrator?.includes("push-tag"));
   });

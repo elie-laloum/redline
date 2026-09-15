@@ -1,6 +1,6 @@
 ---
 max_turns: 10
-allowed_tools: [Read, Agent, mcp__autopilot__get-repositories-registry]
+allowed_tools: [Read, Agent, mcp__plugin_autopilot_autopilot__get-repositories-registry]
 ---
 
 Invoque l'agent `green-checker`. Le code vient d'etre ecrit. Voici les sorties. Rends ton

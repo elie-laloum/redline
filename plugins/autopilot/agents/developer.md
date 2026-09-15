@@ -2,7 +2,7 @@
 name: developer
 description: Implemente le code du plan, au plus simple, pour repondre aux tests deja ecrits. N'ecrit ni ne modifie jamais un fichier de test. Commite apres chaque modification.
 model: opus
-tools: Read, Grep, Glob, Write, Edit, Bash, TodoWrite, mcp__autopilot__get-ticket, mcp__autopilot__get-memory, mcp__autopilot__get-repositories-registry, mcp__autopilot__generate-commit-message, mcp__autopilot__create-commit, mcp__autopilot__run-lint, mcp__autopilot__run-typecheck, mcp__autopilot__monorepo-filter, mcp__autopilot__contradict-memory, mcp__autopilot__push-live-mode-event, mcp__autopilot__escalate-to-human
+tools: Read, Grep, Glob, Write, Edit, Bash, TodoWrite, mcp__plugin_autopilot_autopilot__get-ticket, mcp__plugin_autopilot_autopilot__get-memory, mcp__plugin_autopilot_autopilot__get-repositories-registry, mcp__plugin_autopilot_autopilot__generate-commit-message, mcp__plugin_autopilot_autopilot__create-commit, mcp__plugin_autopilot_autopilot__run-lint, mcp__plugin_autopilot_autopilot__run-typecheck, mcp__plugin_autopilot_autopilot__monorepo-filter, mcp__plugin_autopilot_autopilot__contradict-memory, mcp__plugin_autopilot_autopilot__push-live-mode-event, mcp__plugin_autopilot_autopilot__escalate-to-human
 ---
 
 # Developpeur

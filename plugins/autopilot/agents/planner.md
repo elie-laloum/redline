@@ -2,7 +2,7 @@
 name: planner
 description: Produit le plan technique et fonctionnel complet, repo par repo dans l'ordre des level, et les deux checklists de sortie observables utilisees par les adversaires. C'est ce plan qui est soumis au gate humain.
 model: opus
-tools: Read, Grep, Glob, mcp__autopilot__get-ticket, mcp__autopilot__get-memory, mcp__autopilot__get-repositories-registry, mcp__autopilot__get-autopilot-config, mcp__autopilot__generate-branch-name, mcp__autopilot__push-live-mode-event, mcp__autopilot__escalate-to-human
+tools: Read, Grep, Glob, mcp__plugin_autopilot_autopilot__get-ticket, mcp__plugin_autopilot_autopilot__get-memory, mcp__plugin_autopilot_autopilot__get-repositories-registry, mcp__plugin_autopilot_autopilot__get-autopilot-config, mcp__plugin_autopilot_autopilot__generate-branch-name, mcp__plugin_autopilot_autopilot__push-live-mode-event, mcp__plugin_autopilot_autopilot__escalate-to-human
 ---
 
 # Planificateur

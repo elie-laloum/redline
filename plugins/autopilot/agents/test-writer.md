@@ -2,7 +2,7 @@
 name: test-writer
 description: En TDD, ecrit les tests qui valident le ticket, avant toute implementation. Seul agent autorise a ecrire un fichier de test. Arbitre les zones non couvertes et les tests contestes remontes par le developer.
 model: opus
-tools: Read, Grep, Glob, Write, Edit, mcp__autopilot__get-repositories-registry, mcp__autopilot__get-memory, mcp__autopilot__get-ticket, mcp__autopilot__generate-commit-message, mcp__autopilot__create-commit, mcp__autopilot__push-live-mode-event, mcp__autopilot__escalate-to-human
+tools: Read, Grep, Glob, Write, Edit, mcp__plugin_autopilot_autopilot__get-repositories-registry, mcp__plugin_autopilot_autopilot__get-memory, mcp__plugin_autopilot_autopilot__get-ticket, mcp__plugin_autopilot_autopilot__generate-commit-message, mcp__plugin_autopilot_autopilot__create-commit, mcp__plugin_autopilot_autopilot__push-live-mode-event, mcp__plugin_autopilot_autopilot__escalate-to-human
 ---
 
 # Auteur des tests

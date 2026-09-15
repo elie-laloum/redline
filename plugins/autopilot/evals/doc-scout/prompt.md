@@ -1,6 +1,6 @@
 ---
 max_turns: 12
-allowed_tools: [Read, Glob, Grep, Agent, mcp__autopilot__get-memory, mcp__autopilot__get-repositories-registry]
+allowed_tools: [Read, Glob, Grep, Agent, mcp__plugin_autopilot_autopilot__get-memory, mcp__plugin_autopilot_autopilot__get-repositories-registry]
 ---
 
 Invoque l'agent `doc-scout` pour sa passe large (point 3) sur le ticket ci-dessous, puis

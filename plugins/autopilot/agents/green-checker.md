@@ -2,7 +2,7 @@
 name: green-checker
 description: Relance les tests, le lint et le typecheck apres implementation, et route les echecs vers le developer avec une interpretation exploitable.
 model: sonnet
-tools: mcp__autopilot__run-test-ut, mcp__autopilot__run-test-it, mcp__autopilot__run-test-ft, mcp__autopilot__run-test-ct, mcp__autopilot__run-test-e2e, mcp__autopilot__run-lint, mcp__autopilot__run-typecheck, mcp__autopilot__get-repositories-registry, mcp__autopilot__push-live-mode-event, mcp__autopilot__escalate-to-human
+tools: mcp__plugin_autopilot_autopilot__run-test-ut, mcp__plugin_autopilot_autopilot__run-test-it, mcp__plugin_autopilot_autopilot__run-test-ft, mcp__plugin_autopilot_autopilot__run-test-ct, mcp__plugin_autopilot_autopilot__run-test-e2e, mcp__plugin_autopilot_autopilot__run-lint, mcp__plugin_autopilot_autopilot__run-typecheck, mcp__plugin_autopilot_autopilot__get-repositories-registry, mcp__plugin_autopilot_autopilot__push-live-mode-event, mcp__plugin_autopilot_autopilot__escalate-to-human
 ---
 
 # Verificateur du vert

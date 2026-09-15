@@ -1,6 +1,6 @@
 ---
 max_turns: 14
-allowed_tools: [Read, Glob, Grep, Agent, mcp__autopilot__get-memory, mcp__autopilot__get-repositories-registry, mcp__autopilot__ask-user]
+allowed_tools: [Read, Glob, Grep, Agent, mcp__plugin_autopilot_autopilot__get-memory, mcp__plugin_autopilot_autopilot__get-repositories-registry, mcp__plugin_autopilot_autopilot__ask-user]
 ---
 
 Invoque l'agent `technical-grill`. Le perimetre est etabli : `design-system` (level 2),

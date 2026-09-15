@@ -1,6 +1,6 @@
 ---
 max_turns: 12
-allowed_tools: [Read, Agent, mcp__autopilot__get-memory]
+allowed_tools: [Read, Agent, mcp__plugin_autopilot_autopilot__get-memory]
 ---
 
 Invoque l'agent `memory-writer`. Voici le plan du `memory-planner`. Dis-moi, operation par

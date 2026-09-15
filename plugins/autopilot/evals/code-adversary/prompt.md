@@ -1,6 +1,6 @@
 ---
 max_turns: 14
-allowed_tools: [Read, Glob, Grep, Agent, mcp__autopilot__get-memory, mcp__autopilot__get-repositories-registry]
+allowed_tools: [Read, Glob, Grep, Agent, mcp__plugin_autopilot_autopilot__get-memory, mcp__plugin_autopilot_autopilot__get-repositories-registry]
 ---
 
 Invoque l'agent `code-adversary`. Rends la checklist code ligne par ligne.

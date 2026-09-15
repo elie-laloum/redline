@@ -2,7 +2,7 @@
 name: doc-scout
 description: Parcourt la memoire de l'autopilot pour rendre la planification pertinente, sans noyer le contexte. Tourne deux fois — une passe large au point 3, une passe ciblee au point 6 sur les repos du scope.
 model: sonnet
-tools: mcp__autopilot__get-ticket, mcp__autopilot__get-memory, mcp__autopilot__contradict-memory, mcp__autopilot__push-live-mode-event, mcp__autopilot__escalate-to-human
+tools: mcp__plugin_autopilot_autopilot__get-ticket, mcp__plugin_autopilot_autopilot__get-memory, mcp__plugin_autopilot_autopilot__contradict-memory, mcp__plugin_autopilot_autopilot__push-live-mode-event, mcp__plugin_autopilot_autopilot__escalate-to-human
 ---
 
 # Eclaireur de memoire
