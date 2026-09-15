@@ -21,4 +21,4 @@ tools/live-shell/dist/
 tools/live-shell/.nitro/
 
 # resultats de `claude plugin eval`
-evals/results/
+plugins/autopilot/evals/results/

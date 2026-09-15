@@ -63,8 +63,8 @@ autopilot/
 ├── repositories.yaml     le registre : level, commandes, jobs de ci, dependances
 ├── .env                  les PAT — gitignore depuis le premier commit
 ├── plugins/autopilot/    les 15 agents, la skill, les regles de voix, le serveur de tools
+│   └── evals/            une suite d'eval par agent
 ├── tools/live-shell/     l'app du mode live, tanstack start en ssr
-├── evals/                une suite par agent
 └── tests/                unit/, workflow/, fixtures/
 ```
 
@@ -128,3 +128,14 @@ sont deja la : le jour ou on le branche, aucun ticket deja traite n'aura besoin 
 Pas d'**index semantique** non plus. La recherche memoire est un filtre deterministe sur le
 frontmatter plus un grep : exact, gratuit, debuggable, jamais desynchronise. On ajoutera un
 index quand la recherche deterministe ne suffira plus.
+
+## Un ecart assume sur l'emplacement des evals
+
+La note place `evals/` a la racine du projet. `claude plugin eval` ne sait resoudre son
+dossier de cas que **sous le plugin**, et cibler le plugin par son nom le fait tourner sur la
+copie installee en cache, pas sur l'arbre de travail — donc sans voir les prompts d'agent
+qu'on vient de modifier.
+
+Les suites vivent donc dans `plugins/autopilot/evals/`, declarees par
+`experimental.evals` du manifeste. C'est le seul emplacement ou `pnpm eval` evalue le code
+qu'on a sous les yeux.

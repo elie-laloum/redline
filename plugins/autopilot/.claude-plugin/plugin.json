@@ -16,5 +16,8 @@
         "AUTOPILOT_PROJECT_ROOT": "${CLAUDE_PLUGIN_ROOT}/../.."
       }
     }
+  },
+  "experimental": {
+    "evals": "evals"
   }
 }
