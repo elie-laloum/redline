@@ -54,7 +54,7 @@ export function QuestionPanel({ question, onAnswer }: QuestionPanelProps) {
   return (
     <section
       aria-label="Questions en attente"
-      className="border-y border-waiting/40 bg-waiting/[0.06] px-6 py-5"
+      className="border-y border-human/40 bg-human/[0.06] px-6 py-5"
     >
       <header className="flex items-baseline gap-2 pb-4">
         <h2 className="text-[15px] font-medium tracking-tight">

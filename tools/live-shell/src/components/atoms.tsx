@@ -11,14 +11,47 @@ import { cn } from "#/lib/utils";
 /** La seule motion continue de la page. */
 export function Spinner({ className }: { className?: string }) {
   return (
-    <span
-      role="status"
+    <output
       aria-label="en cours"
       className={cn(
-        "spin-quiet size-3 shrink-0 rounded-full border-[1.5px] border-ink-faint/30 border-t-ink",
+        "spin-quiet block size-3 shrink-0 rounded-full border-[1.5px] border-ink-faint/30 border-t-ink",
         className,
       )}
     />
+  );
+}
+
+/**
+ * Ou en est le run, en un seul signe.
+ *
+ * Cinq etats qui s'excluent, et l'ordre de priorite fait partie de la regle :
+ * un run escalade pendant qu'une question trainait montre l'arret, pas
+ * l'attente. Le detail de ce classement vit dans `runMark`.
+ *
+ * Il tourne quand un agent travaille, il s'arrete quand c'est a toi. C'est la
+ * distinction la plus utile de la page, et elle se lit sans connaitre le code
+ * couleur : ca bouge ou ca ne bouge pas.
+ */
+export type RunMark = "running" | "human" | "escalated" | "done" | "idle";
+
+const MARK: Record<Exclude<RunMark, "running">, { tone: string; label: string }> = {
+  human: { tone: "bg-human", label: "en attente de ta reponse" },
+  escalated: { tone: "bg-ko", label: "arrete" },
+  done: { tone: "bg-ok", label: "termine" },
+  idle: { tone: "bg-ink-faint/50", label: "au repos" },
+};
+
+export function StateMark({ mark, className }: { mark: RunMark; className?: string }) {
+  // Meme encombrement que le spinner : changer d'etat ne doit pas decaler la
+  // ligne, sinon on croit que le texte a bouge.
+  if (mark === "running") return <Spinner className={className} />;
+
+  const { tone, label } = MARK[mark];
+  return (
+    <output className={cn("flex size-3 shrink-0 items-center justify-center", className)}>
+      <span aria-hidden className={cn("size-2.5 rounded-full", tone)} />
+      <span className="sr-only">{label}</span>
+    </output>
   );
 }
 
@@ -35,7 +68,7 @@ const TONE: Record<string, string> = {
   ko: "bg-ko",
   pending: "bg-ink-faint/50",
   todo: "bg-ink-faint/50",
-  waiting: "bg-waiting",
+  waiting: "bg-human",
 };
 
 /** Un etat se lit a la couleur **et** au mot : la pastille seule ne suffit pas. */
@@ -63,14 +96,7 @@ export function statusTone(status: string): string {
  * assez fort pour que vingt minutes se remarquent.
  */
 export function Elapsed({ since, className }: { since: string; className?: string }) {
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    setNow(Date.now());
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
+  const now = useNow();
   const started = Date.parse(since);
   if (Number.isNaN(started)) return null;
 
@@ -79,6 +105,25 @@ export function Elapsed({ since, className }: { since: string; className?: strin
       {format(Math.max(0, Math.round((now - started) / 1000)))}
     </time>
   );
+}
+
+/**
+ * L'horloge de la page, une seule pour tout le monde.
+ *
+ * Le rendu serveur n'a pas la meme heure que l'onglet : on ne lit `Date.now()`
+ * qu'apres le montage, sinon la premiere seconde affiche un ecart qui n'existe
+ * pas.
+ */
+export function useNow(): number {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return now;
 }
 
 function format(seconds: number): string {

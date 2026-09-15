@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { RunMark } from "../components/atoms.tsx";
 import { type JsonValue, type LiveEvent, type PendingQuestion, parseEvent } from "./event.ts";
-import { EMPTY_TICKET, type Ticket, readTicket } from "./ticket.ts";
+import { EMPTY_TICKET, STEPS, type Ticket, readTicket, stepIndex } from "./ticket.ts";
 
 export interface RunSnapshot {
   ticketId: string | null;
@@ -100,8 +101,21 @@ export function useLiveRun(initial: RunSnapshot = EMPTY) {
   );
 
   const derived = useMemo(() => derive(snapshot.events), [snapshot.events]);
+  const mark = useMemo(
+    () => runMark(ticket, derived.current, snapshot.question),
+    [ticket, derived.current, snapshot.question],
+  );
 
-  return { ...snapshot, ticket, ...derived, connection, connected: connection === "open", answer, reload };
+  return {
+    ...snapshot,
+    ticket,
+    ...derived,
+    mark,
+    connection,
+    connected: connection === "open",
+    answer,
+    reload,
+  };
 }
 
 export interface Derived {
@@ -137,4 +151,29 @@ function derive(events: readonly LiveEvent[]): Derived {
     loops: [...loops.values()],
     stepSince: lastStep?.ts ?? null,
   };
+}
+
+/**
+ * L'etat du run, ramene a un seul signe.
+ *
+ * **L'ordre est la regle, pas une commodite d'ecriture.** Un run escalade
+ * pendant qu'une question attendait encore doit montrer l'arret : c'est ce qui
+ * decide si on vient repondre ou si on vient reprendre la main. L'inverse
+ * enverrait quelqu'un taper une reponse dans un run qui ne tourne plus.
+ *
+ * Le flux SSE coupe n'apparait pas ici : c'est le shell qui va mal, pas le run,
+ * et confondre les deux ferait mentir la page sur la seule chose qu'elle sait.
+ */
+export function runMark(
+  ticket: Ticket,
+  current: LiveEvent | null,
+  question: PendingQuestion | null,
+): RunMark {
+  if (ticket.run.escalation !== null || current?.status === "ko") return "escalated";
+  if (question !== null || current?.status === "waiting") return "human";
+  if (current?.status === "start" || current?.status === "progress") return "running";
+  // Sur la derniere etape, un `ok` clot le run. Ailleurs il clot une action, et
+  // ce silence-la est un repos, pas une fin.
+  if (current?.status === "ok" && stepIndex(ticket.run.step) === STEPS.length - 1) return "done";
+  return "idle";
 }

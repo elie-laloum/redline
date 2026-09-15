@@ -3,10 +3,16 @@
 /* ---------------------------------------------------------------------------
    Le monde : neutres Shadcn, et la couleur ne veut dire qu'une chose — l'etat.
 
-   Pas d'accent decoratif. « Maintenant » se marque par l'encre pleine pendant
-   que le reste est attenue ; vert, rouge et ambre ne servent qu'a dire ce qui
-   passe, ce qui casse et ce qui attend. Une page ou la couleur signifie
-   toujours la meme chose se lit sans legende.
+   « Maintenant » se marque par l'encre pleine pendant que le reste est attenue.
+   Quatre couleurs d'etat, et chacune n'a qu'un sens : vert ce qui est passe,
+   rouge ce qui casse, bleu ce qui t'attend, ambre ce qui derive. Une page ou la
+   couleur signifie toujours la meme chose se lit sans legende.
+
+   L'indigo n'est pas une cinquieme couleur d'etat, et c'est pour ca qu'il ne
+   sort jamais de deux emplois : le sol du bandeau, et ce qui est selectionne.
+   Il vit tres bas en chroma — dix fois moins que la pastille bleue qui se pose
+   dessus. Si les deux hesitent, c'est le sol qui perd sa teinte, jamais la
+   pastille.
 
    La scene decide du clair ou du sombre, pas la categorie : un onglet parmi
    d'autres, ouvert de jour au bureau comme le soir, a cote d'un terminal qui
@@ -31,9 +37,16 @@
 
   --ok: oklch(0.55 0.13 150);
   --ko: oklch(0.55 0.2 27);
-  --waiting: oklch(0.6 0.13 75);
+  /* Ce qui t'attend, et rien d'autre. Plus froid que l'indigo du sol. */
+  --human: oklch(0.52 0.18 250);
+  /* Ce qui derive : boucle proche du budget, note de memoire contredite. */
+  --drift: oklch(0.6 0.13 75);
 
-  --select: oklch(0.9 0.04 240);
+  --primary: oklch(0.51 0.19 277);
+  --primary-surface: oklch(0.973 0.014 277);
+  --primary-line: oklch(0.885 0.03 277);
+
+  --select: oklch(0.89 0.05 277);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -52,9 +65,14 @@
 
     --ok: oklch(0.74 0.15 150);
     --ko: oklch(0.71 0.18 27);
-    --waiting: oklch(0.8 0.14 75);
+    --human: oklch(0.72 0.16 250);
+    --drift: oklch(0.8 0.14 75);
 
-    --select: oklch(0.38 0.06 240);
+    --primary: oklch(0.74 0.16 277);
+    --primary-surface: oklch(0.216 0.024 277);
+    --primary-line: oklch(0.33 0.04 277);
+
+    --select: oklch(0.39 0.08 277);
   }
 }
 
@@ -73,7 +91,11 @@
   --color-field: var(--field);
   --color-ok: var(--ok);
   --color-ko: var(--ko);
-  --color-waiting: var(--waiting);
+  --color-human: var(--human);
+  --color-drift: var(--drift);
+  --color-primary: var(--primary);
+  --color-primary-surface: var(--primary-surface);
+  --color-primary-line: var(--primary-line);
 
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;

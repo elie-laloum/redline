@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { At, Elapsed, Nothing } from "#/components/atoms";
+import { At, Nothing } from "#/components/atoms";
+import { Banner } from "#/components/banner";
 import { Docket } from "#/components/docket";
 import { QuestionPanel } from "#/components/question-panel";
 import { Rail } from "#/components/rail";
@@ -8,7 +9,7 @@ import { StateStrip } from "#/components/state-strip";
 import type { LiveEvent } from "#/lib/event";
 import { getSnapshot } from "#/lib/snapshot-fn";
 import { DOCKET_LABELS, type DocketSection, type Escalation, type Ticket } from "#/lib/ticket";
-import { type Connection, useLiveRun } from "#/lib/use-live-run";
+import { useLiveRun } from "#/lib/use-live-run";
 import { cn } from "#/lib/utils";
 
 export const Route = createFileRoute("/")({
@@ -21,10 +22,6 @@ function LiveShell() {
   const run = useLiveRun(Route.useLoaderData());
   const [section, setSection] = useState<DocketSection | null>(null);
 
-  // Le run attend une reponse humaine : ce n'est pas du travail en cours, et ca
-  // ne doit pas porter le meme loader qu'un agent qui travaille.
-  const waiting = run.question !== null || run.current?.status === "waiting";
-
   return (
     <div className="flex min-h-screen">
       <aside className="sticky top-0 hidden h-screen w-[19rem] shrink-0 border-r bg-rail text-rail-ink lg:block">
@@ -32,15 +29,21 @@ function LiveShell() {
           ticket={run.ticket}
           loops={run.loops}
           stepSince={run.stepSince}
-          waiting={waiting}
+          mark={run.mark}
           selected={section}
           onSelect={setSection}
         />
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <Now current={run.current} connection={run.connection} waiting={waiting} />
-        <StateStrip ticket={run.ticket} loops={run.loops} stepSince={run.stepSince} waiting={waiting} />
+        <Banner
+          ticket={run.ticket}
+          current={run.current}
+          mark={run.mark}
+          stepSince={run.stepSince}
+          connection={run.connection}
+        />
+        <StateStrip ticket={run.ticket} loops={run.loops} />
 
         {run.ticket.run.escalation ? <EscalationNotice escalation={run.ticket.run.escalation} /> : null}
         {run.question ? <QuestionPanel question={run.question} onAnswer={run.answer} /> : null}
@@ -94,57 +97,6 @@ function DocketIndex({ ticket, onSelect }: { ticket: Ticket; onSelect: (section:
   );
 }
 
-/**
- * Ce qui se passe maintenant.
- *
- * Le titre vient d'un agent, donc il peut contenir du jargon interne et faire
- * trois lignes. La page ne le reecrit pas — elle dit d'abord l'etat qu'elle
- * connait, en francais, et laisse la phrase de l'agent entiere en dessous.
- * Une ligne tronquee coute plus cher que son absence, parce qu'on la croit.
- */
-function Now({
-  current,
-  connection,
-  waiting,
-}: {
-  current: LiveEvent | null;
-  connection: Connection;
-  waiting: boolean;
-}) {
-  return (
-    <header className="sticky top-0 z-20 flex items-start gap-3 border-b bg-bg/90 px-6 py-3 backdrop-blur">
-      <div className="min-w-0 flex-1">
-        {waiting ? (
-          <p className="text-[14px] font-medium text-waiting">Le run t'attend</p>
-        ) : null}
-        <p className="text-[14px] leading-snug text-ink-soft">
-          {current?.title ?? "En attente du premier événement du run"}
-        </p>
-        {/* Le titre est borne a l'ecriture ; quand il a ete coupe, le texte
-            entier vit dans le detail. On le montre plutot que de laisser croire
-            que la phrase s'arrete la. */}
-        {current?.detail ? (
-          <p className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-ink-faint">{current.detail}</p>
-        ) : null}
-      </div>
-      {current?.agent || current?.tool ? (
-        <span className="hidden shrink-0 pt-0.5 font-mono text-[12px] text-ink-faint md:inline">
-          {[current.agent, current.tool].filter(Boolean).join(" · ")}
-        </span>
-      ) : null}
-      {current ? (
-        <span className="hidden shrink-0 items-baseline gap-1.5 pt-0.5 text-[12px] text-ink-faint sm:flex">
-          dernier événement il y a
-          <Elapsed since={current.ts} />
-        </span>
-      ) : null}
-      {connection === "closed" ? (
-        <span className="shrink-0 pt-0.5 text-[12px] text-ko">flux interrompu</span>
-      ) : null}
-    </header>
-  );
-}
-
 /** Une escalade bloque visuellement : on comprend pourquoi sans cliquer. */
 function EscalationNotice({ escalation }: { escalation: Escalation }) {
   return (
@@ -187,11 +139,11 @@ function Stream({
         className="flex w-full items-center gap-2 px-6 py-3 text-left text-[13px] text-ink-soft hover:bg-field"
         aria-expanded={open}
       >
-        <span className={cn("text-ink-faint transition-transform", open && "rotate-90")}>›</span>
+        <Chevron open={open} />
         Tous les événements du run
         <span className="font-mono text-[12px] tabular-nums text-ink-faint">{events.length}</span>
         {ignored.length > 0 ? (
-          <span className="ml-auto font-mono text-[12px] text-waiting">{ignored.length} illisibles</span>
+          <span className="ml-auto font-mono text-[12px] text-drift">{ignored.length} illisibles</span>
         ) : null}
       </button>
 
@@ -235,5 +187,25 @@ function Stream({
         </div>
       ) : null}
     </section>
+  );
+}
+
+/** Le seul signe dessine de la page : un chevron, ferme a droite, ouvert en bas. */
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 12 12"
+      aria-hidden
+      className={cn("size-3 shrink-0 text-ink-faint transition-transform", open && "rotate-90")}
+    >
+      <path
+        d="M4.5 2.5 8 6l-3.5 3.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }

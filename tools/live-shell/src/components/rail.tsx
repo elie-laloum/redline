@@ -1,4 +1,4 @@
-import { Elapsed, Spinner, StateDot } from "#/components/atoms";
+import { Elapsed, type RunMark, StateDot, StateMark } from "#/components/atoms";
 import {
   DOCKET_LABELS,
   STEPS,
@@ -25,13 +25,13 @@ export interface RailProps {
   readonly loops: readonly LoopCounter[];
   /** Début de l'étape courante. Distinct du début du run. */
   readonly stepSince: string | null;
-  /** Le run attend une réponse humaine : ce n'est pas du travail en cours. */
-  readonly waiting: boolean;
+  /** Où en est le run. L'étape courante porte le même signe que le bandeau. */
+  readonly mark: RunMark;
   readonly selected: DocketSection | null;
   readonly onSelect: (section: DocketSection | null) => void;
 }
 
-export function Rail({ ticket, loops, stepSince, waiting, selected, onSelect }: RailProps) {
+export function Rail({ ticket, loops, stepSince, mark, selected, onSelect }: RailProps) {
   const { run } = ticket;
   const here = stepIndex(run.step);
 
@@ -53,7 +53,7 @@ export function Rail({ ticket, loops, stepSince, waiting, selected, onSelect }: 
                 detail={index === here ? detailOf(run.step, run.currentRepo) : null}
                 since={index === here ? stepSince : null}
                 state={state}
-                waiting={index === here && waiting}
+                mark={mark}
                 reachable={reachable}
                 active={section !== null && selected === section}
                 onSelect={() => onSelect(section !== null && selected === section ? null : section)}
@@ -100,7 +100,7 @@ function StepRow({
   detail,
   since,
   state,
-  waiting,
+  mark,
   reachable,
   active,
   onSelect,
@@ -110,7 +110,7 @@ function StepRow({
   detail: string | null;
   since: string | null;
   state: "done" | "now" | "todo";
-  waiting: boolean;
+  mark: RunMark;
   reachable: boolean;
   active: boolean;
   onSelect: () => void;
@@ -122,15 +122,7 @@ function StepRow({
       {/* Le passe est mat : « maintenant » se marque a l'encre pleine, et la
           couleur reste disponible pour le present et pour ce qui va mal. */}
       <span className="w-4 shrink-0 text-right font-mono text-[11px] tabular-nums text-ink-faint">{id}</span>
-      {state === "now" ? (
-        waiting ? (
-          <span aria-hidden className="size-3 shrink-0 rounded-full bg-waiting" />
-        ) : (
-          <Spinner />
-        )
-      ) : (
-        <span className="size-3 shrink-0" />
-      )}
+      {state === "now" ? <StateMark mark={mark} /> : <span className="size-3 shrink-0" />}
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {detail ? <span className="shrink-0 font-mono text-[11px] text-ink-soft">{detail}</span> : null}
     </>
@@ -168,11 +160,10 @@ function StepRow({
           l'élément le plus fort du rail, pas une mention en bas de ligne. */}
       <p className="flex items-baseline gap-2 pl-6">
         <Elapsed since={since ?? ""} className="text-[19px] font-medium leading-none tracking-tight" />
-        <span className="text-[11px] text-ink-faint">{waiting ? "d'attente" : "sur cette étape"}</span>
+        <span className="text-[11px] text-ink-faint">
+          {mark === "human" ? "d'attente" : "sur cette étape"}
+        </span>
       </p>
-      {waiting ? (
-        <p className="pl-6 text-[12px] leading-snug text-waiting">Le run est arrêté : il attend ta réponse.</p>
-      ) : null}
     </div>
   );
 }
@@ -214,7 +205,7 @@ function Drift({
                 <span
                   className={cn(
                     "shrink-0 font-mono tabular-nums",
-                    spent ? "text-ko" : tight ? "text-waiting" : "text-ink-faint",
+                    spent ? "text-ko" : tight ? "text-drift" : "text-ink-faint",
                   )}
                 >
                   {loop.count}
@@ -233,7 +224,7 @@ function Drift({
         <DriftRow
           label={DOCKET_LABELS.contradictions}
           value={contradictions}
-          tone={contradictions > 0 ? "text-waiting" : "text-ink-faint"}
+          tone={contradictions > 0 ? "text-drift" : "text-ink-faint"}
           onSelect={contradictions > 0 ? () => onSelect("contradictions") : null}
         />
       </div>

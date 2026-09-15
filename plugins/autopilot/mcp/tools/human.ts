@@ -231,15 +231,17 @@ export const humanTools: AnyTool[] = [
   defineTool({
     name: "push-live-mode-event",
     description:
-      "Pousse un event dans le flux du run. A appeler par CHAQUE agent au moment ou il fait quelque chose : prise de main, changement de tool, resultat, fin. Il n'y a pas de cablage central — un agent qui ne pousse pas laisse un trou dans l'interface. `title` doit se lire seul : « en cours » est un event rate.",
+      "Pousse un event dans le flux du run. A appeler par CHAQUE agent au moment ou il fait quelque chose : prise de main, changement de tool, resultat, fin. Il n'y a pas de cablage central — un agent qui ne pousse pas laisse un trou dans l'interface.\n\nCe que tu ecris dans `title` est lu par quelqu'un qui n'a pas lance ce run et qui ne connait pas le workflow. Il voit deja, autour de ta phrase, le libelle de l'etape, ton nom, ton tool, la duree et l'etat : ta phrase ne sert qu'a dire CE QUE TU FAIS, en francais accentue.",
     inputSchema: obj(
       {
         ticketId: str("Cle Jira."),
         runId: str("Identifiant du run. Omis, celui de la session live est repris."),
         kind: enumOf("Nature de l'event.", LIVE_EVENT_KINDS),
         status: enumOf("Ou en est l'action.", LIVE_EVENT_STATUSES),
-        title: str("Une ligne, lisible telle quelle dans l'interface."),
-        detail: str("Texte long, replie par defaut dans l'interface."),
+        title: str(
+          "Une ligne, l'action en cours ou ce que tu as trouve. Un verbe pour ce qui se fait, le constat d'abord pour un resultat. Vise 90 caracteres ; le long va dans `detail`.\n\nN'y mets RIEN de ce que l'interface affiche deja a cote : pas de numero ni de nom d'etape (« Point 3 », « 10.4 », « Gate », « Q1 / »), pas de ton nom ni de celui du tool, pas de mot d'etat (« en cours », « OK », « termine » — c'est `status` qui le dit), pas la cle du ticket.\n\nNon : « Point 3 — doc-scout : memoire quasi vide sur le sujet ». Oui : « La memoire ne sait presque rien : 3 notes, aucune sur l'A/B testing »."
+        ),
+        detail: str("Le detail : chiffres, chemins, preuves, raisonnement. Affiche sous le titre, et c'est la que va tout ce qui ne tient pas en une ligne."),
         agent: str("Nom de l'agent."),
         tool: str("Nom du tool en cours."),
         repo: str("Repo courant du cycle 10.x."),

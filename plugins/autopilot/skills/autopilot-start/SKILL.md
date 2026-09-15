@@ -30,6 +30,12 @@ precedent s'est arrete.
 
 1. Si `--live` : `launch-live-mode`. C'est la toute premiere action, avant meme de lire le
    ticket.
+
+   Ensuite, **tu pousses des events comme tout le monde** — et la numerotation en points de
+   ce document ne sort jamais dans un `title`. Le shell affiche deja le libelle de l'etape a
+   cote de ta phrase : « Point 2 — aucune maquette Figma rattachee » devient « Aucune maquette
+   Figma rattachee au ticket ». Le reste de la regle est dans la description de
+   `push-live-mode-event`.
 2. `acquire-ticket-lock`. **Si le lock est deja pris, le run echoue immediatement** — deux
    runs sur le meme ticket se marcheraient dessus dans le meme worktree.
 3. `write-store-ticket` pour poser `ticket.notes` (le `--notes`) et `figmaOverrides` (les
