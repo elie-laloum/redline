@@ -14,7 +14,7 @@ import {
 import { fail } from "../lib/errors.ts";
 import { liveShellDir } from "../lib/paths.ts";
 import { anyValue, arr, enumOf, obj, str } from "../lib/schema.ts";
-import { patchTicketState } from "../lib/store.ts";
+import { patchTicketState, readTicketState } from "../lib/store.ts";
 import { type AnyTool, type ToolContext, defineTool } from "../lib/tool.ts";
 import { LIVE_EVENT_KINDS, LIVE_EVENT_STATUSES } from "../lib/events.ts";
 
@@ -245,6 +245,7 @@ export const humanTools: AnyTool[] = [
         agent: str("Nom de l'agent."),
         tool: str("Nom du tool en cours."),
         repo: str("Repo courant du cycle 10.x."),
+        step: str("N'y touche pas : le tool lit l'etape courante dans l'etat du ticket. A ne forcer que pour rejouer un event hors de son moment."),
         payload: anyValue("Donnee structuree propre au kind : compteur et budget, lignes de checklist, todo list."),
       },
       ["ticketId", "kind", "status", "title"],
@@ -259,6 +260,7 @@ export const humanTools: AnyTool[] = [
       agent?: string;
       tool?: string;
       repo?: string;
+      step?: string;
       payload?: unknown;
     }) => {
       const delivery = await record(input.ticketId, {
@@ -269,6 +271,7 @@ export const humanTools: AnyTool[] = [
         agent: input.agent ?? null,
         tool: input.tool ?? null,
         repo: input.repo ?? null,
+        step: input.step ?? null,
         payload: input.payload ?? null,
         runId: input.runId,
       });
@@ -289,6 +292,7 @@ interface EventDraft {
   repo?: string | null;
   payload?: unknown;
   runId?: string;
+  step?: string | null;
 }
 
 /**
@@ -296,6 +300,20 @@ interface EventDraft {
  * shell n'est pas un point de defaillance : s'il est mort, l'historique reste
  * complet et une reprise peut le rejouer depuis le debut.
  */
+/**
+ * L'etape courante, lue dans l'etat du ticket au moment du push.
+ *
+ * Les agents l'ecrivent tantot en chaine (« 10.4 »), tantot en nombre : les
+ * deux donnent la meme etape, et l'interface a besoin des deux.
+ */
+function currentStep(ticketId: string): string | null {
+  const state = readTicketState(ticketId) as { run?: { step?: unknown } } | null;
+  const step = state?.run?.step;
+  if (typeof step === "string" && step.trim()) return step.trim();
+  if (typeof step === "number" && Number.isFinite(step)) return String(step);
+  return null;
+}
+
 async function record(ticketId: string, draft: EventDraft): Promise<{ seq: number; persisted: boolean; delivery: string }> {
   const session = readLiveSession(ticketId);
   const candidate = {
@@ -308,6 +326,7 @@ async function record(ticketId: string, draft: EventDraft): Promise<{ seq: numbe
     repo: draft.repo ?? null,
     agent: draft.agent ?? null,
     tool: draft.tool ?? null,
+    step: draft.step ?? currentStep(ticketId),
     title: draft.title,
     detail: draft.detail ?? null,
     payload: draft.payload ?? null,

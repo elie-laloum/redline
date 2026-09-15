@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { AgentState } from "#/lib/use-live-run";
 import { cn } from "#/lib/utils";
 
 /**
@@ -52,6 +53,55 @@ export function StateMark({ mark, className }: { mark: RunMark; className?: stri
       <span aria-hidden className={cn("size-2.5 rounded-full", tone)} />
       <span className="sr-only">{label}</span>
     </output>
+  );
+}
+
+/**
+ * Un agent sous son etape.
+ *
+ * Le vert dit « vivant », pas « reussi » — au niveau du run c'est l'inverse, et
+ * les deux ne peuvent pas se croiser : quand le run est termine, plus aucun
+ * agent ne tourne. La pulsation les separe de toute facon, l'une bouge et
+ * l'autre non.
+ *
+ * Seul celui qui parle en ce moment pulse. Les autres agents ouverts restent
+ * verts et immobiles : ils sont vivants, ils ne sont pas en train d'agir.
+ */
+const AGENT: Record<AgentState, { tone: string; label: string }> = {
+  running: { tone: "bg-ok", label: "au travail" },
+  human: { tone: "bg-human", label: "en attente de ta reponse" },
+  error: { tone: "bg-ko", label: "en echec" },
+  done: { tone: "bg-ink-faint/50", label: "a rendu" },
+};
+
+export function AgentDot({ state, speaking }: { state: AgentState; speaking: boolean }) {
+  const { tone, label } = AGENT[state];
+  return (
+    <span className="flex size-3 shrink-0 items-center justify-center">
+      <span aria-hidden className={cn("size-2 rounded-full", tone, speaking && "pulse-quiet")} />
+      <span className="sr-only">{label}</span>
+    </span>
+  );
+}
+
+/** Le seul signe dessiné de la page : fermé à droite, ouvert en bas. */
+export function Caret({ open, className }: { open: boolean; className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 12 12"
+      role="img"
+      aria-label={open ? "replier" : "déplier"}
+      className={cn("size-3 shrink-0 transition-transform", open && "rotate-90", className)}
+    >
+      <path
+        d="M4.5 2.5 8 6l-3.5 3.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 

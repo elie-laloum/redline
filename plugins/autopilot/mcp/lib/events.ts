@@ -41,6 +41,16 @@ export const LiveEventSchema = v.object({
   repo: v.nullable(v.string()),
   agent: v.nullable(v.string()),
   tool: v.nullable(v.string()),
+  /**
+   * L'etape du run au moment du push.
+   *
+   * Estampillee par le tool depuis l'etat du ticket, jamais par l'agent : c'est
+   * la seule facon que le rattachement soit vrai treize agents plus tard.
+   * Optionnelle, parce que tout l'historique ecrit avant elle doit rester
+   * valide — un event qu'on ne sait pas valider est ignore, et on ne va pas
+   * jeter les runs passes pour un champ ajoute apres eux.
+   */
+  step: v.optional(v.nullable(v.string()), null),
   // `title` doit se lire sans contexte : c'est ce qui s'affiche. Un agent qui
   // pousse « en cours » a rate son event, d'ou la longueur minimale.
   title: v.pipe(v.string(), v.minLength(3), v.maxLength(200)),

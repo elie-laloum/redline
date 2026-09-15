@@ -60,7 +60,7 @@ export function Docket({ ticket, section, onClearSection }: DocketProps) {
       ) : null}
 
       {shows("functional") ? (
-        <Section title={DOCKET_LABELS.functional} count={ticket.functional.length} step="4" anchor="functional">
+        <Section title={DOCKET_LABELS.functional} count={ticket.functional.length} anchor="functional">
           {ticket.functional.length === 0 ? (
             <Nothing>Aucune question fonctionnelle tranchée pour l'instant.</Nothing>
           ) : (
@@ -70,7 +70,7 @@ export function Docket({ ticket, section, onClearSection }: DocketProps) {
       ) : null}
 
       {shows("technical") ? (
-        <Section title={DOCKET_LABELS.technical} count={ticket.technical.length} step="7" anchor="technical">
+        <Section title={DOCKET_LABELS.technical} count={ticket.technical.length} anchor="technical">
           {ticket.technical.length === 0 ? (
             <Nothing>Aucune question technique tranchée pour l'instant.</Nothing>
           ) : (
@@ -80,7 +80,7 @@ export function Docket({ ticket, section, onClearSection }: DocketProps) {
       ) : null}
 
       {shows("scope") ? (
-        <Section title={DOCKET_LABELS.scope} count={ticket.scope.length} step="5" anchor="scope">
+        <Section title={DOCKET_LABELS.scope} count={ticket.scope.length} anchor="scope">
           {ticket.scope.length === 0 ? (
             <Nothing>Les dépôts concernés ne sont pas encore établis.</Nothing>
           ) : (
@@ -94,7 +94,7 @@ export function Docket({ ticket, section, onClearSection }: DocketProps) {
       ) : null}
 
       {shows("checklists") ? (
-        <Section title={DOCKET_LABELS.checklists} count={ticket.tests.length + ticket.code.length} step="8" anchor="checklists">
+        <Section title={DOCKET_LABELS.checklists} count={ticket.tests.length + ticket.code.length} anchor="checklists">
           {ticket.tests.length === 0 && ticket.code.length === 0 ? (
             <Nothing>
               Le plan n'a pas encore rendu ses checklists. Ce sont elles que les relecteurs
@@ -110,7 +110,7 @@ export function Docket({ ticket, section, onClearSection }: DocketProps) {
       ) : null}
 
       {shows("contradictions") ? (
-        <Section title={DOCKET_LABELS.contradictions} count={ticket.contradictions.length} step="11" anchor="contradictions">
+        <Section title={DOCKET_LABELS.contradictions} count={ticket.contradictions.length} anchor="contradictions">
           {ticket.contradictions.length === 0 ? (
             <Nothing>
               Aucune note de mémoire contredite. Quand un agent en signale une, elle apparaît ici,
@@ -132,13 +132,11 @@ export function Docket({ ticket, section, onClearSection }: DocketProps) {
 function Section({
   title,
   count,
-  step,
   anchor,
   children,
 }: {
   title: string;
   count: number;
-  step: string;
   anchor: DocketSection;
   children: React.ReactNode;
 }) {
@@ -147,7 +145,6 @@ function Section({
       <header className="flex items-baseline gap-2 border-b pb-2">
         <h2 className="text-[15px] font-medium tracking-tight">{title}</h2>
         <span className="font-mono text-[12px] tabular-nums text-ink-faint">{count}</span>
-        <span className="ml-auto shrink-0 text-[11px] text-ink-faint">décidé à l'étape {step}</span>
       </header>
       {children}
     </section>

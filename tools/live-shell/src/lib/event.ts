@@ -42,6 +42,14 @@ export const LiveEventSchema = v.object({
   repo: v.nullable(v.string()),
   agent: v.nullable(v.string()),
   tool: v.nullable(v.string()),
+  /**
+   * L'etape du run au moment du push, estampillee par le tool.
+   *
+   * Optionnelle : l'historique ecrit avant ce champ doit rester valide, sinon
+   * le rejeu le jetterait en bloc. Absente, l'event n'est rattache a aucune
+   * etape — il reste dans le flux, il ne remonte pas dans le rail.
+   */
+  step: v.optional(v.nullable(v.string()), null),
   title: v.pipe(v.string(), v.minLength(3), v.maxLength(200)),
   detail: v.nullable(v.string()),
   payload: v.custom<JsonValue>(() => true),

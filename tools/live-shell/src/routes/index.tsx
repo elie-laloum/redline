@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { At, Nothing } from "#/components/atoms";
+import { At, Caret, Nothing } from "#/components/atoms";
 import { Banner } from "#/components/banner";
 import { Docket } from "#/components/docket";
 import { QuestionPanel } from "#/components/question-panel";
@@ -10,7 +10,6 @@ import type { LiveEvent } from "#/lib/event";
 import { getSnapshot } from "#/lib/snapshot-fn";
 import { DOCKET_LABELS, type DocketSection, type Escalation, type Ticket } from "#/lib/ticket";
 import { useLiveRun } from "#/lib/use-live-run";
-import { cn } from "#/lib/utils";
 
 export const Route = createFileRoute("/")({
   // Rendu serveur de l'etat complet : la premiere frame montre deja le run.
@@ -28,8 +27,8 @@ function LiveShell() {
         <Rail
           ticket={run.ticket}
           loops={run.loops}
-          stepSince={run.stepSince}
           mark={run.mark}
+          agents={run.agents}
           selected={section}
           onSelect={setSection}
         />
@@ -139,7 +138,7 @@ function Stream({
         className="flex w-full items-center gap-2 px-6 py-3 text-left text-[13px] text-ink-soft hover:bg-field"
         aria-expanded={open}
       >
-        <Chevron open={open} />
+        <Caret open={open} className="text-ink-faint" />
         Tous les événements du run
         <span className="font-mono text-[12px] tabular-nums text-ink-faint">{events.length}</span>
         {ignored.length > 0 ? (
@@ -190,22 +189,3 @@ function Stream({
   );
 }
 
-/** Le seul signe dessine de la page : un chevron, ferme a droite, ouvert en bas. */
-function Chevron({ open }: { open: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 12 12"
-      aria-hidden
-      className={cn("size-3 shrink-0 text-ink-faint transition-transform", open && "rotate-90")}
-    >
-      <path
-        d="M4.5 2.5 8 6l-3.5 3.5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}

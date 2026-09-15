@@ -49,7 +49,7 @@ export function Banner({ ticket, current, mark, stepSince, connection }: BannerP
         </h1>
 
         {agentry ? (
-          <span className="hidden shrink-0 font-mono text-[12px] text-ink-faint md:inline">{agentry}</span>
+          <span className="hidden shrink-0 font-mono text-[12px] text-primary-faint md:inline">{agentry}</span>
         ) : null}
 
         {/* La durée de l'étape — pas celle du dernier event. C'est le seul
@@ -57,7 +57,7 @@ export function Banner({ ticket, current, mark, stepSince, connection }: BannerP
             plus fort du bandeau : vingt minutes doivent se remarquer sans
             qu'on les cherche. */}
         {stepSince ? (
-          <Elapsed since={stepSince} className="shrink-0 text-[19px] font-medium leading-none tracking-tight" />
+          <Elapsed since={stepSince} className="shrink-0 text-[12px] font-medium leading-none tracking-tight" />
         ) : null}
       </div>
 
@@ -71,10 +71,10 @@ export function Banner({ ticket, current, mark, stepSince, connection }: BannerP
             entier vit dans le detail. On le montre plutôt que de laisser croire
             que la phrase s'arrête là. */}
         {current?.detail ? (
-          <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-ink-faint">{current.detail}</p>
+          <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-primary-faint">{current.detail}</p>
         ) : null}
 
-        <Aside current={current} mark={mark} connection={connection} />
+        <Aside current={current} mark={mark} stepSince={stepSince} connection={connection} />
       </div>
     </header>
   );
@@ -103,7 +103,7 @@ function Lead({ ticket, mark }: { ticket: Ticket; mark: RunMark }) {
       ) : (
         <span className="font-mono font-medium text-ink">{ticket.key}</span>
       )}
-      <span className="px-1.5 text-ink-faint">·</span>
+      <span className="px-1.5 text-primary-faint">·</span>
     </>
   );
 }
@@ -120,14 +120,23 @@ function Lead({ ticket, mark }: { ticket: Ticket; mark: RunMark }) {
 function Aside({
   current,
   mark,
+  stepSince,
   connection,
 }: {
   current: LiveEvent | null;
   mark: RunMark;
+  stepSince: string | null;
   connection: Connection;
 }) {
   const now = useNow();
-  const silent = mark === "running" && current !== null && now - Date.parse(current.ts) > SILENCE_MS;
+  // Quand le dernier event est celui qui a ouvert l'etape, ce silence est deja
+  // dit par la duree d'etape, en plus gros. Deux chiffres pour une seule chose
+  // font croire qu'il y en a deux.
+  const silent =
+    mark === "running" &&
+    current !== null &&
+    current.ts !== stepSince &&
+    now - Date.parse(current.ts) > SILENCE_MS;
 
   if (!silent && connection !== "closed") return null;
 

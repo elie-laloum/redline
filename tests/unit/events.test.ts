@@ -57,6 +57,19 @@ describe("LiveEvent", () => {
     assert.equal(validateEvent({ ...VALID, ts: "hier" }).ok, false);
   });
 
+  it("accepte un event sans etape : tout l'historique ecrit avant ce champ doit rester lisible", () => {
+    const { step, ...sansEtape } = { ...VALID, step: "4" };
+    const result = validateEvent(sansEtape);
+    assert.equal(result.ok, true);
+    if (result.ok) assert.equal(result.event.step, null);
+  });
+
+  it("garde l'etape estampillee, sous-etape comprise", () => {
+    const result = validateEvent({ ...VALID, step: "10.4" });
+    assert.equal(result.ok, true);
+    if (result.ok) assert.equal(result.event.step, "10.4");
+  });
+
   it("refuse un champ manquant", () => {
     const { title, ...sansTitre } = VALID;
     assert.equal(validateEvent(sansTitre).ok, false);

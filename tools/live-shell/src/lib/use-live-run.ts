@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { RunMark } from "../components/atoms.tsx";
 import { type JsonValue, type LiveEvent, type PendingQuestion, parseEvent } from "./event.ts";
-import { EMPTY_TICKET, STEPS, type Ticket, readTicket, stepIndex } from "./ticket.ts";
+import { EMPTY_TICKET, STEPS, type Ticket, readTicket, stepIndex, topLevelStep } from "./ticket.ts";
 
 export interface RunSnapshot {
   ticketId: string | null;
@@ -118,6 +118,22 @@ export function useLiveRun(initial: RunSnapshot = EMPTY) {
   };
 }
 
+/**
+ * Un agent sous une etape.
+ *
+ * `speaking` distingue celui qui parle en ce moment de ceux qui sont
+ * simplement encore ouverts — un orchestrateur reste ouvert pendant que le
+ * developpeur travaille, et les faire pulser tous les deux mettrait deux
+ * mouvements dans le rail pour une seule chose vivante.
+ */
+export type AgentState = "running" | "human" | "error" | "done";
+
+export interface StepAgent {
+  readonly name: string;
+  readonly state: AgentState;
+  readonly speaking: boolean;
+}
+
 export interface Derived {
   /** Le dernier event : ce qui se passe, la, maintenant. */
   readonly current: LiveEvent | null;
@@ -131,6 +147,8 @@ export interface Derived {
    * qu'on voulait rendre, et il mentait.
    */
   readonly stepSince: string | null;
+  /** Les agents de chaque etape, dans l'ordre ou ils ont pris la main. */
+  readonly agents: ReadonlyMap<string, readonly StepAgent[]>;
 }
 
 function derive(events: readonly LiveEvent[]): Derived {
@@ -150,7 +168,52 @@ function derive(events: readonly LiveEvent[]): Derived {
     busy: current !== null && ["start", "progress", "waiting"].includes(current.status),
     loops: [...loops.values()],
     stepSince: lastStep?.ts ?? null,
+    agents: deriveAgents(events, current),
   };
+}
+
+const AGENT_STATE: Record<string, AgentState> = {
+  start: "running",
+  progress: "running",
+  waiting: "human",
+  ko: "error",
+  ok: "done",
+};
+
+/**
+ * Qui a pris la main sous chaque etape.
+ *
+ * L'etat d'un agent vient de son **dernier** event dans l'etape, quel qu'en
+ * soit le kind : un agent qui pose une question via `ask-user` attend un
+ * humain, meme si sa derniere prise de main disait « je demarre ». Un event
+ * sans etape — tout l'historique d'avant l'estampille — n'est rattache nulle
+ * part plutot que rattache au hasard.
+ */
+function deriveAgents(
+  events: readonly LiveEvent[],
+  current: LiveEvent | null,
+): ReadonlyMap<string, readonly StepAgent[]> {
+  const perStep = new Map<string, Map<string, AgentState>>();
+
+  for (const event of events) {
+    if (!event.step || !event.agent) continue;
+    const step = topLevelStep(event.step);
+    const seen = perStep.get(step) ?? new Map<string, AgentState>();
+    // `set` sur une cle deja presente garde sa place d'insertion : l'ordre reste
+    // celui des prises de main, l'etat est celui du dernier event.
+    seen.set(event.agent, AGENT_STATE[event.status] ?? "done");
+    perStep.set(step, seen);
+  }
+
+  const speaking = current?.agent ?? null;
+  const out = new Map<string, readonly StepAgent[]>();
+  for (const [step, seen] of perStep) {
+    out.set(
+      step,
+      [...seen].map(([name, state]) => ({ name, state, speaking: name === speaking && state === "running" })),
+    );
+  }
+  return out;
 }
 
 /**
