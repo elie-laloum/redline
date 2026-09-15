@@ -240,11 +240,12 @@ export function topLevelStep(step: string): string {
 }
 
 /**
- * Les treize points du workflow.
+ * Les treize étapes du run.
  *
- * Les libelles se lisent seuls : un collegue qui n'a jamais lance de run doit
- * comprendre sans qu'on commente par-dessus son epaule. « Grill » et « gate »
- * sont du jargon interne, ils ne sortent pas a l'ecran.
+ * Les libellés se lisent seuls : un collègue qui n'a jamais lancé de run doit
+ * comprendre sans qu'on commente par-dessus son épaule. « Grill » et « gate »
+ * sont du jargon interne, ils ne sortent jamais à l'écran — y compris quand un
+ * agent les écrit dans le titre de son event.
  *
  * `docket` dit quelle section du dossier ce point a produite — c'est ce qui
  * fait du rail un sommaire et pas une decoration.
@@ -252,20 +253,35 @@ export function topLevelStep(step: string): string {
 export const STEPS = [
   { id: "1", label: "Lecture du ticket", docket: null },
   { id: "2", label: "Maquettes", docket: null },
-  { id: "3", label: "Memoire, tour large", docket: null },
+  { id: "3", label: "Mémoire, tour large", docket: null },
   { id: "4", label: "Questions fonctionnelles", docket: "functional" },
-  { id: "5", label: "Perimetre des depots", docket: "scope" },
-  { id: "6", label: "Memoire, tour cible", docket: null },
+  { id: "5", label: "Périmètre des dépôts", docket: "scope" },
+  { id: "6", label: "Mémoire, tour ciblé", docket: null },
   { id: "7", label: "Questions techniques", docket: "technical" },
   { id: "8", label: "Plan et checklists", docket: "checklists" },
   { id: "9", label: "Approbation", docket: null },
-  { id: "10", label: "Implementation", docket: "checklists" },
-  { id: "11", label: "Plan memoire", docket: "contradictions" },
-  { id: "12", label: "Ecriture memoire", docket: "contradictions" },
+  { id: "10", label: "Implémentation", docket: "checklists" },
+  { id: "11", label: "Plan mémoire", docket: "contradictions" },
+  { id: "12", label: "Écriture mémoire", docket: "contradictions" },
   { id: "13", label: "Publication", docket: null },
 ] as const;
 
 export type DocketSection = "functional" | "scope" | "technical" | "checklists" | "contradictions";
+
+/**
+ * Le nom de chaque section, ecrit une seule fois.
+ *
+ * Le rail, le sommaire, la bande mobile et les en-tetes du dossier parlent des
+ * memes choses : trois orthographes pour une section, c'est le cout de
+ * recoupement que cette page existe pour supprimer.
+ */
+export const DOCKET_LABELS: Record<DocketSection, string> = {
+  functional: "Décisions fonctionnelles",
+  technical: "Décisions techniques",
+  scope: "Pourquoi ces dépôts",
+  checklists: "Checklists de sortie",
+  contradictions: "Notes de mémoire contredites",
+};
 
 export function stepIndex(step: string): number {
   const top = topLevelStep(step);

@@ -1,5 +1,13 @@
 import { At, Nothing, StateDot, statusTone } from "#/components/atoms";
-import type { Arbitrage, ChecklistLine, Contradiction, DocketSection, RepoEntry, Ticket } from "#/lib/ticket";
+import {
+  DOCKET_LABELS,
+  type Arbitrage,
+  type ChecklistLine,
+  type Contradiction,
+  type DocketSection,
+  type RepoEntry,
+  type Ticket,
+} from "#/lib/ticket";
 import { cn } from "#/lib/utils";
 
 /**
@@ -30,8 +38,8 @@ export function Docket({ ticket, section, onClearSection }: DocketProps) {
     return (
       <div className="max-w-[40rem] py-8">
         <Nothing>
-          Rien n'a encore ete decide. Les arbitrages, les preuves de perimetre et les checklists
-          apparaissent ici au fur et a mesure que le run les produit.
+          Rien n'a encore été décidé. Les décisions, les preuves qui ont servi à choisir les dépôts
+          et les checklists de sortie apparaissent ici à mesure que le run les produit.
         </Nothing>
       </div>
     );
@@ -44,17 +52,17 @@ export function Docket({ ticket, section, onClearSection }: DocketProps) {
     <div className="flex max-w-[40rem] flex-col gap-10 pb-16">
       {section !== null ? (
         <p className="flex items-center gap-2 text-[12px] text-ink-faint">
-          Filtre sur un seul point du run.
+          Filtré sur une seule étape du run.
           <button type="button" onClick={onClearSection} className="underline hover:text-ink">
-            Tout afficher
+            Afficher tout le dossier
           </button>
         </p>
       ) : null}
 
       {shows("functional") ? (
-        <Section title="Arbitrages fonctionnels" count={ticket.functional.length} step="4">
+        <Section title={DOCKET_LABELS.functional} count={ticket.functional.length} step="4" anchor="functional">
           {ticket.functional.length === 0 ? (
-            <Nothing>Aucune question fonctionnelle tranchee pour l'instant.</Nothing>
+            <Nothing>Aucune question fonctionnelle tranchée pour l'instant.</Nothing>
           ) : (
             <Arbitrages entries={ticket.functional} />
           )}
@@ -62,9 +70,9 @@ export function Docket({ ticket, section, onClearSection }: DocketProps) {
       ) : null}
 
       {shows("technical") ? (
-        <Section title="Arbitrages techniques" count={ticket.technical.length} step="7">
+        <Section title={DOCKET_LABELS.technical} count={ticket.technical.length} step="7" anchor="technical">
           {ticket.technical.length === 0 ? (
-            <Nothing>Aucune question technique tranchee pour l'instant.</Nothing>
+            <Nothing>Aucune question technique tranchée pour l'instant.</Nothing>
           ) : (
             <Arbitrages entries={ticket.technical} />
           )}
@@ -72,9 +80,9 @@ export function Docket({ ticket, section, onClearSection }: DocketProps) {
       ) : null}
 
       {shows("scope") ? (
-        <Section title="Preuves de perimetre" count={ticket.scope.length} step="5">
+        <Section title={DOCKET_LABELS.scope} count={ticket.scope.length} step="5" anchor="scope">
           {ticket.scope.length === 0 ? (
-            <Nothing>Le perimetre n'est pas encore etabli.</Nothing>
+            <Nothing>Les dépôts concernés ne sont pas encore établis.</Nothing>
           ) : (
             <div className="flex flex-col gap-6">
               {ticket.scope.map((repo) => (
@@ -86,11 +94,11 @@ export function Docket({ ticket, section, onClearSection }: DocketProps) {
       ) : null}
 
       {shows("checklists") ? (
-        <Section title="Checklists de sortie" count={ticket.tests.length + ticket.code.length} step="8">
+        <Section title={DOCKET_LABELS.checklists} count={ticket.tests.length + ticket.code.length} step="8" anchor="checklists">
           {ticket.tests.length === 0 && ticket.code.length === 0 ? (
             <Nothing>
-              Le plan n'a pas encore rendu ses checklists. Ce sont elles que les adversaires
-              rendront ligne par ligne, ensuite.
+              Le plan n'a pas encore rendu ses checklists. Ce sont elles que les relecteurs
+              reprendront ligne par ligne, d'abord sur les tests puis sur le code.
             </Nothing>
           ) : (
             <div className="flex flex-col gap-5">
@@ -102,11 +110,11 @@ export function Docket({ ticket, section, onClearSection }: DocketProps) {
       ) : null}
 
       {shows("contradictions") ? (
-        <Section title="Contradictions memoire" count={ticket.contradictions.length} step="11">
+        <Section title={DOCKET_LABELS.contradictions} count={ticket.contradictions.length} step="11" anchor="contradictions">
           {ticket.contradictions.length === 0 ? (
             <Nothing>
-              Aucune note de memoire contredite. Quand un agent en signale une, elle apparait ici
-              et le plan memoire la traite avant toute creation.
+              Aucune note de mémoire contredite. Quand un agent en signale une, elle apparaît ici,
+              et elle est corrigée avant qu'aucune note ne soit ajoutée.
             </Nothing>
           ) : (
             <ul className="flex flex-col gap-5">
@@ -125,19 +133,21 @@ function Section({
   title,
   count,
   step,
+  anchor,
   children,
 }: {
   title: string;
   count: number;
   step: string;
+  anchor: DocketSection;
   children: React.ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-4">
+    <section id={`docket-${anchor}`} className="flex scroll-mt-16 flex-col gap-4">
       <header className="flex items-baseline gap-2 border-b pb-2">
         <h2 className="text-[15px] font-medium tracking-tight">{title}</h2>
         <span className="font-mono text-[12px] tabular-nums text-ink-faint">{count}</span>
-        <span className="ml-auto shrink-0 font-mono text-[11px] text-ink-faint">point {step}</span>
+        <span className="ml-auto shrink-0 text-[11px] text-ink-faint">décidé à l'étape {step}</span>
       </header>
       {children}
     </section>
@@ -183,7 +193,7 @@ function RepoProof({ repo }: { repo: RepoEntry }) {
       {repo.reason ? (
         <p className="text-[14px] leading-relaxed text-ink-soft">{repo.reason}</p>
       ) : (
-        <Nothing>Retenu sans motif ecrit — a verifier avant d'approuver le plan.</Nothing>
+        <Nothing>Retenu sans motif écrit — à vérifier avant d'approuver le plan.</Nothing>
       )}
 
       {repo.evidence.length > 0 ? (
