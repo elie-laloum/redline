@@ -87,24 +87,4 @@ export interface PendingQuestion {
   readonly askedAt: string;
 }
 
-/** Les 13 points du workflow, dans l'ordre. C'est l'ossature de l'interface. */
-export const STEPS = [
-  { id: "1", label: "Ticket" },
-  { id: "2", label: "Maquettes" },
-  { id: "3", label: "Memoire, large" },
-  { id: "4", label: "Grill fonctionnel" },
-  { id: "5", label: "Perimetre" },
-  { id: "6", label: "Memoire, ciblee" },
-  { id: "7", label: "Grill technique" },
-  { id: "8", label: "Plan" },
-  { id: "9", label: "Gate humain" },
-  { id: "10", label: "Implementation" },
-  { id: "11", label: "Plan memoire" },
-  { id: "12", label: "Ecriture memoire" },
-  { id: "13", label: "Publication" },
-] as const;
 
-/** `10.4` appartient au point 10. */
-export function topLevelStep(step: string): string {
-  return step.split(".")[0] ?? step;
-}

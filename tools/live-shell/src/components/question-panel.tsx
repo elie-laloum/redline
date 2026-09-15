@@ -1,14 +1,13 @@
 import { useMemo, useState } from "react";
-import { Badge, Button, Card, CardBody, CardHeader } from "#/components/ui";
 import type { PendingQuestion } from "#/lib/event";
 import { cn } from "#/lib/utils";
 
 /**
  * Le lot de questions.
  *
- * Il prend le focus : le workflow est arrete tant qu'il est la. On repond a
- * tout d'un coup — poser trois questions l'une apres l'autre, c'est trois
- * arrets la ou un seul suffit.
+ * Il prend le dessus du pli : le workflow est arrete tant qu'il est la. On
+ * repond a tout d'un coup — poser trois questions l'une apres l'autre, c'est
+ * trois arrets la ou un seul suffit.
  *
  * Chaque question propose des options **et** un champ libre. Les options
  * tranchent d'un clic ; le champ libre existe parce qu'un agent qui propose
@@ -53,41 +52,42 @@ export function QuestionPanel({ question, onAnswer }: QuestionPanelProps) {
   }
 
   return (
-    <Card className="border-waiting/50 bg-waiting/5">
-      <CardHeader
-        title={
-          question.questions.length > 1
-            ? `${question.questions.length} questions en attente`
-            : "Question en attente"
-        }
-        aside={
-          <>
-            {question.askedBy ? <Badge tone="waiting">{question.askedBy}</Badge> : null}
-            <span className="tabular-nums">
-              {question.questions.length - remaining.length}/{question.questions.length}
-            </span>
-          </>
-        }
-      />
+    <section
+      aria-label="Questions en attente"
+      className="border-y border-waiting/40 bg-waiting/[0.06] px-6 py-5"
+    >
+      <header className="flex items-baseline gap-2 pb-4">
+        <h2 className="text-[15px] font-medium tracking-tight">
+          {question.questions.length > 1
+            ? `${question.questions.length} questions arretent le run`
+            : "Une question arrete le run"}
+        </h2>
+        {question.askedBy ? <span className="text-[12px] text-ink-faint">{question.askedBy}</span> : null}
+        <span className="ml-auto font-mono text-[12px] tabular-nums text-ink-faint">
+          {question.questions.length - remaining.length}/{question.questions.length}
+        </span>
+      </header>
 
-      <CardBody className="flex flex-col gap-5">
-        {question.questions.map((entry, index) => {
+      <div className="flex flex-col gap-6">
+        {question.questions.map((entry) => {
           const answered = Boolean(answers[entry.key]);
           return (
             <fieldset key={entry.key} className="flex flex-col gap-2 border-0 p-0">
-              <legend className="mb-1 flex items-center gap-2">
-                <Badge tone={answered ? "ok" : "neutral"}>{entry.header}</Badge>
-                {question.questions.length > 1 ? (
-                  <span className="text-[11px] text-muted-foreground">
-                    {index + 1}/{question.questions.length}
-                  </span>
-                ) : null}
+              <legend className="flex items-baseline gap-2 pb-1">
+                <span
+                  className={cn(
+                    "text-[12px] font-medium uppercase tracking-wide",
+                    answered ? "text-ok" : "text-ink-faint",
+                  )}
+                >
+                  {entry.header}
+                </span>
               </legend>
 
-              <p className="whitespace-pre-wrap text-sm">{entry.question}</p>
+              <p className="max-w-[68ch] whitespace-pre-wrap text-[14px] leading-relaxed">{entry.question}</p>
 
               {entry.options.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
                   {entry.options.map((option) => {
                     const selected = picked[entry.key] === option && !free[entry.key]?.trim();
                     return (
@@ -99,11 +99,10 @@ export function QuestionPanel({ question, onAnswer }: QuestionPanelProps) {
                           setFree((current) => ({ ...current, [entry.key]: "" }));
                         }}
                         className={cn(
-                          "rounded-md border px-2.5 py-1 text-left text-sm transition-colors",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          "rounded-sm border px-2.5 py-1 text-left text-[13px] transition-colors",
                           selected
-                            ? "border-transparent bg-primary text-primary-foreground"
-                            : "hover:bg-accent hover:text-accent-foreground",
+                            ? "border-ink bg-ink text-bg"
+                            : "border-line bg-field hover:border-ink-faint hover:text-ink",
                         )}
                       >
                         {option}
@@ -117,26 +116,33 @@ export function QuestionPanel({ question, onAnswer }: QuestionPanelProps) {
                 value={free[entry.key] ?? ""}
                 onChange={(event) => setFree((current) => ({ ...current, [entry.key]: event.target.value }))}
                 placeholder={entry.options.length > 0 ? "Autre réponse" : "Ta réponse"}
-                className={cn(
-                  "h-8 rounded-md border bg-background px-3 text-sm",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                )}
+                className="h-8 max-w-[68ch] rounded-sm border bg-field px-2.5 text-[13px] placeholder:text-ink-faint"
               />
             </fieldset>
           );
         })}
+      </div>
 
-        <div className="flex items-center justify-between gap-3 border-t pt-3">
-          <p className="text-xs text-muted-foreground">
-            {complete
-              ? "Le run repart des que tu valides."
-              : `Il reste ${remaining.length} question${remaining.length > 1 ? "s" : ""} sans réponse.`}
-          </p>
-          <div className={cn(!complete && "cursor-not-allowed opacity-40")}>
-            <Button onClick={submit}>{sending ? "Envoi…" : "Répondre"}</Button>
-          </div>
-        </div>
-      </CardBody>
-    </Card>
+      <div className="mt-5 flex items-center gap-3 border-t border-line-soft pt-3">
+        <button
+          type="button"
+          onClick={submit}
+          disabled={!complete || sending}
+          className={cn(
+            "h-8 rounded-sm px-3 text-[13px] font-medium transition-colors",
+            complete && !sending
+              ? "bg-ink text-bg hover:opacity-90"
+              : "cursor-not-allowed bg-field text-ink-faint",
+          )}
+        >
+          {sending ? "Envoi…" : "Répondre et relancer le run"}
+        </button>
+        <p className="text-[12px] text-ink-faint">
+          {complete
+            ? "Le run repart dès que tu valides."
+            : `Il reste ${remaining.length} réponse${remaining.length > 1 ? "s" : ""} à donner.`}
+        </p>
+      </div>
+    </section>
   );
 }

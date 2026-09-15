@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { parse as parseYaml } from "yaml";
-import { type AskQuestion, type LiveEvent, type PendingQuestion, parseEvent } from "./event.ts";
+import { type AskQuestion, type JsonValue, type LiveEvent, type PendingQuestion, parseEvent } from "./event.ts";
 
 /**
  * L'etat du shell, en memoire, cote serveur.
@@ -81,13 +81,10 @@ export function ingest(candidate: unknown): { accepted: boolean; reason?: string
  * le seul ecrivain. Le relire a chaque fois evite d'entretenir ici une copie qui
  * derivera du fichier au premier crash.
  */
-export function ticketState(): Record<string, unknown> | null {
+export function ticketState(): JsonValue | null {
   if (!ticketId) return null;
   try {
-    return parseYaml(readFileSync(join(autopilotHome(), "tickets", `${ticketId}.yaml`), "utf8")) as Record<
-      string,
-      unknown
-    >;
+    return parseYaml(readFileSync(join(autopilotHome(), "tickets", `${ticketId}.yaml`), "utf8")) as JsonValue;
   } catch {
     return null;
   }
@@ -95,7 +92,7 @@ export function ticketState(): Record<string, unknown> | null {
 
 export function snapshot(): {
   ticketId: string | null;
-  ticket: Record<string, unknown> | null;
+  ticket: JsonValue | null;
   events: LiveEvent[];
   question: PendingQuestion | null;
   ignored: { at: string; reason: string }[];

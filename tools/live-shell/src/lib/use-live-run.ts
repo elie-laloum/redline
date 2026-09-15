@@ -1,44 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { type LiveEvent, type PendingQuestion, STEPS, parseEvent, topLevelStep } from "./event.ts";
+import { type JsonValue, type LiveEvent, type PendingQuestion, parseEvent } from "./event.ts";
+import { EMPTY_TICKET, type Ticket, readTicket } from "./ticket.ts";
 
 export interface RunSnapshot {
   ticketId: string | null;
-  ticket: TicketState | null;
+  /** L'etat du ticket, brut. Le shell le lit, il ne l'ecrit jamais. */
+  ticket: JsonValue | null;
   events: LiveEvent[];
   question: PendingQuestion | null;
   ignored: { at: string; reason: string }[];
 }
 
-export interface TicketState {
-  ticket?: { key?: string; title?: string; statusAtStart?: string; url?: string };
-  run?: { phase?: string; step?: string; currentRepo?: string; escalation?: Escalation | null };
-  scope?: ScopeEntry[];
-  metrics?: { humanInterventions?: number; loopTurnsTotal?: number; mrFeedbackCount?: number | null };
-}
-
-export interface ScopeEntry {
-  name: string;
-  level: number;
-  status: "pending" | "in-progress" | "done" | "escalated";
-  loops?: Record<string, number>;
-}
-
-export interface Escalation {
-  at: string;
-  step: string;
-  repo: string | null;
-  reason: string;
-}
-
 const EMPTY: RunSnapshot = { ticketId: null, ticket: null, events: [], question: null, ignored: [] };
 
-/**
- * Une seule source pour l'interface : l'instantane au chargement, puis le SSE.
- *
- * A chaque reconnexion on redemande l'instantane complet plutot que d'essayer de
- * rattraper les events manques. `seq` est monotone : c'est ce qui permet de
- * detecter un trou, et un trou vaut un rechargement, pas un rafistolage.
- */
 /**
  * Trois etats, pas deux.
  *
@@ -48,6 +22,19 @@ const EMPTY: RunSnapshot = { ticketId: null, ticket: null, events: [], question:
  */
 export type Connection = "connecting" | "open" | "closed";
 
+export interface LoopCounter {
+  readonly name: string;
+  readonly count: number;
+  readonly budget: number | null;
+}
+
+/**
+ * Une seule source pour l'interface : l'instantane au chargement, puis le SSE.
+ *
+ * A chaque reconnexion on redemande l'instantane complet plutot que d'essayer
+ * de rattraper les events manques. `seq` est monotone : c'est ce qui permet de
+ * detecter un trou, et un trou vaut un rechargement, pas un rafistolage.
+ */
 export function useLiveRun(initial: RunSnapshot = EMPTY) {
   const [snapshot, setSnapshot] = useState<RunSnapshot>(initial);
   const [connection, setConnection] = useState<Connection>("connecting");
@@ -80,8 +67,9 @@ export function useLiveRun(initial: RunSnapshot = EMPTY) {
         const known = current.events.some((existing) => existing.runId === event.runId && existing.seq === event.seq);
         return known ? current : { ...current, events: [...current.events, event] };
       });
-      // Les transitions d'etape changent l'etat du ticket sur disque.
-      if (event.kind === "step" || event.kind === "escalation") void reload();
+      // Une transition d'etape change l'etat du ticket sur disque, donc le
+      // dossier : c'est le seul moment ou il faut le relire.
+      if (event.kind === "step" || event.kind === "escalation" || event.kind === "answer") void reload();
     });
 
     source.addEventListener("question", (message) => {
@@ -106,81 +94,47 @@ export function useLiveRun(initial: RunSnapshot = EMPTY) {
     });
   }, []);
 
-  const derived = useMemo(() => derive(snapshot), [snapshot]);
+  const ticket = useMemo<Ticket>(
+    () => (snapshot.ticket ? readTicket(snapshot.ticket) : EMPTY_TICKET),
+    [snapshot.ticket],
+  );
 
-  return { ...snapshot, ...derived, connection, connected: connection === "open", answer, reload };
+  const derived = useMemo(() => derive(snapshot.events), [snapshot.events]);
+
+  return { ...snapshot, ticket, ...derived, connection, connected: connection === "open", answer, reload };
 }
 
 export interface Derived {
+  /** Le dernier event : ce qui se passe, la, maintenant. */
+  readonly current: LiveEvent | null;
+  readonly busy: boolean;
+  readonly loops: readonly LoopCounter[];
   /**
-   * Le dernier event, quel que soit son kind : c'est **l'action en cours**.
-   * Le bandeau ne montre rien d'autre — si on doit choisir entre plusieurs
-   * sources pour dire « ou on en est », la derniere chose qui s'est passee est
-   * la seule reponse qui ne ment jamais.
+   * Depuis quand l'etape courante dure — **son** debut, pas celui du run.
+   *
+   * Le rail affichait `run.startedAt`, donc il annoncait trois heures sur une
+   * etape commencee il y a dix minutes. C'est precisement le signal de derive
+   * qu'on voulait rendre, et il mentait.
    */
-  current: LiveEvent | null;
-  /** Une action est en vol : le bandeau tourne. */
-  busy: boolean;
-  currentStep: string;
-  currentTopStep: string;
-  currentRepo: string | null;
-  currentAgent: string | null;
-  currentTool: string | null;
-  loops: { name: string; count: number; budget: number | null }[];
-  todos: { text: string; status: string }[];
-  checklists: { agent: string; at: string; lines: string[] }[];
-  messages: LiveEvent[];
-  escalation: Escalation | null;
-  stepIndex: number;
+  readonly stepSince: string | null;
 }
 
-function derive(snapshot: RunSnapshot): Derived {
-  const { events, ticket } = snapshot;
-  const last = <T extends LiveEvent>(predicate: (event: LiveEvent) => boolean): T | null =>
-    ([...events].reverse().find(predicate) as T) ?? null;
-
-  const stepEvent = last((event) => event.kind === "step");
-  const currentStep = ticket?.run?.step ?? (stepEvent?.payload as { step?: string } | null)?.step ?? "1";
-  const currentTopStep = topLevelStep(currentStep);
-
-  const agentEvent = last((event) => event.kind === "agent" && event.status !== "ok" && event.status !== "ko");
-  const toolEvent = last((event) => event.kind === "tool");
-  const todoEvent = last((event) => event.kind === "todo");
-
-  const loopEvents = events.filter((event) => event.kind === "loop");
-  const loops = new Map<string, { name: string; count: number; budget: number | null }>();
-  for (const event of loopEvents) {
+function derive(events: readonly LiveEvent[]): Derived {
+  const loops = new Map<string, LoopCounter>();
+  for (const event of events) {
+    if (event.kind !== "loop") continue;
     const payload = (event.payload ?? {}) as { name?: string; count?: number; budget?: number };
     const name = payload.name ?? event.agent ?? "boucle";
     loops.set(name, { name, count: payload.count ?? 0, budget: payload.budget ?? null });
   }
 
-  const checklists = events
-    .filter((event) => Array.isArray((event.payload as { lines?: unknown } | null)?.lines))
-    .map((event) => ({
-      agent: event.agent ?? "adversaire",
-      at: event.ts,
-      lines: ((event.payload as { lines: unknown[] }).lines ?? []).map(String),
-    }));
-
   const current = events.at(-1) ?? null;
+  const lastStep = [...events].reverse().find((event) => event.kind === "step");
 
   return {
     current,
     busy: current !== null && ["start", "progress", "waiting"].includes(current.status),
-    currentStep,
-    currentTopStep,
-    currentRepo: ticket?.run?.currentRepo ?? stepEvent?.repo ?? null,
-    currentAgent: agentEvent?.agent ?? null,
-    currentTool: toolEvent?.tool ?? null,
     loops: [...loops.values()],
-    todos: ((todoEvent?.payload as { todos?: { text: string; status: string }[] } | null)?.todos ?? []).map((todo) => ({
-      text: String(todo.text),
-      status: String(todo.status),
-    })),
-    checklists,
-    messages: events.filter((event) => event.kind === "message"),
-    escalation: ticket?.run?.escalation ?? null,
-    stepIndex: STEPS.findIndex((step) => step.id === currentTopStep),
+    stepSince: lastStep?.ts ?? null,
   };
 }

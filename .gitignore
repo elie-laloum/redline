@@ -25,3 +25,6 @@ plugins/autopilot/evals/results/
 
 # depots de fixture materialises a la main (pnpm fixtures)
 tests/.fixtures/
+
+# impeccable : captures de revue, jetables
+.impeccable/review/
