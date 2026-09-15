@@ -1,0 +1,529 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-15T00:00:00.000Z",
+  "title": "Design System: Autopilot Live Shell",
+  "extensions": {
+    "colorMeta": {
+      "bg": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "oklch(0.995 0 0)",
+        "darkValue": "oklch(0.175 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.25 0 0)",
+          "oklch(0.36 0 0)",
+          "oklch(0.47 0 0)",
+          "oklch(0.58 0 0)",
+          "oklch(0.70 0 0)",
+          "oklch(0.83 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "ink": {
+        "role": "primary",
+        "displayName": "Full Ink",
+        "canonical": "oklch(0.16 0 0)",
+        "darkValue": "oklch(0.97 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.25 0 0)",
+          "oklch(0.36 0 0)",
+          "oklch(0.47 0 0)",
+          "oklch(0.58 0 0)",
+          "oklch(0.70 0 0)",
+          "oklch(0.83 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "ink-soft": {
+        "role": "neutral",
+        "displayName": "Soft Ink",
+        "canonical": "oklch(0.44 0 0)",
+        "darkValue": "oklch(0.72 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.25 0 0)",
+          "oklch(0.36 0 0)",
+          "oklch(0.47 0 0)",
+          "oklch(0.58 0 0)",
+          "oklch(0.70 0 0)",
+          "oklch(0.83 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "ink-faint": {
+        "role": "neutral",
+        "displayName": "Faint Ink",
+        "canonical": "oklch(0.62 0 0)",
+        "darkValue": "oklch(0.55 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.25 0 0)",
+          "oklch(0.36 0 0)",
+          "oklch(0.47 0 0)",
+          "oklch(0.58 0 0)",
+          "oklch(0.70 0 0)",
+          "oklch(0.83 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "rail": {
+        "role": "neutral",
+        "displayName": "Rail Ground",
+        "canonical": "oklch(0.975 0 0)",
+        "darkValue": "oklch(0.145 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.25 0 0)",
+          "oklch(0.36 0 0)",
+          "oklch(0.47 0 0)",
+          "oklch(0.58 0 0)",
+          "oklch(0.70 0 0)",
+          "oklch(0.83 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "rail-ink": {
+        "role": "neutral",
+        "displayName": "Rail Ink",
+        "canonical": "oklch(0.24 0 0)",
+        "darkValue": "oklch(0.9 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.25 0 0)",
+          "oklch(0.36 0 0)",
+          "oklch(0.47 0 0)",
+          "oklch(0.58 0 0)",
+          "oklch(0.70 0 0)",
+          "oklch(0.83 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Rule",
+        "canonical": "oklch(0.905 0 0)",
+        "darkValue": "oklch(1 0 0 / 13%)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.25 0 0)",
+          "oklch(0.36 0 0)",
+          "oklch(0.47 0 0)",
+          "oklch(0.58 0 0)",
+          "oklch(0.70 0 0)",
+          "oklch(0.83 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "line-soft": {
+        "role": "neutral",
+        "displayName": "Soft Rule",
+        "canonical": "oklch(0.945 0 0)",
+        "darkValue": "oklch(1 0 0 / 7%)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.25 0 0)",
+          "oklch(0.36 0 0)",
+          "oklch(0.47 0 0)",
+          "oklch(0.58 0 0)",
+          "oklch(0.70 0 0)",
+          "oklch(0.83 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "field": {
+        "role": "neutral",
+        "displayName": "Field",
+        "canonical": "oklch(1 0 0)",
+        "darkValue": "oklch(0.21 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.25 0 0)",
+          "oklch(0.36 0 0)",
+          "oklch(0.47 0 0)",
+          "oklch(0.58 0 0)",
+          "oklch(0.70 0 0)",
+          "oklch(0.83 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "ok": {
+        "role": "secondary",
+        "displayName": "Verdict Green",
+        "canonical": "oklch(0.55 0.13 150)",
+        "darkValue": "oklch(0.74 0.15 150)",
+        "tonalRamp": [
+          "oklch(0.20 0.05 150)",
+          "oklch(0.30 0.08 150)",
+          "oklch(0.40 0.11 150)",
+          "oklch(0.50 0.13 150)",
+          "oklch(0.60 0.13 150)",
+          "oklch(0.72 0.12 150)",
+          "oklch(0.84 0.08 150)",
+          "oklch(0.94 0.03 150)"
+        ]
+      },
+      "ko": {
+        "role": "secondary",
+        "displayName": "Halt Red",
+        "canonical": "oklch(0.55 0.2 27)",
+        "darkValue": "oklch(0.71 0.18 27)",
+        "tonalRamp": [
+          "oklch(0.20 0.07 27)",
+          "oklch(0.30 0.11 27)",
+          "oklch(0.40 0.16 27)",
+          "oklch(0.50 0.20 27)",
+          "oklch(0.60 0.19 27)",
+          "oklch(0.72 0.16 27)",
+          "oklch(0.84 0.10 27)",
+          "oklch(0.94 0.04 27)"
+        ]
+      },
+      "select": {
+        "role": "tertiary",
+        "displayName": "Selection Wash",
+        "canonical": "oklch(0.89 0.05 277)",
+        "darkValue": "oklch(0.39 0.08 277)",
+        "tonalRamp": [
+          "oklch(0.20 0.019 277)",
+          "oklch(0.30 0.027 277)",
+          "oklch(0.40 0.039 277)",
+          "oklch(0.50 0.046 277)",
+          "oklch(0.60 0.050 277)",
+          "oklch(0.72 0.050 277)",
+          "oklch(0.84 0.039 277)",
+          "oklch(0.94 0.015 277)"
+        ]
+      },
+      "human": {
+        "role": "secondary",
+        "displayName": "Human Blue",
+        "canonical": "oklch(0.52 0.18 250)",
+        "darkValue": "oklch(0.72 0.16 250)",
+        "tonalRamp": [
+          "oklch(0.20 0.068 250)",
+          "oklch(0.30 0.097 250)",
+          "oklch(0.40 0.139 250)",
+          "oklch(0.50 0.166 250)",
+          "oklch(0.60 0.180 250)",
+          "oklch(0.72 0.180 250)",
+          "oklch(0.84 0.139 250)",
+          "oklch(0.94 0.056 250)"
+        ]
+      },
+      "drift": {
+        "role": "secondary",
+        "displayName": "Drift Amber",
+        "canonical": "oklch(0.6 0.13 75)",
+        "darkValue": "oklch(0.8 0.14 75)",
+        "tonalRamp": [
+          "oklch(0.20 0.049 75)",
+          "oklch(0.30 0.070 75)",
+          "oklch(0.40 0.100 75)",
+          "oklch(0.50 0.120 75)",
+          "oklch(0.60 0.130 75)",
+          "oklch(0.72 0.130 75)",
+          "oklch(0.84 0.100 75)",
+          "oklch(0.94 0.040 75)"
+        ]
+      },
+      "primary": {
+        "role": "primary",
+        "displayName": "Ground Indigo",
+        "canonical": "oklch(0.51 0.19 277)",
+        "darkValue": "oklch(0.74 0.16 277)",
+        "tonalRamp": [
+          "oklch(0.20 0.072 277)",
+          "oklch(0.30 0.103 277)",
+          "oklch(0.40 0.146 277)",
+          "oklch(0.50 0.175 277)",
+          "oklch(0.60 0.190 277)",
+          "oklch(0.72 0.190 277)",
+          "oklch(0.84 0.146 277)",
+          "oklch(0.94 0.059 277)"
+        ]
+      },
+      "primary-surface": {
+        "role": "tertiary",
+        "displayName": "Banner Ground",
+        "canonical": "oklch(0.973 0.014 277)",
+        "darkValue": "oklch(0.216 0.024 277)",
+        "tonalRamp": [
+          "oklch(0.20 0.009 277)",
+          "oklch(0.30 0.013 277)",
+          "oklch(0.40 0.018 277)",
+          "oklch(0.50 0.022 277)",
+          "oklch(0.60 0.024 277)",
+          "oklch(0.72 0.024 277)",
+          "oklch(0.84 0.018 277)",
+          "oklch(0.94 0.007 277)"
+        ]
+      },
+      "primary-line": {
+        "role": "tertiary",
+        "displayName": "Banner Rule",
+        "canonical": "oklch(0.885 0.03 277)",
+        "darkValue": "oklch(0.33 0.04 277)",
+        "tonalRamp": [
+          "oklch(0.20 0.015 277)",
+          "oklch(0.30 0.022 277)",
+          "oklch(0.40 0.031 277)",
+          "oklch(0.50 0.037 277)",
+          "oklch(0.60 0.040 277)",
+          "oklch(0.72 0.040 277)",
+          "oklch(0.84 0.031 277)",
+          "oklch(0.94 0.012 277)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "duration": {
+        "displayName": "Duration",
+        "purpose": "The current step's elapsed time. The largest type on the page (19px in the rail, 17px in the compact strip), because it is the only signal of temporal drift the system has."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Docket section headings, escalation and question-batch headlines. Nothing is larger than 15px here."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Running prose: the Now line, arbitration questions and answers, scope reasons. Bounded at 68ch."
+      },
+      "ui": {
+        "displayName": "UI",
+        "purpose": "The working default at 13px: rows, buttons, inputs, chips, rail steps, checklist lines."
+      },
+      "meta": {
+        "displayName": "Meta",
+        "purpose": "Counts, agent names, statuses, secondary explanation at 12px in faint ink."
+      },
+      "legend": {
+        "displayName": "Legend",
+        "purpose": "Uppercase 11px section legends sitting directly on the list they label. Never a kicker above a heading."
+      },
+      "measure": {
+        "displayName": "Measure",
+        "purpose": "Monospace tabular, for anything measured or located: file:line evidence, repo names, step ids, counters, ratios, clock times."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "spin-quiet",
+        "value": "rotate-quiet 1.1s linear infinite",
+        "purpose": "The only continuous motion on the page: the current step's spinner ring. Frozen, not hidden, under prefers-reduced-motion."
+      },
+      {
+        "name": "elapsed-tick",
+        "value": "1000ms interval",
+        "purpose": "The current step's duration advancing one second at a time. The second half of the page's whole motion budget."
+      },
+      {
+        "name": "transition-colors",
+        "value": "color/background-color/border-color 150ms",
+        "purpose": "The only transition in the system, used on hover and selection of rail rows, chips and buttons. Everything else lands without animation."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px",
+        "purpose": "Reveals the last-event age in the Now header."
+      },
+      {
+        "name": "md",
+        "value": "768px",
+        "purpose": "Reveals the agent/tool attribution in the Now header."
+      },
+      {
+        "name": "lg",
+        "value": "1024px",
+        "purpose": "The structural break: above it the rail; below it the rail is removed and the compact state strip carries the state."
+      },
+      {
+        "name": "xl",
+        "value": "1280px",
+        "purpose": "Reveals the sticky docket index in the right margin."
+      }
+    ],
+    "measures": [
+      {
+        "name": "rail",
+        "value": "304px",
+        "purpose": "Fixed rail width, full height, sticky."
+      },
+      {
+        "name": "docket-column",
+        "value": "640px",
+        "purpose": "The document column cap."
+      },
+      {
+        "name": "prose",
+        "value": "68ch",
+        "purpose": "The readable measure for running paragraphs and inputs."
+      },
+      {
+        "name": "docket-index",
+        "value": "224px",
+        "purpose": "The sticky section index in the right margin."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Commit Button",
+      "kind": "button",
+      "refersTo": "button-commit",
+      "description": "The single action on the surface: send the answers and restart the run. Full ink fill, square-ish corners, no shadow.",
+      "html": "<button class=\"ds-btn-commit\">Répondre et relancer le run</button>",
+      "css": ".ds-btn-commit { height: 32px; padding: 0 12px; border: none; border-radius: 4px; background: var(--ink, oklch(0.16 0 0)); color: var(--bg, oklch(0.995 0 0)); font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 13px; font-weight: 500; transition: color 150ms, background-color 150ms, opacity 150ms; } .ds-btn-commit:hover { opacity: 0.9; } .ds-btn-commit:focus-visible { outline: 2px solid var(--ink, oklch(0.16 0 0)); outline-offset: 2px; } .ds-btn-commit:disabled { background: var(--field, oklch(1 0 0)); color: var(--ink-faint, oklch(0.62 0 0)); cursor: not-allowed; opacity: 1; }"
+    },
+    {
+      "name": "Option Chip",
+      "kind": "chip",
+      "refersTo": "option-chip",
+      "description": "A one-click answer in the question batch. Field fill with a hairline; selected inverts to full ink.",
+      "html": "<div class=\"ds-chip-row\"><button class=\"ds-chip\">Garder le comportement actuel</button><button class=\"ds-chip ds-chip--selected\">Aligner sur la spec</button></div>",
+      "css": ".ds-chip-row { display: flex; flex-wrap: wrap; gap: 6px; } .ds-chip { padding: 4px 10px; border: 1px solid var(--line, oklch(0.905 0 0)); border-radius: 4px; background: var(--field, oklch(1 0 0)); color: var(--ink, oklch(0.16 0 0)); font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; font-size: 13px; text-align: left; transition: color 150ms, background-color 150ms, border-color 150ms; } .ds-chip:hover { border-color: var(--ink-faint, oklch(0.62 0 0)); color: var(--ink, oklch(0.16 0 0)); } .ds-chip:focus-visible { outline: 2px solid var(--ink, oklch(0.16 0 0)); outline-offset: 2px; } .ds-chip--selected { border-color: var(--ink, oklch(0.16 0 0)); background: var(--ink, oklch(0.16 0 0)); color: var(--bg, oklch(0.995 0 0)); }"
+    },
+    {
+      "name": "Answer Field",
+      "kind": "input",
+      "refersTo": "input-answer",
+      "description": "The free-text answer that always sits beside the options, because four proposed answers can all be wrong.",
+      "html": "<input class=\"ds-input-answer\" placeholder=\"Autre réponse\" />",
+      "css": ".ds-input-answer { height: 32px; width: 100%; max-width: 68ch; padding: 0 10px; border: 1px solid var(--line, oklch(0.905 0 0)); border-radius: 4px; background: var(--field, oklch(1 0 0)); color: var(--ink, oklch(0.16 0 0)); caret-color: var(--ink, oklch(0.16 0 0)); font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; font-size: 13px; } .ds-input-answer::placeholder { color: var(--ink-faint, oklch(0.62 0 0)); } .ds-input-answer:focus-visible { outline: 2px solid var(--ink, oklch(0.16 0 0)); outline-offset: 2px; }"
+    },
+    {
+      "name": "Rail Step",
+      "kind": "nav",
+      "refersTo": "rail-step",
+      "description": "One of thirteen numbered steps. Done is soft ink, upcoming is faint, now is full ink with a spinner and its running duration set at 19px.",
+      "html": "<nav class=\"ds-rail\"><ol class=\"ds-rail-list\"><li><div class=\"ds-rail-step ds-rail-step--done\"><span class=\"ds-rail-num\">4</span><span class=\"ds-rail-mark\"></span><span class=\"ds-rail-label\">Questions fonctionnelles</span></div></li><li><div class=\"ds-rail-step ds-rail-step--now\"><span class=\"ds-rail-num\">5</span><span class=\"ds-rail-spin\"></span><span class=\"ds-rail-label\">Périmètre des dépôts</span><span class=\"ds-rail-detail\">web-app</span></div><p class=\"ds-rail-elapsed\"><time class=\"ds-rail-time\">12m</time><span class=\"ds-rail-since\">sur cette étape</span></p></li><li><button class=\"ds-rail-step ds-rail-step--todo\"><span class=\"ds-rail-num\">6</span><span class=\"ds-rail-mark\"></span><span class=\"ds-rail-label\">Mémoire, tour ciblé</span></button></li></ol></nav>",
+      "css": ".ds-rail { width: 304px; padding: 20px 16px; background: var(--rail, oklch(0.975 0 0)); color: var(--rail-ink, oklch(0.24 0 0)); border-right: 1px solid var(--line, oklch(0.905 0 0)); font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; } .ds-rail-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; } .ds-rail-step { display: flex; width: 100%; align-items: center; gap: 8px; padding: 4px 4px 4px 0; border: none; background: none; border-radius: 4px; text-align: left; font-size: 13px; transition: color 150ms, background-color 150ms; } .ds-rail-num { width: 16px; flex-shrink: 0; text-align: right; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--ink-faint, oklch(0.62 0 0)); } .ds-rail-mark { width: 12px; height: 12px; flex-shrink: 0; } .ds-rail-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-rail-detail { flex-shrink: 0; font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--ink-soft, oklch(0.44 0 0)); } .ds-rail-step--done { color: var(--ink-soft, oklch(0.44 0 0)); } .ds-rail-step--todo { color: var(--ink-faint, oklch(0.62 0 0)); cursor: pointer; } .ds-rail-step--todo:hover { background: var(--field, oklch(1 0 0)); color: var(--ink, oklch(0.16 0 0)); } .ds-rail-step--todo:focus-visible { outline: 2px solid var(--ink, oklch(0.16 0 0)); outline-offset: 2px; } .ds-rail-step--now { color: var(--ink, oklch(0.16 0 0)); font-weight: 500; } .ds-rail-spin { width: 12px; height: 12px; flex-shrink: 0; border-radius: 999px; border: 1.5px solid color-mix(in oklch, var(--ink-faint, oklch(0.62 0 0)) 30%, transparent); border-top-color: var(--ink, oklch(0.16 0 0)); animation: ds-rotate-quiet 1.1s linear infinite; } @keyframes ds-rotate-quiet { to { transform: rotate(1turn); } } @media (prefers-reduced-motion: reduce) { .ds-rail-spin { animation: none; opacity: 1; } } .ds-rail-elapsed { display: flex; align-items: baseline; gap: 8px; margin: 2px 0 4px; padding-left: 24px; } .ds-rail-time { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-variant-numeric: tabular-nums; font-size: 19px; font-weight: 500; line-height: 1; letter-spacing: -0.01em; } .ds-rail-since { font-size: 11px; color: var(--ink-faint, oklch(0.62 0 0)); }"
+    },
+    {
+      "name": "Docket Section",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "The signature block: a decision rendered as running prose — question, answer, rationale — on a hairline, with the timestamp parked in a narrow right track. No card.",
+      "html": "<section class=\"ds-docket\"><header class=\"ds-docket-head\"><h2 class=\"ds-docket-title\">Questions fonctionnelles tranchées</h2><span class=\"ds-docket-count\">3</span><span class=\"ds-docket-step\">décidé à l'étape 4</span></header><ol class=\"ds-docket-list\"><li class=\"ds-docket-item\"><div class=\"ds-docket-grid\"><h3 class=\"ds-docket-q\">Faut-il conserver l'ancien format d'export ?</h3><time class=\"ds-docket-at\">14:32</time><p class=\"ds-docket-a\">Non — l'ancien format n'est plus lu par aucun client depuis la migration.</p><span></span><p class=\"ds-docket-why\">Vérifié sur les trois dépôts consommateurs avant de trancher.</p></div></li></ol></section>",
+      "css": ".ds-docket { max-width: 640px; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; color: var(--ink, oklch(0.16 0 0)); } .ds-docket-head { display: flex; align-items: baseline; gap: 8px; border-bottom: 1px solid var(--line, oklch(0.905 0 0)); padding-bottom: 8px; margin-bottom: 16px; } .ds-docket-title { margin: 0; font-size: 15px; font-weight: 500; letter-spacing: -0.01em; } .ds-docket-count { font-family: ui-monospace, Menlo, monospace; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-faint, oklch(0.62 0 0)); } .ds-docket-step { margin-left: auto; flex-shrink: 0; font-size: 11px; color: var(--ink-faint, oklch(0.62 0 0)); } .ds-docket-list { list-style: none; margin: 0; padding: 0; } .ds-docket-item { border-bottom: 1px solid var(--line-soft, oklch(0.945 0 0)); padding: 16px 0; } .ds-docket-item:first-child { padding-top: 0; } .ds-docket-item:last-child { border-bottom: none; } .ds-docket-grid { display: grid; grid-template-columns: minmax(0, 1fr) 2.75rem; column-gap: 20px; } .ds-docket-q { margin: 0; font-size: 14px; font-weight: 500; line-height: 1.375; } .ds-docket-at { font-family: ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; font-size: 11px; color: var(--ink-faint, oklch(0.62 0 0)); } .ds-docket-a { margin: 6px 0 0; font-size: 14px; line-height: 1.625; color: var(--ink-soft, oklch(0.44 0 0)); } .ds-docket-why { margin: 8px 0 0; font-size: 13px; line-height: 1.625; color: var(--ink-faint, oklch(0.62 0 0)); }"
+    },
+    {
+      "name": "Evidence Line",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "A cited proof. The file:line half is monospace full ink because it is a location; the explanation half is faint prose.",
+      "html": "<ul class=\"ds-evidence\"><li><code class=\"ds-evidence-loc\">apps/web/rspack.config.mjs:41-73</code><span class=\"ds-evidence-why\"> — MFE_REMOTES ne contient aucun pcf</span></li></ul>",
+      "css": ".ds-evidence { list-style: none; margin: 0; padding: 4px 0 0; display: flex; flex-direction: column; gap: 6px; font-size: 12px; line-height: 1.625; } .ds-evidence-loc { font-family: ui-monospace, 'SF Mono', Menlo, monospace; color: var(--ink, oklch(0.16 0 0)); } .ds-evidence-why { color: var(--ink-faint, oklch(0.62 0 0)); }"
+    },
+    {
+      "name": "State Notice",
+      "kind": "custom",
+      "refersTo": "notice-question",
+      "description": "A full-bleed, square region washed with its state hue at 6% and ruled top and bottom at 40%. Used for an escalation (ko) and for the blocking question batch (human).",
+      "html": "<section class=\"ds-notice ds-notice--human\"><header class=\"ds-notice-head\"><h2 class=\"ds-notice-title\">2 questions arrêtent le run</h2><span class=\"ds-notice-by\">plan-adversaire</span><span class=\"ds-notice-count\">1/2</span></header><p class=\"ds-notice-body\">Le run est arrêté : il attend ta réponse.</p></section>",
+      "css": ".ds-notice { padding: 20px 24px; border-radius: 0; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; } .ds-notice--human { border-top: 1px solid color-mix(in oklch, var(--human, oklch(0.52 0.18 250)) 40%, transparent); border-bottom: 1px solid color-mix(in oklch, var(--human, oklch(0.52 0.18 250)) 40%, transparent); background: color-mix(in oklch, var(--human, oklch(0.52 0.18 250)) 6%, transparent); } .ds-notice--ko { border-top: 1px solid color-mix(in oklch, var(--ko, oklch(0.55 0.2 27)) 40%, transparent); border-bottom: 1px solid color-mix(in oklch, var(--ko, oklch(0.55 0.2 27)) 40%, transparent); background: color-mix(in oklch, var(--ko, oklch(0.55 0.2 27)) 6%, transparent); } .ds-notice-head { display: flex; align-items: baseline; gap: 8px; padding-bottom: 16px; } .ds-notice-title { margin: 0; font-size: 15px; font-weight: 500; letter-spacing: -0.01em; color: var(--ink, oklch(0.16 0 0)); } .ds-notice-by { font-size: 12px; color: var(--ink-faint, oklch(0.62 0 0)); } .ds-notice-count { margin-left: auto; font-family: ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; font-size: 12px; color: var(--ink-faint, oklch(0.62 0 0)); } .ds-notice-body { margin: 0; max-width: 68ch; font-size: 14px; line-height: 1.625; color: var(--ink-soft, oklch(0.44 0 0)); }"
+    },
+    {
+      "name": "Status Dot",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "A 6px round carrying ok / ko / human / drift / running / pending. Always paired with the status word; never the sole carrier of meaning.",
+      "html": "<ul class=\"ds-dots\"><li><span class=\"ds-dot ds-dot--ok\"></span>passed</li><li><span class=\"ds-dot ds-dot--ko\"></span>failed</li><li><span class=\"ds-dot ds-dot--human\"></span>waiting</li><li><span class=\"ds-dot ds-dot--drift\"></span>drifting</li><li><span class=\"ds-dot ds-dot--now\"></span>running</li><li><span class=\"ds-dot ds-dot--todo\"></span>pending</li></ul>",
+      "css": ".ds-dots { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; font-size: 13px; color: var(--ink-soft, oklch(0.44 0 0)); } .ds-dots li { display: flex; align-items: baseline; gap: 8px; } .ds-dot { width: 6px; height: 6px; flex-shrink: 0; border-radius: 999px; } .ds-dot--ok { background: var(--ok, oklch(0.55 0.13 150)); } .ds-dot--ko { background: var(--ko, oklch(0.55 0.2 27)); } .ds-dot--human { background: var(--human, oklch(0.52 0.18 250)); } .ds-dot--drift { background: var(--drift, oklch(0.6 0.13 75)); } .ds-dot--now { background: var(--ink, oklch(0.16 0 0)); } .ds-dot--todo { background: color-mix(in oklch, var(--ink-faint, oklch(0.62 0 0)) 50%, transparent); }"
+    },
+    {
+      "name": "Docket Index",
+      "kind": "nav",
+      "refersTo": null,
+      "description": "The sticky index in the document's right margin, above 1280px. Section label left, count right in tabular monospace.",
+      "html": "<aside class=\"ds-index\"><h2 class=\"ds-index-legend\">Dans ce dossier</h2><ul class=\"ds-index-list\"><li><a class=\"ds-index-link\" href=\"#\"><span>Questions fonctionnelles</span><span class=\"ds-index-count\">3</span></a></li><li><a class=\"ds-index-link\" href=\"#\"><span>Périmètre des dépôts</span><span class=\"ds-index-count\">4</span></a></li><li><a class=\"ds-index-link\" href=\"#\"><span>Contradictions mémoire</span><span class=\"ds-index-count\">1</span></a></li></ul></aside>",
+      "css": ".ds-index { width: 224px; display: flex; flex-direction: column; gap: 6px; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; } .ds-index-legend { margin: 0; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.025em; color: var(--ink-faint, oklch(0.62 0 0)); } .ds-index-list { list-style: none; margin: 0; padding: 0; } .ds-index-link { display: flex; align-items: baseline; gap: 8px; padding: 4px 0; font-size: 12px; color: var(--ink-soft, oklch(0.44 0 0)); text-decoration: none; text-underline-offset: 0.2em; } .ds-index-link:hover { color: var(--ink, oklch(0.16 0 0)); text-decoration: underline; } .ds-index-link:focus-visible { outline: 2px solid var(--ink, oklch(0.16 0 0)); outline-offset: 2px; border-radius: 4px; } .ds-index-link span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-index-count { flex-shrink: 0; font-family: ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; color: var(--ink-faint, oklch(0.62 0 0)); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Case File",
+    "overview": "This is a dossier, not a dashboard. The page exists so that someone who opens a cold tab after an hour can read what the agents decided and on what evidence, and the build carries that literally: running prose in a bounded column, findings cited as file:line, hairline rules between entries, and not a single card. The metric-tile grid that this whole software category ships was refused, and the refusal is visible in the absence of any container with a background, a border radius above 4px, or a shadow.\n\nThe surface is built from two materials meeting on a vertical seam. On the left, a dense rail on its own slightly-shifted ground, 304px wide, full height, sticky: thirteen numbered steps, the current one spinning, its running duration set larger than anything else on the page. On the right, a document column capped at 640px with running text at 68ch, and the leftover right margin used the way a printed document uses its margin — for a sticky index into the sections below. The build is recognisable with the text blurred out, which was the point.\n\nThe palette is greyscale ink at four weights plus three state hues, and nothing else. There is no brand accent, no decorative colour, no tint applied for atmosphere. Emphasis is carried by ink weight and type size; colour is reserved entirely for saying what passed, what broke, and what is waiting. Light and dark are both shipped and the system picks, because this tab lives next to a terminal.",
+    "keyCharacteristics": [
+      "Hairlines and whitespace only; zero cards, zero shadows, zero elevation.",
+      "Colour is a state channel, never a decorative one.",
+      "\"Now\" is marked by full-weight ink against muted surroundings, never by a hue.",
+      "A dense rail on its own ground against a bounded prose column.",
+      "Monospace is reserved for what is measured or located; everything else is sans.",
+      "Exactly one continuous motion on the page, and it survives reduced-motion."
+    ],
+    "rules": [
+      {
+        "name": "The State-Only Colour Rule",
+        "body": "Green, red and amber may appear only where they report the status of something the run produced. No chromatic token may be used for emphasis, branding, hierarchy, decoration, or to distinguish one section from another. Audit test: for every coloured pixel on screen, name the thing whose state it reports. If you cannot, delete the colour.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ink-Weight Now Rule",
+        "body": "\"Now\" is full-weight ink against soft and faint ink. Done is soft, not-yet is faint, current is full and medium-weight. The banner's indigo floor is not an exception: it separates a region, it does not say which step is current. Marking the current step with a hue instead of ink weight is a regression — it was scored as one in the finish review and reverted.",
+        "section": "colors"
+      },
+      {
+        "name": "The One-Step Ground Rule",
+        "body": "A surface distinguishes itself from the page by one tonal step (rail, field) and a hairline. Never by a shadow, never by a radius above 4px, never by a border heavier than 1px.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mono-Means-Measured Rule",
+        "body": "Monospace is used only for what is measured or located: paths, line ranges, durations, timestamps, counters, ticket keys, step numbers. It is never worn as a technical costume over prose.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Column Rule",
+        "body": "Every number that changes in place is tabular (font-variant-numeric: tabular-nums, applied globally to time and .tabular). A counter that changes width when it changes value makes the line jump, and the reader believes something moved.",
+        "section": "typography"
+      },
+      {
+        "name": "The Uncut Sentence Rule",
+        "body": "Agent-written text is shown whole or not at all. A truncated title is more expensive than an absent one, because it is believed — so the Now header shows the bounded title and then the full text beneath it, whitespace-pre-wrap.",
+        "section": "typography"
+      },
+      {
+        "name": "The No-State-Loss Rule",
+        "body": "The page's first job is to say where the run is. When a breakpoint removes the rail, the state it carried — step, duration, scope, loop budgets, drift — must reappear in another form on the same screen. Losing state at 390px is not an acceptable responsive outcome.",
+        "section": "layout"
+      },
+      {
+        "name": "The Margin-Not-Gap Rule",
+        "body": "The prose column is bounded at the readable measure and the remainder is treated as a document margin. Do not widen text to fill it and do not drop a card into it; put an index, a timestamp, or nothing there.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat-Forever Rule",
+        "body": "No box-shadow, no drop-shadow, no simulated lift, at rest or on any state. A surface that needs to separate from its neighbour gets a hairline or a tonal step, and if neither reads, it is in the wrong place in the layout.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do spend colour only on state. ok, ko, human and drift report what passed, what broke, what is waiting on you and what is going wide, and nothing else. The indigo ground is the one exception, and it is confined to the banner floor and the selection wash.",
+      "Do mark the present with full-weight ink against soft and faint ink.",
+      "Do separate surfaces with a 1px hairline (line between regions, line-soft between repeating rows) or a single tonal step.",
+      "Do keep running text inside the measure — 640px for the docket column, 68ch for prose paragraphs — and treat the remainder as a margin.",
+      "Do set monospace on anything measured or located, and make every changing number tabular.",
+      "Do theme the browser's own surfaces from the palette: selection, caret, focus ring, scrollbar thumb and track, underline offset.",
+      "Do write empty states as sentences that say where the run is.",
+      "Do restate the rail's state in another form whenever a breakpoint removes the rail.",
+      "Do let prefers-reduced-motion freeze the spinner while keeping it visible."
+    ],
+    "donts": [
+      "Don't let the ground indigo leave its two jobs — the banner floor and the selection wash — or rise in chroma to where it reads as a state. It is a ground, and a ground that starts meaning something is a fifth state colour nobody declared.",
+      "Don't mark the current step, or anything else, with colour instead of ink weight. This regression has already been shipped once and reverted.",
+      "Don't put content in a card, a panel, or any box with a fill, a radius above 4px, and a border at once.",
+      "Don't add a shadow of any kind, at rest or on hover.",
+      "Don't build a metric-tile grid. Numbers live inline against their label, in monospace, at the size of their neighbours.",
+      "Don't round a region. Radius belongs to things that are touched or picked.",
+      "Don't let type exceed 19px, or introduce a display face. The duration is the largest thing on the page and must stay that way.",
+      "Don't truncate agent-written prose without showing it in full somewhere on the same screen.",
+      "Don't add a second continuous animation. One spinner and one ticking duration is the whole motion budget.",
+      "Don't use a text glyph as an icon. Rotating a › is not a chevron: it carries the font's weight and turns about its text box rather than its point. Draw an inline SVG at the stroke weight of the page."
+    ]
+  }
+}
