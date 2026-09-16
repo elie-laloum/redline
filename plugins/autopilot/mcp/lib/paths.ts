@@ -43,6 +43,11 @@ export function worktreePath(ticketId: string, repo: string): string {
   return join(autopilotHome(), "worktrees", ticketId, repo);
 }
 
+/** Les definitions d'agents. Leur nom de fichier est leur nom, il fait foi. */
+export function agentsDir(): string {
+  return join(projectRoot(), "plugins", "autopilot", "agents");
+}
+
 export function liveShellDir(): string {
   return join(projectRoot(), "tools", "live-shell");
 }

@@ -13,7 +13,8 @@
     "live:dev": "pnpm --dir tools/live-shell dev",
     "live:build": "pnpm --dir tools/live-shell build",
     "config:check": "node plugins/autopilot/mcp/scripts/check-config.ts",
-    "fixtures": "node tests/fixtures/materialize.ts"
+    "fixtures": "node tests/fixtures/materialize.ts",
+    "bench": "node plugins/autopilot/mcp/scripts/bench-commands.ts"
   },
   "engines": {
     "node": ">=22.18"

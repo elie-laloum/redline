@@ -7,6 +7,27 @@ import { parseYaml } from "./yaml.ts";
 export type TestKind = "ut" | "it" | "ft" | "ct" | "e2e";
 export type CommandKind = TestKind | "lint" | "typecheck";
 
+/**
+ * Ce qu'un repo demande a la machine avant de pouvoir etre teste. Declare, comme
+ * les commandes : deduire « ce repo utilise des conteneurs » d'un docker-compose
+ * trouve au hasard remettrait de la devinette la ou le registre existe pour ne
+ * plus en avoir.
+ */
+export interface ContainerNeeds {
+  readonly required: boolean;
+  readonly images: readonly string[];
+}
+
+/**
+ * Ou une commande ecrit son rapport quand elle ne l'ecrit pas sur la sortie.
+ *
+ * Le cas qui nous a mordu : `biome ci --reporter=gitlab > code-quality.json`.
+ * La commande sort en echec, sa sortie est vide, et le diagnostic est dans un
+ * fichier que personne ne lit. Deux heures de run ont ete passees a le
+ * chercher a la main.
+ */
+export type ReportPaths = Partial<Record<CommandKind, string>>;
+
 export interface RepoEntry {
   readonly name: string;
   readonly level: number;
@@ -19,6 +40,8 @@ export interface RepoEntry {
   readonly packageName: string | null;
   readonly dependsOn: readonly string[];
   readonly commands: Readonly<Record<CommandKind, string | null>>;
+  readonly reports?: ReportPaths;
+  readonly containers?: ContainerNeeds;
   readonly ciJobsToWatch: readonly string[];
   readonly description: string;
   readonly keywords: readonly string[];
@@ -39,12 +62,23 @@ export interface AutopilotConfig {
     readonly greenChecker: number;
     readonly codeAdversary: number;
     readonly disputeBeforeEscalation: number;
+    /**
+     * Lignes de checklist code qu'un `developer` traite avant de rendre la main.
+     * Au dela, il rend un lot et l'orchestrateur le rappelle : le contexte d'un
+     * agent qui tient tout le chantier en une passe finit par couter plus cher
+     * en latence que les tours qu'il economise.
+     */
+    readonly developerBatchLines: number;
   };
   readonly timeouts: {
     readonly ciPipelineSeconds: number;
     readonly askUserSeconds: number;
     readonly repoSetupSeconds: number;
     readonly commandSeconds: number;
+    /** Silence tolere avant abandon, plafond global mis a part. */
+    readonly commandSilenceSeconds: number;
+    readonly containerStartSeconds: number;
+    readonly imagePullSeconds: number;
   };
   readonly memory: {
     readonly maxNoteLines: number;
@@ -179,6 +213,15 @@ export function isRepoEligible(repo: RepoEntry, ticketKey: string): boolean {
 
 export function commandFor(repo: RepoEntry, kind: CommandKind): string | null {
   return repo.commands?.[kind] ?? null;
+}
+
+export function reportPathFor(repo: RepoEntry, kind: CommandKind): string | null {
+  return repo.reports?.[kind] ?? null;
+}
+
+/** Un repo sans bloc `containers` ne demande rien : c'est le cas courant. */
+export function containerNeedsOf(repo: RepoEntry): ContainerNeeds {
+  return { required: repo.containers?.required ?? false, images: repo.containers?.images ?? [] };
 }
 
 function readOrFail(path: string, label: string): string {

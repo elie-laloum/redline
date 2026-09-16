@@ -37,12 +37,41 @@ Elles ne sont pas un resume du plan. Ce sont les **criteres observables** sur le
 deux adversaires rendront leur verdict, ligne par ligne. Une ligne qu'on ne peut pas
 constater ne sert a rien.
 
+### Un `criterion` se lit a voix haute
+
+Il est affiche tel quel dans l'interface, a quelqu'un qui n'a pas ouvert le code et qui ne
+connait pas tes noms de variables. **Ecris une phrase en francais**, pas une assertion
+recopiee du test.
+
+> Non : `api-service FT — dashboardChartAbTest seede avec enabledForAll:true : GET /flags
+> renvoie isDashboardChartAbTestEnabled=true`
+>
+> Oui : « Quand le flag est actif pour tout le monde, l'API des flags le dit au dashboard. »
+
+La regle tient en trois points :
+
+1. **Un sujet, un verbe, un fait constatable.** Ce qui se passe, et ce qu'on doit voir.
+2. **Pas d'identifiant nu.** Un nom de champ, de route ou de fichier n'entre dans la phrase
+   que s'il est **la** chose dont on parle, et jamais comme sujet d'une egalite. Les
+   emplacements precis vont dans le corps du test, pas dans son libelle.
+3. **Pas de prefixe technique.** Ni le repo, ni le type de test, ni le nom du seed :
+   l'interface affiche deja le repo a cote, et l'adversaire lit le fichier.
+
+Ca vaut pour les deux checklists. Une ligne de code se dit pareil : « Le controleur lit le
+flag une seule fois et laisse les dix lectures existantes intactes. »
+
 ### Checklist tests
 
 - **chaque critere d'acceptation est mappe nommement a au moins un test** ;
 - chaque cas limite sorti du grill fonctionnel est traite ;
-- aucun type de test absent du repo n'est introduit — regarde `commands` dans le registre,
-  un `null` veut dire que ce type n'existe pas ici.
+- **aucune ligne ne repose sur un type de test que `commands` ne declare pas.** Un `null`
+  dans le registre est un interdit, pas une lacune a combler : c'est toi qui tiens cette
+  porte. Sur FT-1042, une checklist a demande dix tests de composants sur un repo a
+  `ct: null` — personne en aval n'a pu les lancer, et le cycle a fini par les executer a la
+  main. Verifie `commands` **avant** d'ecrire la ligne, pas apres.
+  Si un critere d'acceptation n'est couvrable par aucun type declare, ecris-le dans le plan
+  comme un point ouvert et remonte-le au gate : c'est une decision d'outillage, pas une
+  ligne de checklist.
 
 ```yaml
 tests:
@@ -86,6 +115,36 @@ planifiant, c'est un retour au point 4 ou au point 7, pas une hypothese de plus 
 ## Obligations
 
 - `push-live-mode-event` a la prise de main et a la remise du plan.
+- **Rends le plan dans `plan.repos`, structure, un objet par depot** — et pas seulement en
+  prose dans `plan.content`. Chaque entree porte `repo`, `level`, `changes` (une ligne par
+  chose qui change) et `why` (pourquoi ce depot passe a ce moment-la). **L'ordre du tableau
+  est l'ordre d'execution**, level croissant, et il s'approuve avec le reste — un depot aval
+  traite avant son amont casse le run.
+
+**Ce plan est lu par un humain qui va l'approuver, pas par toi.** C'est le seul gate du
+workflow : apres lui, tout s'execute jusqu'a la publication sans qu'on te redemande rien.
+Quelqu'un doit donc pouvoir dire oui en connaissance de cause, et ca veut dire ecrire des
+phrases.
+
+> Non : `FNV-1a % 2 : le bit de poids faible se reduit a la parite des caracteres. Uniforme
+> sur des UUID v4, donc T7 passe ; banderait sur des identifiants sequentiels.`
+>
+> Oui : « Le tirage entre les deux variantes se fait en prenant le dernier bit du hachage de
+> l'identifiant. C'est equilibre sur nos identifiants actuels, qui sont aleatoires. Ca
+> deviendrait desequilibre le jour ou ils seraient sequentiels — dans ce cas on change de
+> bit, on ne relache pas la tolerance du test. »
+
+Trois choses qu'un `change` doit porter, dans cet ordre : **ce qu'on fait**, puis **ce que ca
+suppose**, puis **ce qu'on fera si l'hypothese tombe**. Une ligne qui n'a que la premiere est
+une intention, pas un plan.
+
+Et deux interdits :
+
+- **Pas de notation de code dans une phrase.** `getKeycloakId(token)`, `flags.controller.ts:45-133`,
+  `enabledForAll:true` : ce sont des emplacements et des valeurs, ils vont apres la phrase,
+  entre parentheses, ou pas du tout. La phrase, elle, dit ce que fait la chose.
+- **Pas d'abreviation de ton domaine.** `FNV-1a`, `PascalCase vs camelCase`, `non-OIDC` ne
+  veulent rien dire a quelqu'un qui arrive. Nomme la chose, puis dis-en une ligne.
 - `escalate-to-human` si le scope ou les arbitrages ne permettent pas de fermer les
   checklists.
 

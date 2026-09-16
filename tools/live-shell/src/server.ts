@@ -1,5 +1,15 @@
 import { createStartHandler, defaultStreamHandler } from "@tanstack/react-start/server";
-import { answer, ask, ingest, replay, snapshot, subscribe } from "./lib/live-store.ts";
+import {
+  answer,
+  ask,
+  askPlan,
+  decide,
+  ingest,
+  replay,
+  snapshot,
+  subscribe,
+  withdraw,
+} from "./lib/live-store.ts";
 
 /**
  * Entree serveur du live shell.
@@ -50,7 +60,13 @@ async function rpc(pathname: string, request: Request): Promise<Response> {
     case "/rpc/ask": {
       if (request.method !== "POST") return json({ error: "POST attendu" }, 405);
       const body = (await safeJson(request)) as {
-        questions?: { key?: string; header?: string; question?: string; options?: string[] }[];
+        id?: string | null;
+        questions?: {
+          key?: string;
+          header?: string;
+          question?: string;
+          options?: string[];
+        }[];
         askedBy?: string | null;
       } | null;
 
@@ -68,13 +84,73 @@ async function rpc(pathname: string, request: Request): Promise<Response> {
       // On bloque ici, volontairement, jusqu'a ce que le lot entier soit
       // repondu dans l'interface. Le timeout est cote appelant : c'est lui qui
       // sait a partir de quand il doit se rabattre sur le terminal.
-      const answers = await ask({ questions, askedBy: body?.askedBy ?? null });
+      const answers = await ask({
+        questions,
+        askedBy: body?.askedBy ?? null,
+        id: body?.id ?? null,
+      });
+      // `null` veut dire que l'appelant a retire le lot : il a repris la main
+      // ailleurs, et la page a deja ete prevenue.
+      if (answers === null) return json({ withdrawn: true }, 409);
       return json({ answers });
+    }
+
+    case "/rpc/ask-plan": {
+      if (request.method !== "POST") return json({ error: "POST attendu" }, 405);
+      const body = (await safeJson(request)) as {
+        id?: string | null;
+        repos?: { repo?: string; level?: number; changes?: string[]; why?: string }[];
+        note?: string | null;
+        askedBy?: string | null;
+      } | null;
+
+      const repos = (body?.repos ?? [])
+        .filter((entry) => typeof entry?.repo === "string" && entry.repo.trim())
+        .map((entry) => ({
+          repo: String(entry.repo).trim(),
+          level: typeof entry.level === "number" ? entry.level : null,
+          changes: (entry.changes ?? []).map(String).filter(Boolean),
+          why: entry.why?.trim() || null,
+        }));
+
+      if (repos.length === 0) return json({ error: "`repos` vide" }, 400);
+
+      // Meme blocage que `/rpc/ask`, et pour la meme raison : le point 9 est un
+      // arret du workflow, pas une notification.
+      const decision = await askPlan({
+        repos,
+        note: body?.note?.trim() || null,
+        askedBy: body?.askedBy ?? null,
+        id: body?.id ?? null,
+      });
+      if (decision === null) return json({ withdrawn: true }, 409);
+      return json({ decision });
+    }
+
+    case "/rpc/decide": {
+      if (request.method !== "POST") return json({ error: "POST attendu" }, 405);
+      const body = (await safeJson(request)) as { id?: string; verdict?: string; note?: string } | null;
+      const verdict = body?.verdict;
+      if (!body?.id || (verdict !== "approve" && verdict !== "amend" && verdict !== "reject")) {
+        return json({ error: "`id` et `verdict` requis" }, 400);
+      }
+      const result = decide(body.id, { verdict, note: String(body.note ?? "") });
+      return json(result, result.delivered ? 200 : 409);
+    }
+
+    case "/rpc/withdraw": {
+      if (request.method !== "POST") return json({ error: "POST attendu" }, 405);
+      const body = (await safeJson(request)) as { id?: string } | null;
+      if (!body?.id) return json({ error: "`id` requis" }, 400);
+      return json(withdraw(body.id));
     }
 
     case "/rpc/answer": {
       if (request.method !== "POST") return json({ error: "POST attendu" }, 405);
-      const body = (await safeJson(request)) as { id?: string; answers?: Record<string, string> } | null;
+      const body = (await safeJson(request)) as {
+        id?: string;
+        answers?: Record<string, string>;
+      } | null;
       if (!body?.id || typeof body.answers !== "object" || body.answers === null) {
         return json({ error: "`id` et `answers` requis" }, 400);
       }

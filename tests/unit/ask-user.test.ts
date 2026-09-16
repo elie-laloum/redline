@@ -18,6 +18,7 @@ const askUser = toolByName("ask-user");
 /** Aucun canal direct : le tool doit rendre les questions a l'appelant. */
 const NO_CHANNEL: ToolContext = {
   canAskHuman: false,
+  heartbeat: () => {},
   askHuman: async () => ({ action: "cancel", content: null }),
 };
 
@@ -99,7 +100,7 @@ describe("le compteur de sequence", () => {
       const seq = nextSeq("TJ-600");
       appendEvent({
         runId: "r", ticketId: "TJ-600", seq, ts: new Date().toISOString(),
-        kind: "tool", status: "ok", repo: null, agent: null, tool: "t",
+        kind: "tool", status: "ok", repo: null, agent: null, tool: "t", step: null,
         title: "un event de test lisible seul", detail: null, payload: null,
       });
       return seq;

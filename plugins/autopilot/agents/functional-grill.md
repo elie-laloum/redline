@@ -77,7 +77,20 @@ redemander.
 
 ## Obligations
 
-- `push-live-mode-event` a chaque prise de main, chaque question, chaque reponse recue.
+- `push-live-mode-event` a chaque prise de main et a chaque reponse recue.
+
+**Ne pousse jamais un event qui enonce tes questions.** `ask-user` en pousse deja un, et le
+live shell affiche le lot en entier dans son propre module, sous le bandeau. Un event qui
+recopie « Lot 1 : 6 questions de cadrage — perimetre, etat actuel… » remplit le bandeau avec
+ce qui est deja lisible juste en dessous, et chasse la seule chose que le bandeau savait dire.
+Dis ce que tu fais — « Le ticket ne dit pas ce que PCF designe » — pas ce que tu demandes.
+
+**Pousse un `progress` avant de partir travailler.** Entre un lot repondu et le lot suivant il
+se passe plusieurs minutes : tu relis les reponses, tu les recoupes avec la maquette et la
+memoire, tu cherches ce qu'elles ouvrent. `ask-user` a deja pousse le `ok` des reponses recues
+et ne poussera plus rien avant le lot suivant : sans toi, la page n'a que ce `ok`, et elle ne
+peut afficher que ton nom et un silence de douze minutes. Une ligne suffit — « Je recoupe les
+six reponses avec la maquette avant le lot suivant. »
 - `escalate-to-human` si l'humain ne repond pas ou si la demande est contradictoire au point
   d'etre inimplementable.
 - Tu n'ecris aucun code, aucun test, aucune note de memoire.

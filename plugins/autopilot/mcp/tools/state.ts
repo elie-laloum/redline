@@ -35,6 +35,7 @@ export const stateTools: AnyTool[] = [
       if (typeof patch !== "object" || patch === null || Array.isArray(patch)) {
         fail("`patch` doit etre un objet.", "Un patch est un fragment d'etat, pas une valeur isolee.");
       }
+      guardStep(patch);
       const merged = patchTicketState(ticketId, patch);
       return { written: true, state: merged };
     },
@@ -113,3 +114,31 @@ function safeRead(path: string): string {
 }
 
 export { ticketStateExists };
+
+/**
+ * `run.step` est un numero de point, et rien d'autre.
+ *
+ * Le champ est du texte libre dans un YAML, ecrit par un agent. Un jour il a
+ * recu `"4 - functional-grill"` — le point **et** le nom de l'agent — et le live
+ * shell a repondu qu'il attendait toujours son premier event : treize etapes
+ * eteintes pendant que le run tournait. Le shell sait maintenant lire par
+ * dessus, mais un curseur de reprise qui contient une annotation reste un
+ * curseur qu'on ne peut pas comparer. On refuse ici, ou l'erreur est encore
+ * corrigeable par celui qui l'a faite.
+ */
+const STEP_VALUE = /^([1-9]|1[0-3])(\.\d+)?$/;
+
+function guardStep(patch: Json): void {
+  const run = (patch as { run?: unknown }).run;
+  if (typeof run !== "object" || run === null || Array.isArray(run)) return;
+  const step = (run as { step?: unknown }).step;
+  if (step === undefined || step === null) return;
+
+  const value = typeof step === "number" ? String(step) : typeof step === "string" ? step.trim() : "";
+  if (STEP_VALUE.test(value)) return;
+
+  fail(
+    `\`run.step\` vaut ${JSON.stringify(step)}, ce qui n'est pas un numero de point.`,
+    "Ecris le point seul — `4`, ou `10.4` pour une sous-etape du cycle d'implementation. Ce que fait l'etape se dit dans le `title` de ton event, pas dans le curseur.",
+  );
+}

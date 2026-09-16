@@ -15,6 +15,20 @@ export interface ToolContext {
     fields: Readonly<Record<string, { title: string; description?: string }>>,
   ) => Promise<{ action: "accept" | "decline" | "cancel"; content: Record<string, unknown> | null }>;
   readonly canAskHuman: boolean;
+  /**
+   * Dit au client que ce tool travaille encore.
+   *
+   * Un tool qui bloque des heures — `ask-user` attend un humain — n'a aucun moyen
+   * de le prouver : cote client, un appel MCP silencieux est un appel mort, et la
+   * surveillance de flux le tue. Le `technical-grill` est tombe comme ca, a 600
+   * secondes, juste en posant son premier lot.
+   *
+   * Le protocole a exactement ce qu'il faut pour ca : une notification de
+   * progression remet le compteur a zero chez le client. Muet si le client n'a
+   * pas demande de progression — c'est alors une capacite qu'il n'a pas, pas une
+   * erreur.
+   */
+  readonly heartbeat: (message: string) => void;
 }
 
 export interface ToolDefinition<Input = Record<string, unknown>> {

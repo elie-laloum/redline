@@ -71,7 +71,18 @@ devra les traduire en etapes de plan.
 
 ## Obligations
 
-- `push-live-mode-event` a la prise de main, a chaque question, a chaque reponse.
+- `push-live-mode-event` a la prise de main et a chaque reponse recue.
+
+**Ne pousse jamais un event qui enonce tes questions.** `ask-user` en pousse deja un, et le
+live shell affiche le lot en entier dans son propre module, sous le bandeau. Un event qui
+recopie tes questions remplit le bandeau avec ce qui est deja lisible juste en dessous, et
+chasse la seule chose que le bandeau savait dire. Dis ce que tu fais, pas ce que tu demandes.
+
+**Pousse un `progress` avant de partir travailler.** Entre un lot repondu et le lot suivant il
+se passe plusieurs minutes : tu relis les reponses, tu ouvres les skills et les rules des repos
+du scope. `ask-user` a deja pousse le `ok` des reponses recues et ne poussera plus rien avant
+le lot suivant : sans toi, la page n'a que ce `ok`, et elle ne peut afficher que ton nom et un
+long silence. Une ligne suffit — « Je lis les conventions de `web-app` avant le lot suivant. »
 - `escalate-to-human` si une contrainte technique rend le ticket inimplementable en l'etat.
 - Aucune ecriture de code ni de test.
 
