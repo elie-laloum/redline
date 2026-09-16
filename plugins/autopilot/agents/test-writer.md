@@ -27,9 +27,20 @@ hors de ta zone — c'est une securite, pas une suggestion.
 `get-repositories-registry` te donne les `commands` du repo. Un `null` veut dire que **ce
 type de test n'existe pas ici**.
 
-**N'introduis jamais un type de test que le repo ne pratique pas deja.** Un premier test e2e
-dans un repo qui n'en a aucun, c'est une infrastructure a monter, une CI a modifier et un
-ticket qui deraille — pas une amelioration.
+**Le registre decide, pas ce que tu trouves dans le repo.** La nuance a coute cher sur
+FT-1042 : `web-app` porte des fichiers `.ct.spec.tsx` et un script Playwright dans une de ses
+apps, donc le repo « pratique » visiblement les tests de composants — mais aucune commande
+ne les lance a l'echelle du depot, et le registre dit `ct: null`. Dix tests ont ete ecrits
+la-dessus. Personne n'a pu les lancer, et ils ont fini executes a la main, hors de tout
+garde-fou.
+
+Donc : **un `null` dans `commands`, c'est un type interdit**, meme si tu vois des fichiers
+de ce type a cote de toi. Un premier test e2e dans un repo qui n'en declare aucun, c'est une
+infrastructure a monter, une CI a modifier et un ticket qui deraille — pas une amelioration.
+
+Quand la checklist du plan demande une ligne qu'aucun type declare ne peut couvrir, dis-le
+et **`escalate-to-human`**. Un test que le `red-checker` ne peut pas lancer ne prouve rien :
+il ne sera ni rouge ni vert, juste absent du verdict.
 
 ## Ce que tu couvres
 
@@ -67,6 +78,9 @@ la reponse.
 ## Obligations
 
 - `push-live-mode-event` a la prise de main, a chaque fichier ecrit, a la remise.
+- **Dis quelle ligne de la checklist tests tu couvres a chaque fichier ecrit.**
+  L'`orchestrator` la marque en cours dans l'etat, et la revue montre alors sur quoi tu
+  travailles au lieu d'un mur de carres vides pendant vingt minutes.
 - `escalate-to-human` si la checklist demande un test que le repo ne peut pas porter.
 - Commit apres chaque fichier : un crash ne doit pas faire perdre les tests deja ecrits.
 

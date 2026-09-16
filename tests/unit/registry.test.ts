@@ -59,7 +59,12 @@ describe("orderByLevel", () => {
 
 describe("selection de commande par type", () => {
   it("rend la commande declaree", () => {
-    assert.equal(commandFor(findRepo("web-app"), "ut"), "pnpm turbo run rstest:ci --continue");
+    // Pas la commande elle-meme : elle change avec le repo amont, et un test qui
+    // la recopie transforme une mise a jour de registre en echec de suite.
+    // Ce qui compte est qu'elle vienne de la, telle quelle.
+    const web-app = findRepo("web-app");
+    assert.equal(commandFor(web-app, "ut"), web-app.commands.ut);
+    assert.ok(commandFor(web-app, "ut")?.trim(), "web-app doit declarer une commande ut");
   });
 
   it("rend null quand le type n'existe pas dans le repo, au lieu d'en inventer une", () => {
