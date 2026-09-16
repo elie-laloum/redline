@@ -80,6 +80,23 @@ export interface Ticket {
   readonly contradictions: readonly Contradiction[];
   readonly metrics: Metrics;
   readonly planApprovedAt: string | null;
+  /** Le plan du point 8, depot par depot, dans l'ordre d'execution. */
+  readonly planRepos: readonly PlanRepoEntry[];
+}
+
+/**
+ * Un depot dans le plan.
+ *
+ * Il double `PlanRepo` du flux d'events, et c'est voulu : celui-ci vient du
+ * fichier d'etat, qui survit au shell, l'autre du lot en attente. Ils portent la
+ * meme chose a deux moments differents, et les confondre ferait afficher un plan
+ * deja approuve comme un plan qui attend.
+ */
+export interface PlanRepoEntry {
+  readonly repo: string;
+  readonly level: number | null;
+  readonly changes: readonly string[];
+  readonly why: string | null;
 }
 
 export const EMPTY_TICKET: Ticket = {
@@ -87,15 +104,29 @@ export const EMPTY_TICKET: Ticket = {
   title: null,
   url: null,
   jiraStatus: null,
-  run: { phase: null, step: "1", currentRepo: null, startedAt: null, escalation: null },
+  run: {
+    phase: null,
+    // Sans fichier d'etat, on ne connait aucune etape — pas meme la premiere.
+    // Annoncer « Lecture du ticket » avant d'avoir lu quoi que ce soit, c'est
+    // affirmer au lieu d'attendre, et ca se lit comme une page figee.
+    step: "",
+    currentRepo: null,
+    startedAt: null,
+    escalation: null,
+  },
   scope: [],
   functional: [],
   technical: [],
   tests: [],
   code: [],
   contradictions: [],
-  metrics: { humanInterventions: null, loopTurnsTotal: null, mrFeedbackCount: null },
+  metrics: {
+    humanInterventions: null,
+    loopTurnsTotal: null,
+    mrFeedbackCount: null,
+  },
   planApprovedAt: null,
+  planRepos: [],
 };
 
 export function readTicket(raw: unknown): Ticket {
@@ -123,7 +154,9 @@ export function readTicket(raw: unknown): Ticket {
       startedAt: text(run.startedAt),
       escalation: readEscalation(run.escalation),
     },
-    scope: list(root.scope).map(readRepo).filter((repo): repo is RepoEntry => repo !== null),
+    scope: list(root.scope)
+      .map(readRepo)
+      .filter((repo): repo is RepoEntry => repo !== null),
     functional: list(arbitrages.functional).map(readArbitrage).filter(isPresent),
     technical: list(arbitrages.technical).map(readArbitrage).filter(isPresent),
     tests: list(checklists.tests).map(readChecklistLine).filter(isPresent),
@@ -135,6 +168,7 @@ export function readTicket(raw: unknown): Ticket {
       mrFeedbackCount: number(metrics.mrFeedbackCount),
     },
     planApprovedAt: text(plan.approvedAt),
+    planRepos: list(plan.repos).map(readPlanRepo).filter(isPresent),
   };
 }
 
@@ -175,7 +209,11 @@ function readChecklistLine(raw: unknown): ChecklistLine | null {
   const entry = asRecord(raw);
   const criterion = entry && text(entry.criterion);
   if (!entry || !criterion) return null;
-  return { id: text(entry.id) ?? criterion.slice(0, 12), criterion, status: text(entry.status) ?? "pending" };
+  return {
+    id: text(entry.id) ?? criterion.slice(0, 12),
+    criterion,
+    status: text(entry.status) ?? "pending",
+  };
 }
 
 function readContradiction(raw: unknown): Contradiction | null {
@@ -226,7 +264,8 @@ function text(value: unknown): string | null {
 
 function number(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value))) return Number(value);
+  if (typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value)))
+    return Number(value);
   return null;
 }
 
@@ -235,8 +274,28 @@ function isPresent<T>(value: T | null): value is T {
 }
 
 /** `10.4` appartient au point 10. Tolere un nombre ecrit par un agent. */
+const STEP_TOKEN = /^\s*(?:point\s*)?(\d{1,2})(?:\.(\d+))?/i;
+
+/**
+ * Le point, et son sous-point, extraits de ce qu'un agent a bien voulu ecrire.
+ *
+ * `run.step` est du texte libre dans un YAML, et c'est un agent qui le pose. Il
+ * a ecrit `"10.4"`, il a ecrit `8`, et il a fini par ecrire
+ * `"4 - functional-grill"` — sur quoi la page a repondu qu'elle attendait
+ * toujours son premier event, treize etapes eteintes, alors que le run tournait
+ * depuis une minute. Une comparaison exacte sur une chaine que le shell n'ecrit
+ * pas est un point de rupture, pas une validation : on lit le nombre de tete et
+ * on ignore le reste.
+ */
+export function stepToken(step: string): { top: string; sub: number } | null {
+  const found = STEP_TOKEN.exec(String(step));
+  if (!found) return null;
+  const sub = Number(found[2] ?? 0);
+  return { top: found[1] as string, sub: Number.isFinite(sub) ? sub : 0 };
+}
+
 export function topLevelStep(step: string): string {
-  return String(step).split(".")[0] ?? String(step);
+  return stepToken(step)?.top ?? String(step);
 }
 
 /**
@@ -278,7 +337,10 @@ export type DocketSection = "functional" | "scope" | "technical" | "checklists" 
 export const DOCKET_LABELS: Record<DocketSection, string> = {
   functional: "Décisions fonctionnelles",
   technical: "Décisions techniques",
-  scope: "Pourquoi ces dépôts",
+  // Une seule entrée pour les dépôts : la liste du rail porte l'état et le
+  // niveau, et emmène au pourquoi. Deux libellés pour deux vues de la même
+  // chose, c'est le recoupement que cette page existe pour supprimer.
+  scope: "Dépôts concernés",
   checklists: "Checklists de sortie",
   contradictions: "Notes de mémoire contredites",
 };
@@ -286,4 +348,89 @@ export const DOCKET_LABELS: Record<DocketSection, string> = {
 export function stepIndex(step: string): number {
   const top = topLevelStep(step);
   return STEPS.findIndex((entry) => entry.id === top);
+}
+
+/**
+ * Quel point du workflow chaque agent tient.
+ *
+ * C'est le filet de securite de l'etape affichee. `run.step` est ecrit par un
+ * agent dans un fichier YAML, donc il retarde toujours un peu et il peut ne
+ * jamais etre ecrit ; le flux, lui, dit qui parle a la seconde pres. Un agent
+ * qui parle est une preuve directe que le run est a son point.
+ *
+ * `doc-scout` passe deux fois — une fois large au point 3, une fois ciblee au
+ * point 6. On ne peut pas les distinguer sur son nom, alors on prend celui qui
+ * ne fait pas reculer le curseur : c'est la seule lecture qui ne peut pas
+ * mentir dans le mauvais sens.
+ */
+const AGENT_STEPS: Record<string, readonly string[]> = {
+  "doc-scout": ["3", "6"],
+  "functional-grill": ["4"],
+  "scope-scout": ["5"],
+  "technical-grill": ["7"],
+  planner: ["8"],
+  orchestrator: ["10"],
+  "test-writer": ["10"],
+  "test-adversary": ["10"],
+  "red-checker": ["10"],
+  developer: ["10"],
+  "green-checker": ["10"],
+  "code-adversary": ["10"],
+  "memory-planner": ["11"],
+  "memory-writer": ["12"],
+  finalizer: ["13"],
+};
+
+/**
+ * Qui a ete invoque par qui.
+ *
+ * Le cycle d'implementation est le seul endroit du workflow ou un agent en
+ * ouvre un autre : l'`orchestrator` route, et les six agents du cycle 10.x
+ * travaillent sous lui. Les mettre cote a cote sous « Implementation » disait
+ * qu'ils se relayaient entre pairs, alors que l'un tient les compteurs pendant
+ * que les autres passent.
+ *
+ * Partout ailleurs la table est vide, et le rail reste a deux niveaux.
+ */
+const AGENT_PARENTS: Record<string, string> = {
+  "test-writer": "orchestrator",
+  "test-adversary": "orchestrator",
+  "red-checker": "orchestrator",
+  developer: "orchestrator",
+  "green-checker": "orchestrator",
+  "code-adversary": "orchestrator",
+};
+
+/** L'agent qui a invoque celui-ci, s'il y en a un. */
+export function parentOfAgent(agent: string): string | null {
+  return AGENT_PARENTS[agent] ?? null;
+}
+
+/**
+ * L'etape qu'implique un agent, sans jamais revenir en arriere.
+ *
+ * `floor` est l'etape la plus avancee connue par ailleurs : on rend le premier
+ * point de l'agent qui est au moins la, et son dernier point sinon.
+ */
+export function stepOfAgent(agent: string, floor: number): string | null {
+  const candidates = AGENT_STEPS[agent];
+  if (!candidates || candidates.length === 0) return null;
+  for (const candidate of candidates) {
+    if (stepIndex(candidate) >= floor) return candidate;
+  }
+  return candidates.at(-1) ?? null;
+}
+
+function readPlanRepo(raw: unknown): PlanRepoEntry | null {
+  const entry = asRecord(raw);
+  const repo = entry && (text(entry.repo) ?? text(entry.name));
+  if (!repo || !entry) return null;
+  return {
+    repo,
+    level: number(entry.level),
+    changes: list(entry.changes)
+      .map((change) => text(change))
+      .filter((change): change is string => change !== null),
+    why: text(entry.why) ?? text(entry.reason),
+  };
 }

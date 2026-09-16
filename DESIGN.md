@@ -80,18 +80,18 @@ spacing:
   3xl: "32px"
   4xl: "40px"
 components:
-  option-chip:
-    backgroundColor: "{colors.field}"
-    textColor: "{colors.ink}"
-    typography: "{typography.ui}"
-    rounded: "{rounded.sm}"
-    padding: "4px 10px"
-  option-chip-selected:
-    backgroundColor: "{colors.ink}"
+  option-row:
+    backgroundColor: "transparent"
+    textColor: "{colors.ink-soft}"
+    typography: "{typography.body}"
+    rounded: "0"
+    padding: "10px 10px"
+  option-row-selected:
+    backgroundColor: "{colors.human}"
     textColor: "{colors.bg}"
-    typography: "{typography.ui}"
-    rounded: "{rounded.sm}"
-    padding: "4px 10px"
+    typography: "{typography.body}"
+    rounded: "0"
+    padding: "10px 10px"
   button-commit:
     backgroundColor: "{colors.ink}"
     textColor: "{colors.bg}"
@@ -131,6 +131,12 @@ components:
     typography: "{typography.meta}"
     rounded: "0"
     padding: "2px 0 2px 20px"
+  rail-agent-nested:
+    backgroundColor: "transparent"
+    textColor: "{colors.ink-soft}"
+    typography: "{typography.meta}"
+    rounded: "0"
+    padding: "2px 0 2px 40px"
   rail-fold:
     backgroundColor: "transparent"
     textColor: "{colors.ink-faint}"
@@ -161,6 +167,41 @@ components:
     typography: "{typography.body}"
     rounded: "0"
     padding: "20px 24px"
+  widget:
+    backgroundColor: "transparent"
+    textColor: "{colors.ink}"
+    typography: "{typography.title}"
+    rounded: "0"
+    padding: "16px 24px"
+  grid-cell:
+    backgroundColor: "transparent"
+    textColor: "{colors.ink-faint}"
+    rounded: "2px"
+    size: "16px"
+  grid-cell-done:
+    backgroundColor: "{colors.ok}"
+    textColor: "{colors.bg}"
+    rounded: "2px"
+    size: "16px"
+  grid-cell-failed:
+    backgroundColor: "{colors.ko}"
+    textColor: "{colors.bg}"
+    rounded: "2px"
+    size: "16px"
+  dock-bar:
+    backgroundColor: "{colors.rail}"
+    textColor: "{colors.ink-faint}"
+    typography: "{typography.ui}"
+    rounded: "0"
+    padding: "0 24px"
+    height: "44px"
+  dock-bar-open:
+    backgroundColor: "{colors.rail}"
+    textColor: "{colors.ink}"
+    typography: "{typography.ui}"
+    rounded: "0"
+    padding: "0 24px"
+    height: "75vh"
 ---
 
 # Design System: Autopilot Live Shell
@@ -178,13 +219,21 @@ refusal is visible in the absence of any container with a background, a border
 radius above 4px, or a shadow.
 
 The surface is built from two materials meeting on a vertical seam, under a
-banner that spans the working column. On the left, a dense rail on its own
-slightly-shifted ground, 304px wide, full height, sticky: thirteen unnumbered
-steps read as an index, and under the one that is live, the sub-agents that have
-taken the floor, one of them pulsing. On the right, a document column capped at 640px
-with running text at 68ch, and the leftover right margin used the way a printed
-document uses its margin — for a sticky index into the sections below. The build
-is recognisable with the text blurred out, which was the point.
+banner that spans the working column and over a bar pinned to the floor. On the
+left, a dense rail on its own slightly-shifted ground, 304px wide, sticky:
+thirteen unnumbered steps read as an index, the dossier folded beneath them, and
+under the step that is live, the agents that have taken the floor — nested, one
+indent per level of invocation. On the right, the workbench, full width, where
+what the run is fabricating stacks and disappears again. Along the bottom, a
+44px bar that opens onto three quarters of the screen and holds the raw event
+log. The build is recognisable with the text blurred out, which was the point.
+
+**One thing runs at a time, and the page shows which.** The workflow has no
+parallelism, so the surface refuses to imply any: there is exactly one spinner on
+screen, and it sits on whatever is acting — a step while it works, its agent once
+it hands off, that agent's own child one indent deeper. The line that handed the
+floor over does not go dark; it breathes. Depth of work is read as depth in the
+list, which is the single idea the rail is built on.
 
 The palette is greyscale ink at four weights, four state hues, and one ground
 indigo. The four state hues say what passed, what broke, what is waiting on you
@@ -199,9 +248,10 @@ lives next to a terminal.
 - Hairlines and whitespace only; zero cards, zero shadows, zero elevation.
 - Colour is a state channel; the one ground tint is confined to two jobs.
 - "Now" is marked by full-weight ink against muted surroundings, never by a hue.
-- A dense rail on its own ground against a bounded prose column.
+- A dense rail on its own ground against a full-width workbench.
 - Monospace is reserved for what is measured or located; everything else is sans.
-- Two continuous motions, never in the same row, and both survive reduced-motion.
+- One progress scale, six states, one dot — steps and agents read identically.
+- Exactly one spinner on screen; the line that handed off breathes instead.
 
 ## Colors
 
@@ -214,7 +264,7 @@ two jobs and no others.
 **Ground Indigo** (`colors.primary`) never appears at full strength. It ships as
 two derived grounds — `primary-surface`, the banner's floor, and `primary-line`,
 the rule under it — plus the selection wash, and it does exactly one thing there:
-it detaches the banner from the docket, so the state you read first is not made
+it detaches the banner from the widgets below, so the state you read first is not made
 of the same material as the text beneath it.
 
 It is deliberately not the way anything is marked. The role a brand accent
@@ -239,17 +289,19 @@ text on a tinted surface is tinted from that surface, never left grey.
 The four state hues. They are secondary only in the sense that they are never
 the field's subject; they are load-bearing where they appear.
 
-- **Verdict Green** (`colors.ok`): something passed — and, one level down, that
-  something is alive. On the run it marks a finished run, a passing checklist
-  line, a repo confirmed in scope; on a sub-agent row it marks an agent still
-  working. The two readings cannot collide: when the run is finished, no agent is
-  running, and the live one is pulsing while the finished run is not.
+- **Verdict Green** (`colors.ok`): something is rendered, and nothing else. A
+  finished run, a step the workflow has gone past, an agent that handed back a
+  result, a passing checklist line, a repo confirmed in scope. It once carried a
+  second reading — "alive" on a sub-agent row — and that cost the page its most
+  useful distinction, because green then meant both "still going" and "done" two
+  lines apart. What is alive is now the spinner's job, which no colour shares.
 - **Halt Red** (`colors.ko`): something broke or stopped. The escalation notice's
   rule and 6% wash, a spent loop budget, a dropped event stream.
 - **Human Blue** (`colors.human`): the run is stopped on you, and nothing moves
   until you answer. The question batch's rule and wash, the dot that replaces the
-  spinner, the banner's lead word. It is the only hue that names an action you
-  owe, which is why it is not shared with drift.
+  spinner, the banner's lead word, and — inside that region only — the option you
+  have chosen and the dots of the batch's own track. It is the only hue that
+  names an action you owe, which is why it is not shared with drift.
 - **Drift Amber** (`colors.drift`): something is going wide while the run still
   moves. A loop one turn from its budget, an unresolved memory contradiction, an
   agent silent for five minutes, events the shell could not parse, and the count
@@ -267,7 +319,10 @@ the field's subject; they are load-bearing where they appear.
   completed steps, list labels. Most of the page's words are this.
 - **Faint Ink** (`colors.ink-faint`): metadata that must be present but not read
   first — timestamps, counts, legends, placeholder text, empty-state sentences,
-  agents that have already handed back.
+  the word `agent` that prefixes every agent name. At 50% opacity it is also the
+  fill of the handed-off dot and the stroke of the not-started ring, which is why
+  those two read as the same material at two strengths rather than as two states
+  of unrelated origin.
 - **Rail Ground** (`colors.rail`) and **Rail Ink** (`colors.rail-ink`): the rail's
   own surface, a hair off the page ground in light and a hair darker in dark. This
   one-step tonal shift is the entire reason the rail reads as a distinct object.
@@ -281,23 +336,41 @@ the field's subject; they are load-bearing where they appear.
 
 ### Named Rules
 
+**The Selection-From-The-Surface Rule.** Inside a state region, what is selected
+is drawn from that region's own hue at full strength, never from ink. The
+question batch sits on a `human` wash, so the chosen option is `human` — the
+selection belongs to the same family as the thing it is inside. Filling it with
+ink imported the commit button's colour into a place where nothing is committed,
+and put the heaviest block on screen on something still being decided.
+
 **The State-Only Colour Rule.** Green, red, blue and amber may appear only where
 they report the status of something the run produced. No chromatic token may be
 used for emphasis, branding, hierarchy, decoration, or to distinguish one section
 from another. Audit test: for every coloured pixel on screen, name the thing whose
 state it reports. If you cannot, delete the colour.
 
-**The Two-Level Green Rule.** Green reports "finished" on the run and "alive" on
-a sub-agent, and that is allowed only because the two can never be on screen at
-once — a finished run has no agent running. Any second colour tempted into a
-double meaning must prove the same impossibility before it earns it.
+**The One-Scale Rule.** A step and an agent are drawn from the same six-state
+scale and the same atom — not-started, running, handed-off, waiting on you,
+failed, rendered — so a reader learns the vocabulary once and applies it at every
+depth. The rail and the banner previously spoke two dialects of it, with green
+meaning "alive" in one and "done" in the other; recoupling two dialects twenty
+pixels apart is precisely the cost this page exists to remove. A state that
+cannot be expressed in the shared scale does not get a private colour; it gets a
+word.
+
+**The Motion-Means-Acting Rule.** Aliveness is reported by motion, never by hue.
+The spinner marks what is acting; the slow fade marks what has handed off and is
+still open; a static dot marks everything else. Colour is then free to report
+outcome alone, which is the only way one palette can serve both questions.
 
 **The Ink-Weight Now Rule.** "Now" is full-weight ink against soft and faint ink.
 Done is soft, not-yet is faint, current is full and medium-weight. The banner's
 indigo floor is not an exception: it separates a region, it does not say which
 step is current. Marking the current step with a hue instead of ink weight is a
-regression — it was scored as one in the finish review and reverted. The green
-under a live step is not an exception either: it marks the agent, not the step.
+regression — it was scored as one in the finish review and reverted. The state
+dot beside a row is not an exception either: it reports that row's outcome, while
+ink weight reports where the reader is. The two answer different questions and a
+step can be green and current at once.
 
 **The One-Step Ground Rule.** A surface distinguishes itself from the page by one
 tonal step (`rail`, `field`) and a hairline. Never by a shadow, never by a radius
@@ -325,7 +398,7 @@ tight leaves.
   step's elapsed time, parked at the right of the banner's first level. It is the
   only signal of temporal drift the system has, and it is set apart by weight and
   by position rather than by size.
-- **Title** (500, 15px, tight tracking): docket section headings, the escalation
+- **Title** (500, 15px, tight tracking): widget headings, the escalation
   headline, the question-batch headline. The largest type on the page — nothing
   is larger, and no display face exists.
 - **Body** (400, 14px, `line-height: 1.625`): running prose — the Now line,
@@ -334,9 +407,9 @@ tight leaves.
   buttons, inputs, chips, rail steps, checklist lines.
 - **Meta** (400, 12px): counts, agent names, statuses, secondary explanation.
 - **Legend** (500, 11px, `letter-spacing: 0.025em`, uppercase): section legends
-  above a list — "Ce qui peut déraper", "Dépôts concernés", "Dans ce dossier".
-  These label a list they sit directly on top of; they are never a kicker above a
-  heading.
+  above a list — "Le dossier", "À surveiller", "Dépôts concernés", "Todo du
+  developer", "Vérifications". These label a list they sit directly on top of;
+  they are never a kicker above a heading.
 - **Measure** (mono, 12px, tabular): anything measured or located — `file:line`
   evidence, repo names, step ids, counters, ratios, clock times.
 
@@ -346,6 +419,12 @@ tight leaves.
 located: paths, line ranges, durations, timestamps, counters, ticket keys. It is
 never worn as a technical costume over prose — agent names are sans, because an
 agent is a who and not a measurement.
+
+**The Named-Kind Rule.** A proper noun the reader has no way to classify is
+prefixed with its kind in faint ink: `agent - developer`, never `developer` bare.
+Set beside thirteen step labels written in French prose, an English hyphenated
+identifier reads as a fourteenth step. One muted word settles what it is, and it
+costs less than teaching the vocabulary.
 
 **The Tabular Column Rule.** Every number that changes in place is tabular
 (`font-variant-numeric: tabular-nums`, applied globally to `time` and `.tabular`).
@@ -363,11 +442,24 @@ Two columns meeting on a vertical hairline. The rail is a sticky, full-height
 `aside` of fixed 304px (19rem) on its own ground, with a right border; the main
 column takes the rest and is internally padded 24px.
 
-The main column is itself a document: the docket is capped at 640px (40rem) and
-its prose paragraphs at 68ch, and the space that remains to its right is a
-margin, not a gap. Above 1280px that margin carries a sticky 224px section index
-(`top: 64px`, `height: fit-content`) listing the docket's five sections with their
-counts. Below 1280px the index disappears and only the margin remains.
+The rail is 2.75rem short of the viewport (`calc(100vh - 2.75rem)`) and the page
+carries the same amount as bottom padding, because a bar is pinned to the floor
+and neither column may end underneath it.
+
+The main column is **one stack of widgets**, all of them full width and padded
+24px, separated by hairlines: what is being fabricated, what is still blocking,
+the exit contract, then what has been decided. A widget with nothing to say is
+not rendered at all.
+
+It held two registers before, and the second one replaced the first: clicking a
+docket entry in the rail swapped the workbench for a document column, so the
+worksite and the review left the screen while you read one decision, and you
+went back to find out where the run was. One content, one view. The rail now
+scrolls to a widget and opens it on the right entry; nothing disappears.
+
+Inside a widget, prose still keeps the measure — a question, an answer, a
+criterion are capped at 68ch — while the controls, grids and rows around it take
+the full column.
 
 The banner is sticky at the top of the main column on a 95%-opacity indigo floor
 with a backdrop blur, so text scrolling under it stays legible. It holds two
@@ -375,20 +467,25 @@ levels: the shell's own vocabulary on the first — state mark, step label, agen
 and tool, elapsed — and the agent's sentence on the second, indented to the step
 label's left edge.
 
-The rail's foot carries three stacked disclosures pushed down by the step list —
-scope, then what to watch, then the run counters — each separated by a soft
-hairline, each remembering whether it is open, and each absent entirely when it
-has nothing to report. The raw event stream sits at the bottom of the main
-column, collapsed by default, behind a full-width disclosure row.
+Under the step list, the rail carries **the dossier**: one disclosure per section
+that the run has produced, listing its entries by name. The repos live here too,
+open by default — they were once a second list at the foot of the rail, saying
+the same thing in another shape. The foot now carries a single disclosure, what
+to watch, pushed down by the rest.
 
-**Breakpoints** (Tailwind defaults, only three of them used): `md` 768px reveals
-the banner's agent/tool attribution, `lg` 1024px is the real one — below it the
-rail is removed entirely and replaced by a compact strip on the rail's own ground
-under the banner, `xl` 1280px reveals the docket index.
+The raw event log left the main column entirely. It lives in a **bar pinned to
+the bottom of the viewport**, 44px tall, spanning both columns, which opens to
+75vh over the page rather than pushing it.
 
-**Rhythm**: a 2/4/6/8/12/16/24/32/40px scale. Rows inside a list are 4–6px apart,
-related blocks 8–12px, sections inside the rail 24px, sections inside the docket
-40px. Section headers sit on a hairline with 8px of breathing room below the text.
+**Breakpoints** (Tailwind defaults, two of them used): `md` 768px reveals the
+banner's agent/tool attribution; `lg` 1024px is the real one — below it the rail
+is removed entirely and replaced by a compact strip on the rail's own ground
+under the banner, with the dossier reappearing in full at the end of the column.
+
+**Rhythm**: a 2/4/6/8/12/16/24/32/40px scale. One level of nesting in the rail is
+20px of indent, applied once per level. Rows inside a list are 4–6px apart,
+related blocks 8–12px, sections inside the rail 24px, widgets 16px above and
+below their own hairline. Section headers sit on a hairline with 8px of breathing room below the text.
 
 ### Named Rules
 
@@ -399,9 +496,23 @@ must reappear in another form when a breakpoint removes it. Losing state at 390p
 is not an acceptable responsive outcome, and neither is saying the same thing
 twice at 1440px.
 
-**The Margin-Not-Gap Rule.** The prose column is bounded at the readable measure
-and the remainder is treated as a document margin. Do not widen text to fill it
-and do not drop a card into it; put an index, a timestamp, or nothing there.
+**The Margin-Not-Gap Rule.** Prose is bounded at the readable measure (68ch) and
+the remainder is treated as a document margin. Do not widen text to fill it and
+do not drop a card into it; put a timestamp there, or nothing. The rule is about
+prose and only prose: grids, rows and counts take the full column, and bounding
+those at a reading measure leaves a column of dead space beside a widget that had
+room to breathe.
+
+**The One-Content-One-View Rule.** No content is rendered twice on this page.
+A widget is the only place its subject exists, and every other mention of it —
+a rail entry, a count, a fold — is a way to get there, never a second copy. Two
+renderings of the same list are two things to keep in step, and the one you are
+not looking at is the one that goes stale.
+
+**The Reserved-Floor Rule.** Anything pinned to the viewport reserves its own
+height from both columns — the page's bottom padding and the rail's height are
+computed from the bar's 44px. A fixed element that covers the last row costs
+exactly the row the reader came for, and it costs it silently.
 
 ## Elevation & Depth
 
@@ -415,12 +526,20 @@ edge-to-edge with square corners.
 
 ### Named Rules
 
-**The One-Motion-Per-Row Rule.** The page runs two continuous animations — the
-spinner and the sub-agent pulse — and they are never stacked in the same place. A
-step with a pulsing agent beneath it drops its spinner and keeps its full ink;
-the banner carries the run's spinner permanently, so nothing is lost. Two things
-moving twenty pixels apart for one living thing is one too many, and any third
-continuous motion needs a state nothing else reports.
+**The One-Spinner Rule.** There is exactly one spinner on screen, on the deepest
+thing that is acting, and the rail's derivation guarantees it rather than hoping
+for it: a line that has handed the floor to another cannot be `running`. Two
+rings turning twenty pixels apart for one living thing claims a parallelism this
+workflow does not have.
+
+**The Breath-Not-Pulse Rule.** A line that has handed off breathes: opacity 1 to
+0.08 and back over 2.4s, `ease-in-out`, no scale and no colour change. It travels
+between its own two neighbouring states — the muted dot it is, and the empty ring
+of what has not started — so the motion reads as "open, not mine" rather than as
+a heartbeat. It must stay under the spinner's threshold: the spinner is the
+subject, the breath is the context. A third continuous motion needs a state
+nothing else reports; the drawer's height transition is not one, because it runs
+once on a gesture and then stops.
 
 **The Folded-Signal Rule.** A section may be collapsed only if collapsing it
 cannot hide a problem. A fold that carries a signal shows its count, in the
@@ -435,14 +554,21 @@ wrong place in the layout.
 ## Shapes
 
 Square by default. Regions — the rail, the header, the state strip, the
-escalation notice, the question batch, the stream — have no radius at all; they
-run edge to edge and are bounded by rules. Radius appears only on things that are
-touched or picked: option chips, inputs, buttons, rail step rows and the focus
-ring, all at 4px (`rounded.sm`, derived from a 6px base token). The only full
-rounds in the system are the dots — scope and checklist status at 6px, sub-agents
-and the current step at 8px, the banner's run mark at 10px — plus the spinner
-(12px) and the scrollbar thumb. Every dot is centred in a 12px box so that a
-change of state never shifts the line it sits on.
+escalation notice, the question batch, the event drawer — have no radius at all; they
+run edge to edge and are bounded by rules — the bottom bar included, at both its
+heights. Radius appears only on things that are touched or picked: option chips,
+inputs, buttons, rail step rows and the focus ring, all at 4px (`rounded.sm`,
+derived from a 6px base token). The only full rounds in the system are the dots —
+the progress dot at 10px, carried identically by the banner, the thirteen steps
+and every agent row, and the status dot at 6px for a repo, a todo or a check —
+plus the spinner (12px) and the scrollbar thumb. Every dot is centred in a 12px
+box, the spinner included, so that a change of state never shifts the line it
+sits on.
+
+Not-started is the one dot drawn as a ring rather than a disc: a 1px stroke of
+faint ink at 40%, no fill. It keeps the diameter of every other state, so the
+thirteen steps read as one column of dots at two densities rather than as two
+unrelated marks.
 
 Borders are always 1px, always one of the two rule tokens, and are set globally
 so that any bordered element inherits the correct colour in both schemes. The
@@ -462,18 +588,22 @@ disappear.
 - **Disabled (`button-commit-disabled`):** field fill with faint ink and
   `not-allowed`; the button stays in place rather than disappearing, so the
   reader sees what remains to be answered.
-- **Ghost rows:** the rail step, the drift row and the stream disclosure are
+- **Ghost rows:** the rail step, the drift row and the drawer's handle are
   unstyled buttons that only announce themselves on hover — field fill and ink
-  text for the rail row, field fill for the disclosure.
+  text for the rail row, ink text for the handle.
 
-### Chips
+### Option Rows
 
-- **Style:** option chips in the question batch. Field fill, 1px rule border,
-  4px radius, 13px, 4px/10px padding.
-- **State:** selected inverts to full ink fill with page-ground text; unselected
-  hover lifts the border to faint ink and the text to full ink. Typing in the
-  free-text field beside them deselects the chip, because the written answer is
-  the more explicit gesture of the two.
+- **Style:** one option per row, the full width of the column, separated by
+  hairlines of the module's own hue, square, 14px, 10px of padding, with a drawn
+  ring at the left. They were chips in a wrapping row, which reads as a mosaic;
+  four answers written to be chosen as they stand are short prose, and short
+  prose is read down a column.
+- **State:** selected fills with **Human Blue** at full strength, page-ground
+  text, and the ring fills in the same ground colour. Unselected hover washes the
+  row with the same hue at 10% and lifts the text to full ink. Typing in the free
+  field below deselects the row, because the written answer is the more explicit
+  gesture of the two.
 
 ### Cards / Containers
 
@@ -497,41 +627,82 @@ The rail is the navigation. Thirteen step rows at 13px, unnumbered: the list is
 an `<ol>`, so position is still announced to anyone listening, and thirteen labels
 that read on their own beat thirteen labels behind a counter that has to be
 translated. Done rows are soft ink, upcoming rows faint, the current row full ink
-and medium weight. Rows whose step produced docket content are buttons: clicking
-one filters the right column to that step's decisions and marks the row with a
-field fill; clicking again clears it. The current step stays marked regardless of
-the filter.
+and medium weight. Every row carries the progress dot, and the dot answers a
+different question from the ink: the dot is that step's outcome, the ink weight
+is where the reader is. Rows whose step produced something are buttons: clicking
+one scrolls to that step's widget and opens it on the right entry, and marks the
+row with a field fill. It no longer swaps the column — the widget is the only
+place that content exists, so there is nowhere to swap to.
 
-**The nested level.** Under a step that ran sub-agents, one level of indent lists
-them in the order they took the floor, each with an 8px dot: green alive, red
-failed, blue waiting on you, faint at 50% once it has handed back. The live step
-is expanded; a past step folds behind a caret, with its agent count shown only
-from two upward. An agent's state comes from its last event in the step whatever
-its kind, so an agent that opened a question reads as waiting even though its
-last hand-over said it was starting.
+**The nested levels.** Under a step that opened agents, each level of invocation
+is one 20px indent — the step, the agent it invoked, and the agents that agent
+invoked in turn. Only the implementation cycle goes three deep: the orchestrator
+routes, and the six agents of the cycle live beneath it. Putting them side by side
+said they relieved each other as peers, when one holds the counters while the
+others pass through. Depth is carried by indent alone — no rule, no bullet: the
+rail is already a list, and a second list marker per level would weigh more than
+what it organises.
+
+Every agent name is prefixed `agent - ` in faint ink, and every agent row carries
+the same progress dot as the step above it. An agent's state comes from its last
+event in the step whatever its kind, with one correction that is the whole model:
+`ok` closes an action, not an agent, so whoever spoke last keeps the spinner
+until someone else speaks. Its parent is not `done` while it works — it is
+handed-off, and it breathes.
+
+The live step is expanded; a past step folds behind a caret, with its agent count
+shown only from two upward.
 
 Below `lg` the rail is replaced by a compact strip on the same ground: one
 horizontal band under the banner carrying scope dots, loop budgets and drift
-counts — and nothing the banner already says.
+counts — and nothing the banner already says. The dossier reappears in full at
+the end of the column, because losing the decisions at 390px would be an
+amputation rather than a responsive trade.
 
-### The Docket (signature component)
+### The Widgets (signature component)
 
-The right column, and the reason the surface exists. Five sections — functional
-arbitrations, technical arbitrations, repo scope, checklists, memory
-contradictions — each introduced by a 15px heading on a hairline with its count
-in monospace. No section cites a step number: the rail stopped numbering, and a
-back-reference that makes you count rows is the recoupling the page exists to
-remove.
+The stack that replaced the docket column, and the reason the surface exists.
+Six of them, in a fixed order from the most perishable to the most settled — the
+worksite, the review, the exit checklists, the functional arbitrations, the
+technical ones, the repos, the contradicted memory notes. Each is a 15px heading
+on a hairline with its count in monospace, then its content, and nothing else:
+no card, no fill, no radius. What separates two widgets is the hairline of the
+next. **The order never changes with the step**, because an order that moved
+would make the reader hunt, on every visit, for where the thing they came to read
+went.
 
-Arbitrations are a two-column grid (`minmax(0,1fr)` and 2.75rem): question in
-full ink medium, answer in soft ink below it, rationale in faint ink below that,
-timestamp parked in the narrow right track. Evidence lines are split at the em
-dash — the `file:line` half set in monospace full ink because it is a location,
-the explanation half in faint prose.
+No section cites a step number: the rail stopped numbering, and a back-reference
+that makes you count rows is the recoupling the page exists to remove.
 
-Empty states are written, never hidden: "the loop hasn't started", "no repos
-established yet", "retained without a written reason — check before approving the
-plan". An absence is information about how far the run has got.
+**Two ways of reading a list, and one question decides which: does the item carry
+a state?**
+
+- It does — a checklist line is rendered or it is not. Completion is then what
+  you came for, and a **grid of 16px squares** says it without counting: filled
+  for rendered, hollow for not, red for blocking. Twenty-eight squares are read
+  at a glance; twenty-eight rows are read twenty-eight times. The square is
+  deliberately not a dot: the dot is already the alphabet of states in the rail,
+  and a row of twenty-eight of them would read as twenty-eight agents.
+- It does not — an arbitration is a question, an answer and the reason that binds
+  them. There is nothing to see at a glance, so the **carousel is the overview**,
+  not a detail: one item, arrows, and a strip of position dots below. Under two
+  items neither applies; a carousel of one is a mechanism for nothing.
+
+Where both appear, they compose: the grid is the overview and the carousel
+carries the open line, and its dots take the state colours so the strip repeats
+the grid one size down. The arrows run across both grids of a checklist without
+the reader having to know they changed list.
+
+The **why** of an arbitration is rendered whole and never truncated. It is the
+only part still worth anything six weeks later, when the answer has become code
+and nobody remembers what was ruled out.
+
+Evidence lines are split at the em dash — the `file:line` half set in monospace
+full ink because it is a location, the explanation half in faint prose.
+
+Empty states are written, never hidden: "retained without a written reason —
+check before approving the plan", "no located evidence — the scope-scout cited
+nothing". An absence is information about how far the run has got.
 
 ### The Banner
 
@@ -554,18 +725,53 @@ floor with a `primary-line` rule under it and a backdrop blur.
 
 ### The Rail Folds
 
-Three disclosures at the foot of the rail, in reading order: scope, what to
-watch, the run's counters. Legend type, a caret, a soft hairline between them.
-Open by default and remembered per viewer; a section with nothing in it is not
-rendered at all, and a collapsed section that carries a signal shows its count in
-drift amber on its own header.
+Two blocks of disclosures, all sharing one atom: legend type, a caret, a soft
+hairline between siblings, the open state remembered per viewer, and a section
+with nothing in it not rendered at all. A collapsed section that carries a signal
+shows its count in drift amber on its own header — that is what makes folding
+safe, and therefore what makes it usable.
+
+**The dossier**, under the step list: one fold per section the run has produced,
+each listing its entries by name with its count on the header. Folded by default,
+because it is navigation and not state. **Dépôts concernés** is the exception and
+is open, carrying each repo's status dot, name and level; it earned the exception
+by absorbing a second list that used to sit at the foot of the rail saying the
+same thing in another shape, and each row now also takes the reader to why that
+repo was retained.
+
+**What to watch**, at the foot, pushed down by everything above: loop counters
+against their budgets, and contradicted memory notes. It is the only fold left
+down there.
+
+### The Event Drawer
+
+A bar pinned to the bottom of the viewport across both columns, 44px tall on the
+rail's ground at 95% with a backdrop blur and a hairline on top. It is the whole
+raw event log, and it used to sit at the foot of the main column behind a
+disclosure — which meant scrolling the entire page to reach it and losing sight
+of the banner on the way. It is exactly the material one consults *while keeping
+an eye on the rest*.
+
+Closed, it is not mute: it carries its own label, the event count in tabular
+monospace, and the count of unparseable events in drift amber. A bar that says
+nothing until it is opened gives no reason to open it.
+
+Open, it animates to 75vh (`transition: height 300ms ease-out`, dropped under
+`prefers-reduced-motion`) and **covers rather than pushes** — the page below does
+not reflow, so nothing the reader was looking at moves. `Escape` closes it: a
+drawer at three quarters of the screen that can only be dismissed by hitting a
+28px target is a drawer opened once. The log itself mounts only while open;
+three hundred rows rendered permanently under a 44px bar are three hundred rows
+nobody is reading.
+
+It is consultation, not control. Nothing in it acts on the run.
 
 ### State Notices
 
 Escalation and the pending question batch are full-bleed regions, square, bounded
 top and bottom by their state hue at 40% over a 6% wash of the same hue. They sit
-directly under the Now header, above the docket, so they take the top of the fold
-without a modal, an overlay, or a scroll lock.
+directly under the Now header, above the widgets, so they take the top of the
+fold without a modal, an overlay, or a scroll lock.
 
 ### Atoms
 
@@ -573,21 +779,25 @@ without a modal, an overlay, or a scroll lock.
   once every 1.1s, linear, infinite. One of the page's two continuous motions.
   Under `prefers-reduced-motion: reduce` the animation stops and opacity is held
   at 1 — frozen, never hidden, because the ring is still the marker for "here".
-- **Run mark:** the banner's state in one sign — the spinner while an agent works,
-  otherwise a 10px dot: `human` waiting on you, `ko` stopped, `ok` finished, faint
-  at 50% at rest. Five states, one footprint, so a change of state never moves the
-  line. The precedence is part of the rule: a run that escalated while a question
-  was still open shows stopped, not waiting.
-- **Agent dot:** 8px, full round, `ok` alive / `ko` failed / `human` waiting on
-  you / faint at 50% once handed back. Only the agent that owns the latest event
-  pulses — 1.6s, `ease-in-out`, to 0.4 opacity and 0.78 scale. Others still open
-  stay green and still: alive is not the same as acting.
+- **Progress dot:** the page's one state atom, used unchanged by the banner, the
+  thirteen steps and every agent row. Six states in one 12px footprint: the
+  spinner for `running`, and otherwise a 10px disc — faint at 50% handed-off,
+  `human` waiting on you, `ko` failed, `ok` rendered — or a 1px faint ring at 40%
+  for not-started. It takes an optional breath for a line that has handed the
+  floor down, and a label so the state is spoken as "Implémentation : a passé la
+  main" rather than as a lone adjective. The precedence is part of the rule: a run
+  that escalated while a question was still open shows stopped, not waiting.
 - **Status dot:** 6px, full round, `ok` / `ko` / `human` / `drift` / full ink for running
   / faint at 50% for pending. Always paired with the status word; the dot alone is
   never the only carrier of meaning.
 - **Caret:** one 12px inline SVG at 1.5px, rotated 90° when open, used by every
-  disclosure on the page — the rail's folds, a past step's agents, the event
-  stream. One drawing, one stroke weight, one rotation centre.
+  disclosure on the page — the rail's folds, a past step's agents, the bottom
+  drawer, where it is pre-rotated so that closed points up and open points down.
+  One drawing, one stroke weight, one rotation centre.
+- **Document glyph:** a 16px inline SVG at 1.3px — a folded corner and three
+  lines of unequal length, because it opens a log and not a form. It is the
+  drawer's handle, and it is drawn rather than borrowed from an icon font, at the
+  stroke weight of the caret so the two look made together.
 - **Elapsed / At:** `<time>` elements in tabular monospace, formatted `45s`,
   `12m`, `2h 07`. All of them read one clock, mounted client-side so the server's
   time never shows through on the first frame.
@@ -603,8 +813,11 @@ without a modal, an overlay, or a scroll lock.
 - **Do** mark the present with full-weight ink against soft and faint ink.
 - **Do** separate surfaces with a 1px hairline (`line` between regions,
   `line-soft` between repeating rows) or a single tonal step.
-- **Do** keep running text inside the measure — 640px for the docket column,
-  68ch for prose paragraphs — and treat the remainder as a margin.
+- **Do** keep running text inside the measure (68ch) and treat the remainder as a
+  margin. Everything that is not prose — grids, rows, controls, counts — takes
+  the full column.
+- **Do** put a subject in exactly one widget, and make every other mention of it
+  a route to that widget.
 - **Do** set monospace on anything measured or located, and make every changing
   number tabular.
 - **Do** theme the browser's own surfaces from the palette: selection, caret,
@@ -612,8 +825,14 @@ without a modal, an overlay, or a scroll lock.
 - **Do** write empty states as sentences that say where the run is.
 - **Do** restate the rail's state in another form whenever a breakpoint removes
   the rail.
-- **Do** let `prefers-reduced-motion` freeze both the spinner and the pulse while
-  keeping them visible.
+- **Do** let `prefers-reduced-motion` freeze the spinner and the breath while
+  keeping them visible, and drop the drawer's height transition entirely.
+- **Do** draw a step and an agent from the same six-state scale and the same
+  atom, at every depth of nesting.
+- **Do** prefix a bare identifier with its kind in faint ink when the reader has
+  no way to classify it — `agent - developer`.
+- **Do** reserve the height of anything pinned to the viewport from every column
+  it crosses.
 - **Do** give every dot the same 12px footprint whatever its state, so changing
   state never moves the line it sits on.
 - **Do** tint secondary text on a tinted surface from that surface's own hue, and
@@ -632,19 +851,29 @@ without a modal, an overlay, or a scroll lock.
   above 4px, and a border at once.
 - **Don't** add a shadow of any kind, at rest or on hover.
 - **Don't** build a metric-tile grid. Numbers live inline against their label, in
-  monospace, at the size of their neighbours.
+  monospace, at the size of their neighbours. The checklist grid is not one: its
+  squares carry no number and each one is a line you can open.
+- **Don't** render the same content in two places. One widget owns a subject;
+  everything else routes to it.
 - **Don't** round a region. Radius belongs to things that are touched or picked.
-- **Don't** let type exceed 15px, or introduce a display face. The docket heading
+- **Don't** let type exceed 15px, or introduce a display face. A widget heading
   is the largest thing on the page; emphasis is bought with weight, position and
   ink, never with size.
 - **Don't** truncate agent-written prose without showing it in full somewhere on
   the same screen.
-- **Don't** add a third continuous animation, and don't stack the two that exist
-  in the same row. The spinner and the sub-agent pulse are the whole budget.
-- **Don't** number the steps in the rail, and don't have the docket refer back to
+- **Don't** show two spinners at once. One thing acts at a time in this workflow,
+  and the derivation must guarantee it rather than the layout hoping for it.
+- **Don't** report aliveness with a hue, or an outcome with motion. Colour says
+  what happened; movement says what is happening. Green meaning "still working"
+  cost this system its clearest distinction once already.
+- **Don't** add a third continuous animation. The spinner and the handed-off
+  breath are the whole budget; a transition that runs once on a gesture is not a
+  third.
+- **Don't** number the steps in the rail, and don't have a widget refer back to
   a step by number. The `<ol>` already carries position for anyone listening, and
   a back-reference that makes the reader count rows is the recoupling this page
   exists to remove.
+- **Don't** let a fixed element cover content it did not reserve room for.
 - **Don't** use a text glyph as an icon. Rotating a `›` is not a chevron: it
   carries the font's weight and turns about its text box rather than its point.
   Draw an inline SVG at the stroke weight of the page — and draw it once: there is

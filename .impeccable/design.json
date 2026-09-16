@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-15T10:43:09Z",
+  "generatedAt": "2026-09-15T17:29:27.082546Z",
   "title": "Design System: Autopilot Live Shell",
   "extensions": {
     "colorMeta": {
@@ -331,9 +331,9 @@
         "purpose": "The run's spinner ring in the banner, and on a live step that has no agent pulsing under it. Frozen, not hidden, under prefers-reduced-motion."
       },
       {
-        "name": "pulse-quiet",
-        "value": "pulse-quiet 1.6s ease-in-out infinite",
-        "purpose": "The sub-agent that owns the latest event, to 0.4 opacity and 0.78 scale. Only one runs at a time, and never in the same row as a spinner."
+        "name": "fade-quiet",
+        "value": "fade-quiet 2.4s ease-in-out infinite (opacity 1 → 0.08 → 1)",
+        "purpose": "The line that handed the floor to another: it breathes between its own muted dot and the empty ring of what has not started. No scale, no colour change, held under the spinner's threshold."
       },
       {
         "name": "elapsed-tick",
@@ -344,6 +344,11 @@
         "name": "transition-colors",
         "value": "color/background-color/border-color 150ms",
         "purpose": "The only transition in the system, used on hover and selection of rail rows, chips and buttons, plus the caret's 90 degree rotation. Everything else lands without animation."
+      },
+      {
+        "name": "drawer-open",
+        "value": "height 300ms ease-out",
+        "purpose": "The bottom drawer between 44px and 75vh. It covers the page rather than pushing it, and is dropped entirely under prefers-reduced-motion."
       }
     ],
     "breakpoints": [
@@ -356,11 +361,6 @@
         "name": "lg",
         "value": "1024px",
         "purpose": "The structural break: above it the rail; below it the rail is removed and a compact strip carries scope, loop budgets and drift. The banner carries step, state and duration at every width."
-      },
-      {
-        "name": "xl",
-        "value": "1280px",
-        "purpose": "Reveals the sticky docket index in the right margin."
       }
     ],
     "measures": [
@@ -396,12 +396,12 @@
       "css": ".ds-btn-commit { height: 32px; padding: 0 12px; border: none; border-radius: 4px; background: var(--ink, oklch(0.16 0 0)); color: var(--bg, oklch(0.995 0 0)); font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 13px; font-weight: 500; transition: color 150ms, background-color 150ms, opacity 150ms; } .ds-btn-commit:hover { opacity: 0.9; } .ds-btn-commit:focus-visible { outline: 2px solid var(--ink, oklch(0.16 0 0)); outline-offset: 2px; } .ds-btn-commit:disabled { background: var(--field, oklch(1 0 0)); color: var(--ink-faint, oklch(0.62 0 0)); cursor: not-allowed; opacity: 1; }"
     },
     {
-      "name": "Option Chip",
+      "name": "Option Row",
       "kind": "chip",
-      "refersTo": "option-chip",
-      "description": "A one-click answer in the question batch. Field fill with a hairline; selected inverts to full ink.",
-      "html": "<div class=\"ds-chip-row\"><button class=\"ds-chip\">Garder le comportement actuel</button><button class=\"ds-chip ds-chip--selected\">Aligner sur la spec</button></div>",
-      "css": ".ds-chip-row { display: flex; flex-wrap: wrap; gap: 6px; } .ds-chip { padding: 4px 10px; border: 1px solid var(--line, oklch(0.905 0 0)); border-radius: 4px; background: var(--field, oklch(1 0 0)); color: var(--ink, oklch(0.16 0 0)); font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; font-size: 13px; text-align: left; transition: color 150ms, background-color 150ms, border-color 150ms; } .ds-chip:hover { border-color: var(--ink-faint, oklch(0.62 0 0)); color: var(--ink, oklch(0.16 0 0)); } .ds-chip:focus-visible { outline: 2px solid var(--ink, oklch(0.16 0 0)); outline-offset: 2px; } .ds-chip--selected { border-color: var(--ink, oklch(0.16 0 0)); background: var(--ink, oklch(0.16 0 0)); color: var(--bg, oklch(0.995 0 0)); }"
+      "refersTo": "option-row",
+      "description": "One answer per row, the full width of the column, with a drawn ring at the left. Selected fills with the module's own hue at full strength — never with ink, which belongs to the commit button.",
+      "html": "<ul class=\"ds-opts\"><li><button class=\"ds-opt is-selected\" aria-pressed=\"true\"><span class=\"ds-opt-ring\"><i></i></span><span>Recommandé — la constante reçoit aussi REPLACE_BEFORE_PRODUCTION</span></button></li><li><button class=\"ds-opt\" aria-pressed=\"false\"><span class=\"ds-opt-ring\"></span><span>Je collerai la vraie clé moi-même après le run</span></button></li></ul>",
+      "css": ".ds-opts { list-style: none; margin: 0; padding: 0; border-top: 1px solid color-mix(in oklch, var(--human, oklch(0.52 0.18 250)) 20%, transparent); border-bottom: 1px solid color-mix(in oklch, var(--human, oklch(0.52 0.18 250)) 20%, transparent); font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; } .ds-opts li + li { border-top: 1px solid color-mix(in oklch, var(--human, oklch(0.52 0.18 250)) 15%, transparent); } .ds-opt { display: flex; align-items: flex-start; gap: 12px; width: 100%; padding: 10px; border: 0; background: none; text-align: left; font-size: 14px; line-height: 1.625; color: var(--ink-soft, oklch(0.44 0 0)); cursor: pointer; transition: background-color 0.15s, color 0.15s; } .ds-opt:hover { background: color-mix(in oklch, var(--human, oklch(0.52 0.18 250)) 10%, transparent); color: var(--ink, oklch(0.16 0 0)); } .ds-opt:focus-visible { outline: 2px solid var(--ink, oklch(0.16 0 0)); outline-offset: -2px; } .ds-opt.is-selected { background: var(--human, oklch(0.52 0.18 250)); color: var(--bg, oklch(0.995 0 0)); } .ds-opt-ring { margin-top: 3px; display: flex; width: 14px; height: 14px; flex-shrink: 0; align-items: center; justify-content: center; border: 1px solid color-mix(in oklch, var(--ink-faint, oklch(0.62 0 0)) 50%, transparent); border-radius: 999px; } .ds-opt.is-selected .ds-opt-ring { border-color: var(--bg, oklch(0.995 0 0)); } .ds-opt-ring i { width: 6px; height: 6px; border-radius: 999px; background: var(--bg, oklch(0.995 0 0)); display: block; } "
     },
     {
       "name": "Answer Field",
@@ -415,23 +415,23 @@
       "name": "Rail Step",
       "kind": "nav",
       "refersTo": "rail-step",
-      "description": "One of thirteen unnumbered steps. Done is soft ink, upcoming is faint, now is full ink with an 8px mark. Steps that produced docket content are buttons that filter the right column.",
+      "description": "One of thirteen unnumbered steps. Done is soft ink, upcoming is faint, now is full ink and medium weight — and the progress dot beside it reports that step's outcome, which is a different question from where the reader is. Steps that produced docket content are buttons that filter the right column.",
       "html": "<nav class=\"ds-rail\"><ol class=\"ds-rail-list\"><li><button class=\"ds-rail-step ds-rail-step--done\"><span class=\"ds-rail-mark\"></span><span class=\"ds-rail-label\">Questions fonctionnelles</span></button></li><li><div class=\"ds-rail-step ds-rail-step--now\"><span class=\"ds-rail-mark ds-rail-mark--now\"></span><span class=\"ds-rail-label\">Implémentation</span><span class=\"ds-rail-detail\">.4 · design-system</span></div></li><li><div class=\"ds-rail-step\"><span class=\"ds-rail-mark\"></span><span class=\"ds-rail-label\">Plan mémoire</span></div></li></ol></nav>",
       "css": ".ds-rail { width: 304px; padding: 20px 16px; background: var(--rail, oklch(0.975 0 0)); color: var(--rail-ink, oklch(0.24 0 0)); border-right: 1px solid var(--line, oklch(0.905 0 0)); font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; } .ds-rail-list { list-style: none; margin: 0; padding: 0; } .ds-rail-step { display: flex; align-items: center; gap: 8px; width: 100%; padding: 4px 4px 4px 0; border: none; background: none; border-radius: 4px; font: inherit; font-size: 13px; text-align: left; color: var(--ink-faint, oklch(0.62 0 0)); transition: color .15s, background-color .15s; } .ds-rail-step--done { color: var(--ink-soft, oklch(0.44 0 0)); } .ds-rail-step--now { color: var(--ink, oklch(0.16 0 0)); font-weight: 500; } .ds-rail-step:hover { background: var(--field, oklch(1 0 0)); color: var(--ink, oklch(0.16 0 0)); } .ds-rail-step:focus-visible { outline: 2px solid var(--ink, oklch(0.16 0 0)); outline-offset: 2px; } .ds-rail-mark { width: 12px; height: 12px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; } .ds-rail-mark--now::before { content: ''; width: 8px; height: 8px; border-radius: 999px; background: var(--ink, oklch(0.16 0 0)); } .ds-rail-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-rail-detail { flex-shrink: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--ink-soft, oklch(0.44 0 0)); } .ds-rail-fold-btn { display: flex; align-items: center; gap: 4px; flex-shrink: 0; padding: 4px 0 4px 4px; border: none; background: none; border-radius: 4px; font: inherit; font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink-faint, oklch(0.62 0 0)); } .ds-rail-fold-btn:hover { color: var(--ink, oklch(0.16 0 0)); } .ds-caret { width: 12px; height: 12px; flex-shrink: 0; transition: transform .15s; } .ds-caret--open { transform: rotate(90deg); }"
     },
     {
-      "name": "Rail Sub-Agents",
+      "name": "Rail Agent Tree",
       "kind": "nav",
       "refersTo": "rail-agent",
-      "description": "One level of indent under a step, listing the agents that took the floor there. Green alive, red failed, blue waiting on you, faint once handed back — and only the agent that owns the latest event pulses.",
-      "html": "<nav class=\"ds-rail\"><div class=\"ds-rail-step ds-rail-step--now\"><span class=\"ds-rail-mark ds-rail-mark--now\"></span><span class=\"ds-rail-label\">Implémentation</span><span class=\"ds-rail-detail\">.4 · design-system</span></div><ul class=\"ds-agents\"><li><span class=\"ds-agent-mark\"><span class=\"ds-agent-dot ds-agent-dot--alive\"></span></span>orchestrator</li><li class=\"is-done\"><span class=\"ds-agent-mark\"><span class=\"ds-agent-dot ds-agent-dot--done\"></span></span>test-writer</li><li><span class=\"ds-agent-mark\"><span class=\"ds-agent-dot ds-agent-dot--alive ds-agent-dot--speaking\"></span></span>developer</li><li><span class=\"ds-agent-mark\"><span class=\"ds-agent-dot ds-agent-dot--human\"></span></span>code-adversary</li></ul><div class=\"ds-rail-step ds-rail-step--done\" style=\"display:flex\"><span class=\"ds-rail-mark\"></span><span class=\"ds-rail-label\">Mémoire, tour large</span></div><button class=\"ds-rail-fold-btn\"><svg class=\"ds-caret\" viewBox=\"0 0 12 12\" aria-hidden=\"true\"><path d=\"M4.5 2.5 8 6l-3.5 3.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></button></nav>",
-      "css": ".ds-rail { width: 304px; padding: 20px 16px; background: var(--rail, oklch(0.975 0 0)); color: var(--rail-ink, oklch(0.24 0 0)); border-right: 1px solid var(--line, oklch(0.905 0 0)); font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; } .ds-rail-list { list-style: none; margin: 0; padding: 0; } .ds-rail-step { display: flex; align-items: center; gap: 8px; width: 100%; padding: 4px 4px 4px 0; border: none; background: none; border-radius: 4px; font: inherit; font-size: 13px; text-align: left; color: var(--ink-faint, oklch(0.62 0 0)); transition: color .15s, background-color .15s; } .ds-rail-step--done { color: var(--ink-soft, oklch(0.44 0 0)); } .ds-rail-step--now { color: var(--ink, oklch(0.16 0 0)); font-weight: 500; } .ds-rail-step:hover { background: var(--field, oklch(1 0 0)); color: var(--ink, oklch(0.16 0 0)); } .ds-rail-step:focus-visible { outline: 2px solid var(--ink, oklch(0.16 0 0)); outline-offset: 2px; } .ds-rail-mark { width: 12px; height: 12px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; } .ds-rail-mark--now::before { content: ''; width: 8px; height: 8px; border-radius: 999px; background: var(--ink, oklch(0.16 0 0)); } .ds-rail-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-rail-detail { flex-shrink: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--ink-soft, oklch(0.44 0 0)); } .ds-rail-fold-btn { display: flex; align-items: center; gap: 4px; flex-shrink: 0; padding: 4px 0 4px 4px; border: none; background: none; border-radius: 4px; font: inherit; font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink-faint, oklch(0.62 0 0)); } .ds-rail-fold-btn:hover { color: var(--ink, oklch(0.16 0 0)); } .ds-caret { width: 12px; height: 12px; flex-shrink: 0; transition: transform .15s; } .ds-caret--open { transform: rotate(90deg); } .ds-agents { list-style: none; margin: 0; padding: 0 0 8px 20px; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; font-size: 12px; } .ds-agents li { display: flex; align-items: center; gap: 8px; padding: 2px 0; color: var(--ink-soft, oklch(0.44 0 0)); } .ds-agents li.is-done { color: var(--ink-faint, oklch(0.62 0 0)); } .ds-agent-mark { width: 12px; height: 12px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; } .ds-agent-dot { width: 8px; height: 8px; border-radius: 999px; } .ds-agent-dot--alive { background: var(--ok, oklch(0.55 0.13 150)); } .ds-agent-dot--failed { background: var(--ko, oklch(0.55 0.2 27)); } .ds-agent-dot--human { background: var(--human, oklch(0.52 0.18 250)); } .ds-agent-dot--done { background: color-mix(in oklch, var(--ink-faint, oklch(0.62 0 0)) 50%, transparent); } .ds-agent-dot--speaking { animation: ds-pulse 1.6s ease-in-out infinite; } @keyframes ds-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .4; transform: scale(.78); } } @media (prefers-reduced-motion: reduce) { .ds-agent-dot--speaking { animation: none; opacity: 1; } }"
+      "description": "The agents a step opened, nested one 20px indent per level of invocation. Every name is prefixed `agent - ` in faint ink, every row carries the same progress dot as the step above it, and exactly one spinner turns in the whole tree.",
+      "html": "<nav class=\"ds-rail\"><div class=\"ds-rail-step ds-rail-step--now\"><span class=\"ds-p ds-p--idle ds-p--handed\"><i></i></span><span class=\"ds-rail-label\">Implémentation</span><span class=\"ds-rail-detail\">.4 · web-app</span></div><ul class=\"ds-agents\"><li><div class=\"ds-agent\"><span class=\"ds-p ds-p--idle ds-p--handed\"><i></i></span><span class=\"ds-agent-name\"><span class=\"ds-agent-kind\">agent - </span>orchestrator</span></div><ul class=\"ds-agents\"><li><div class=\"ds-agent\"><span class=\"ds-p ds-p--done\"><i></i></span><span class=\"ds-agent-name\"><span class=\"ds-agent-kind\">agent - </span>test-writer</span></div></li><li><div class=\"ds-agent\"><span class=\"ds-spin\"></span><span class=\"ds-agent-name ds-agent-name--live\"><span class=\"ds-agent-kind\">agent - </span>developer</span></div></li></ul></li></ul></nav>",
+      "css": ".ds-rail { width: 304px; padding: 20px 16px; background: var(--rail, oklch(0.975 0 0)); color: var(--rail-ink, oklch(0.24 0 0)); border-right: 1px solid var(--line, oklch(0.905 0 0)); font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; } .ds-p { display: inline-flex; width: 12px; height: 12px; flex-shrink: 0; align-items: center; justify-content: center; } .ds-p > i { width: 10px; height: 10px; border-radius: 999px; display: block; } .ds-p--todo > i { border: 1px solid color-mix(in oklch, var(--ink-faint, oklch(0.62 0 0)) 40%, transparent); } .ds-p--idle > i { background: color-mix(in oklch, var(--ink-faint, oklch(0.62 0 0)) 50%, transparent); } .ds-p--human > i { background: var(--human, oklch(0.52 0.18 250)); } .ds-p--error > i { background: var(--ko, oklch(0.55 0.2 27)); } .ds-p--done > i { background: var(--ok, oklch(0.55 0.13 150)); } .ds-p--handed > i { animation: ds-breath 2.4s ease-in-out infinite; } .ds-spin { width: 12px; height: 12px; flex-shrink: 0; border-radius: 999px; display: block; border: 1.5px solid color-mix(in oklch, var(--ink-faint, oklch(0.62 0 0)) 30%, transparent); border-top-color: var(--ink, oklch(0.16 0 0)); animation: ds-spin 1.1s linear infinite; } @keyframes ds-spin { to { transform: rotate(1turn); } } @keyframes ds-breath { 0%, 100% { opacity: 1; } 50% { opacity: 0.08; } } @media (prefers-reduced-motion: reduce) { .ds-spin, .ds-p--handed > i { animation: none; opacity: 1; } } .ds-rail-step { display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 0; font-size: 13px; font-weight: 500; color: var(--ink, oklch(0.16 0 0)); } .ds-rail-label { flex: 1; min-width: 0; } .ds-rail-detail { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--ink-soft, oklch(0.44 0 0)); } .ds-agents { list-style: none; margin: 0; padding-left: 20px; } .ds-agent { display: flex; align-items: center; gap: 8px; padding: 2px 0; font-size: 12px; color: var(--ink-soft, oklch(0.44 0 0)); } .ds-agent-kind { color: var(--ink-faint, oklch(0.62 0 0)); } .ds-agent-name--live { color: var(--ink, oklch(0.16 0 0)); } "
     },
     {
       "name": "Rail Fold",
       "kind": "custom",
       "refersTo": "rail-fold",
-      "description": "One of the three disclosures at the foot of the rail. Open by default and remembered per viewer; absent entirely when empty; and when collapsed with a signal, the count shows in drift amber on the header.",
+      "description": "A disclosure in the rail, used by both blocks: the dossier under the step list, and what to watch at the foot. Legend type, a caret, a soft hairline between siblings. A section with nothing in it is not rendered; a folded section carrying a signal shows its count in drift amber on its own header.",
       "html": "<div class=\"ds-folds\"><section class=\"ds-fold\"><h2><button class=\"ds-fold-head\"><svg class=\"ds-caret ds-caret--open\" viewBox=\"0 0 12 12\" aria-hidden=\"true\"><path d=\"M4.5 2.5 8 6l-3.5 3.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg><span class=\"ds-fold-title\">Dépôts concernés</span></button></h2><div class=\"ds-fold-body\"><p><span class=\"ds-fold-dot\"></span><span class=\"ds-fold-label\">design-system</span><span class=\"ds-fold-value\">niveau 0</span></p></div></section><section class=\"ds-fold\"><h2><button class=\"ds-fold-head\"><svg class=\"ds-caret\" viewBox=\"0 0 12 12\" aria-hidden=\"true\"><path d=\"M4.5 2.5 8 6l-3.5 3.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg><span class=\"ds-fold-title\">À surveiller</span><span class=\"ds-fold-signal\">2</span></button></h2></section></div>",
       "css": ".ds-folds { width: 272px; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; } .ds-fold { border-top: 1px solid var(--line-soft, oklch(0.945 0 0)); padding: 10px 0; } .ds-fold:first-child { border-top: none; padding-top: 0; } .ds-fold h2 { margin: 0; } .ds-fold-head { display: flex; align-items: center; gap: 6px; width: 100%; padding: 0; border: none; background: none; border-radius: 4px; font: inherit; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .025em; text-align: left; color: var(--ink-faint, oklch(0.62 0 0)); } .ds-fold-head:hover { color: var(--ink-soft, oklch(0.44 0 0)); } .ds-fold-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-fold-signal { flex-shrink: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; color: var(--drift, oklch(0.52 0.13 75)); } .ds-fold-body { padding: 6px 0 0 18px; font-size: 12px; } .ds-fold-body p { display: flex; align-items: baseline; gap: 8px; margin: 0; } .ds-fold-dot { width: 6px; height: 6px; flex-shrink: 0; border-radius: 999px; background: var(--ink, oklch(0.16 0 0)); } .ds-fold-label { flex: 1; min-width: 0; color: var(--ink, oklch(0.16 0 0)); } .ds-fold-value { flex-shrink: 0; color: var(--ink-faint, oklch(0.62 0 0)); } .ds-caret { width: 12px; height: 12px; flex-shrink: 0; transition: transform .15s; } .ds-caret--open { transform: rotate(90deg); }"
     },
@@ -444,20 +444,28 @@
       "css": ".ds-banner { padding: 12px 24px; background: color-mix(in oklch, var(--primary-surface, oklch(0.973 0.014 277)) 95%, transparent); border-bottom: 1px solid var(--primary-line, oklch(0.885 0.03 277)); backdrop-filter: blur(8px); color: var(--ink, oklch(0.16 0 0)); font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; } .ds-banner-top { display: flex; align-items: center; gap: 10px; } .ds-banner-mark { width: 12px; height: 12px; flex-shrink: 0; } .ds-banner-spin { display: block; width: 12px; height: 12px; border-radius: 999px; border: 1.5px solid color-mix(in oklch, var(--ink-faint, oklch(0.62 0 0)) 30%, transparent); border-top-color: var(--ink, oklch(0.16 0 0)); animation: ds-spin 1.1s linear infinite; } @keyframes ds-spin { to { transform: rotate(1turn); } } @media (prefers-reduced-motion: reduce) { .ds-banner-spin { animation: none; opacity: 1; } } .ds-banner-step { flex: 1; min-width: 0; margin: 0; font-size: 14px; font-weight: 500; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-banner-agent { flex-shrink: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--primary-faint, oklch(0.545 0.035 277)); } .ds-banner-time { flex-shrink: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 500; line-height: 1; letter-spacing: -0.01em; } .ds-banner-body { padding: 4px 0 0 22px; } .ds-banner-line { margin: 0; font-size: 14px; line-height: 1.375; color: var(--ink-soft, oklch(0.44 0 0)); } .ds-banner-key { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 500; color: var(--ink, oklch(0.16 0 0)); } .ds-banner-sep { padding: 0 6px; color: var(--primary-faint, oklch(0.545 0.035 277)); }"
     },
     {
-      "name": "Docket Section",
+      "name": "Checklist Grid",
       "kind": "custom",
-      "refersTo": null,
-      "description": "The signature block: a decision rendered as running prose — question, answer, rationale — on a hairline, with the timestamp parked in a narrow right track. No card.",
-      "html": "<section class=\"ds-docket\"><header class=\"ds-docket-head\"><h2 class=\"ds-docket-title\">Questions fonctionnelles tranchées</h2><span class=\"ds-docket-count\">3</span><span class=\"ds-docket-step\">décidé à l'étape 4</span></header><ol class=\"ds-docket-list\"><li class=\"ds-docket-item\"><div class=\"ds-docket-grid\"><h3 class=\"ds-docket-q\">Faut-il conserver l'ancien format d'export ?</h3><time class=\"ds-docket-at\">14:32</time><p class=\"ds-docket-a\">Non — l'ancien format n'est plus lu par aucun client depuis la migration.</p><span></span><p class=\"ds-docket-why\">Vérifié sur les trois dépôts consommateurs avant de trancher.</p></div></li></ol></section>",
-      "css": ".ds-docket { max-width: 640px; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; color: var(--ink, oklch(0.16 0 0)); } .ds-docket-head { display: flex; align-items: baseline; gap: 8px; border-bottom: 1px solid var(--line, oklch(0.905 0 0)); padding-bottom: 8px; margin-bottom: 16px; } .ds-docket-title { margin: 0; font-size: 15px; font-weight: 500; letter-spacing: -0.01em; } .ds-docket-count { font-family: ui-monospace, Menlo, monospace; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-faint, oklch(0.62 0 0)); } .ds-docket-step { margin-left: auto; flex-shrink: 0; font-size: 11px; color: var(--ink-faint, oklch(0.62 0 0)); } .ds-docket-list { list-style: none; margin: 0; padding: 0; } .ds-docket-item { border-bottom: 1px solid var(--line-soft, oklch(0.945 0 0)); padding: 16px 0; } .ds-docket-item:first-child { padding-top: 0; } .ds-docket-item:last-child { border-bottom: none; } .ds-docket-grid { display: grid; grid-template-columns: minmax(0, 1fr) 2.75rem; column-gap: 20px; } .ds-docket-q { margin: 0; font-size: 14px; font-weight: 500; line-height: 1.375; } .ds-docket-at { font-family: ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; font-size: 11px; color: var(--ink-faint, oklch(0.62 0 0)); } .ds-docket-a { margin: 6px 0 0; font-size: 14px; line-height: 1.625; color: var(--ink-soft, oklch(0.44 0 0)); } .ds-docket-why { margin: 8px 0 0; font-size: 13px; line-height: 1.625; color: var(--ink-faint, oklch(0.62 0 0)); }"
+      "refersTo": "grid-cell",
+      "description": "The overview of a list whose items carry a state. Filled for rendered, hollow for not, red for blocking — twenty-eight squares read at a glance where twenty-eight rows read twenty-eight times. A square is a line you can open, never a metric tile.",
+      "html": "<div class=\"ds-board\"><h3 class=\"ds-board-h\">Tests <span>3/8</span></h3><ol class=\"ds-grid\"><li><button class=\"ds-cell is-done\" title=\"T1\"></button></li><li><button class=\"ds-cell is-done\" title=\"T2\"></button></li><li><button class=\"ds-cell is-done\" title=\"T3\"></button></li><li><button class=\"ds-cell is-open\" title=\"T4\"></button></li><li><button class=\"ds-cell is-failed\" title=\"T5\"></button></li><li><button class=\"ds-cell\" title=\"T6\"></button></li><li><button class=\"ds-cell\" title=\"T7\"></button></li><li><button class=\"ds-cell\" title=\"T8\"></button></li></ol></div>",
+      "css": ".ds-board { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; } .ds-board-h { display: flex; align-items: baseline; gap: 8px; margin: 0 0 8px; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.025em; color: var(--ink-faint, oklch(0.62 0 0)); } .ds-board-h span { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; color: var(--ink-soft, oklch(0.44 0 0)); } .ds-grid { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; } .ds-cell { width: 16px; height: 16px; padding: 0; border-radius: 2px; cursor: pointer; border: 1px solid var(--line-soft, oklch(0.945 0 0)); background: transparent; transition: border-color 0.15s; } .ds-cell:hover { border-color: var(--ink-faint, oklch(0.62 0 0)); } .ds-cell.is-done { border-color: var(--ok, oklch(0.55 0.13 150)); background: var(--ok, oklch(0.55 0.13 150)); } .ds-cell.is-failed { border-color: var(--ko, oklch(0.55 0.2 27)); background: var(--ko, oklch(0.55 0.2 27)); } .ds-cell.is-open { outline: 2px solid color-mix(in oklch, var(--ink, oklch(0.16 0 0)) 40%, transparent); outline-offset: 1px; } .ds-cell:focus-visible { outline: 2px solid var(--ink, oklch(0.16 0 0)); outline-offset: 2px; } "
     },
     {
       "name": "Evidence Line",
       "kind": "custom",
       "refersTo": null,
-      "description": "A cited proof. The file:line half is monospace full ink because it is a location; the explanation half is faint prose.",
+      "description": "A located proof inside the repos widget: `file:line — what you see there`, split at the em dash. The left half is a location, so monospace in full ink; the right half is prose, so prose.",
       "html": "<ul class=\"ds-evidence\"><li><code class=\"ds-evidence-loc\">apps/web/rspack.config.mjs:41-73</code><span class=\"ds-evidence-why\"> — MFE_REMOTES ne contient aucun pcf</span></li></ul>",
       "css": ".ds-evidence { list-style: none; margin: 0; padding: 4px 0 0; display: flex; flex-direction: column; gap: 6px; font-size: 12px; line-height: 1.625; } .ds-evidence-loc { font-family: ui-monospace, 'SF Mono', Menlo, monospace; color: var(--ink, oklch(0.16 0 0)); } .ds-evidence-why { color: var(--ink-faint, oklch(0.62 0 0)); }"
+    },
+    {
+      "name": "Progress Dot",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "The page's one state atom, used unchanged by the banner, the thirteen steps and every agent row. Six states in one 12px footprint; the handed-off state may breathe.",
+      "html": "<ul class=\"ds-scale\"><li><span class=\"ds-p ds-p--todo\"><i></i></span>pas commencé</li><li><span class=\"ds-spin\"></span>en cours</li><li><span class=\"ds-p ds-p--idle ds-p--handed\"><i></i></span>a passé la main</li><li><span class=\"ds-p ds-p--human\"><i></i></span>en attente de ta réponse</li><li><span class=\"ds-p ds-p--error\"><i></i></span>en échec</li><li><span class=\"ds-p ds-p--done\"><i></i></span>rendu</li></ul>",
+      "css": ".ds-p { display: inline-flex; width: 12px; height: 12px; flex-shrink: 0; align-items: center; justify-content: center; } .ds-p > i { width: 10px; height: 10px; border-radius: 999px; display: block; } .ds-p--todo > i { border: 1px solid color-mix(in oklch, var(--ink-faint, oklch(0.62 0 0)) 40%, transparent); } .ds-p--idle > i { background: color-mix(in oklch, var(--ink-faint, oklch(0.62 0 0)) 50%, transparent); } .ds-p--human > i { background: var(--human, oklch(0.52 0.18 250)); } .ds-p--error > i { background: var(--ko, oklch(0.55 0.2 27)); } .ds-p--done > i { background: var(--ok, oklch(0.55 0.13 150)); } .ds-p--handed > i { animation: ds-breath 2.4s ease-in-out infinite; } .ds-spin { width: 12px; height: 12px; flex-shrink: 0; border-radius: 999px; display: block; border: 1.5px solid color-mix(in oklch, var(--ink-faint, oklch(0.62 0 0)) 30%, transparent); border-top-color: var(--ink, oklch(0.16 0 0)); animation: ds-spin 1.1s linear infinite; } @keyframes ds-spin { to { transform: rotate(1turn); } } @keyframes ds-breath { 0%, 100% { opacity: 1; } 50% { opacity: 0.08; } } @media (prefers-reduced-motion: reduce) { .ds-spin, .ds-p--handed > i { animation: none; opacity: 1; } } .ds-scale { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; font-size: 13px; color: var(--ink-soft, oklch(0.44 0 0)); } .ds-scale li { display: flex; align-items: center; gap: 8px; } "
     },
     {
       "name": "State Notice",
@@ -476,39 +484,50 @@
       "css": ".ds-dots { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; font-size: 13px; color: var(--ink-soft, oklch(0.44 0 0)); } .ds-dots li { display: flex; align-items: baseline; gap: 8px; } .ds-dot { width: 6px; height: 6px; flex-shrink: 0; border-radius: 999px; } .ds-dot--ok { background: var(--ok, oklch(0.55 0.13 150)); } .ds-dot--ko { background: var(--ko, oklch(0.55 0.2 27)); } .ds-dot--human { background: var(--human, oklch(0.52 0.18 250)); } .ds-dot--drift { background: var(--drift, oklch(0.6 0.13 75)); } .ds-dot--now { background: var(--ink, oklch(0.16 0 0)); } .ds-dot--todo { background: color-mix(in oklch, var(--ink-faint, oklch(0.62 0 0)) 50%, transparent); }"
     },
     {
-      "name": "Docket Index",
-      "kind": "nav",
-      "refersTo": null,
-      "description": "The sticky index in the document's right margin, above 1280px. Section label left, count right in tabular monospace.",
-      "html": "<aside class=\"ds-index\"><h2 class=\"ds-index-legend\">Dans ce dossier</h2><ul class=\"ds-index-list\"><li><a class=\"ds-index-link\" href=\"#\"><span>Questions fonctionnelles</span><span class=\"ds-index-count\">3</span></a></li><li><a class=\"ds-index-link\" href=\"#\"><span>Périmètre des dépôts</span><span class=\"ds-index-count\">4</span></a></li><li><a class=\"ds-index-link\" href=\"#\"><span>Contradictions mémoire</span><span class=\"ds-index-count\">1</span></a></li></ul></aside>",
-      "css": ".ds-index { width: 224px; display: flex; flex-direction: column; gap: 6px; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; } .ds-index-legend { margin: 0; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.025em; color: var(--ink-faint, oklch(0.62 0 0)); } .ds-index-list { list-style: none; margin: 0; padding: 0; } .ds-index-link { display: flex; align-items: baseline; gap: 8px; padding: 4px 0; font-size: 12px; color: var(--ink-soft, oklch(0.44 0 0)); text-decoration: none; text-underline-offset: 0.2em; } .ds-index-link:hover { color: var(--ink, oklch(0.16 0 0)); text-decoration: underline; } .ds-index-link:focus-visible { outline: 2px solid var(--ink, oklch(0.16 0 0)); outline-offset: 2px; border-radius: 4px; } .ds-index-link span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-index-count { flex-shrink: 0; font-family: ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; color: var(--ink-faint, oklch(0.62 0 0)); }"
+      "name": "Event Drawer",
+      "kind": "custom",
+      "refersTo": "dock-bar",
+      "description": "The raw event log, pinned to the floor across both columns. 44px closed and never mute — it carries its own count — then 75vh open, covering the page rather than pushing it. Escape closes it.",
+      "html": "<section class=\"ds-dock ds-dock--open\"><header class=\"ds-dock-bar\"><span class=\"ds-dock-label\">Tous les événements du run</span><span class=\"ds-dock-count\">142</span><span class=\"ds-dock-drift\">2 illisibles</span><button class=\"ds-dock-handle\" aria-expanded=\"true\"><svg viewBox=\"0 0 12 12\" width=\"12\" height=\"12\" aria-hidden=\"true\"><path d=\"M4.5 2.5 8 6l-3.5 3.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg><svg viewBox=\"0 0 16 16\" width=\"16\" height=\"16\" aria-hidden=\"true\"><path d=\"M3.25 2.75h6.5l3 3v7.5h-9.5z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.3\" stroke-linejoin=\"round\"/><path d=\"M9.5 2.9v3.1h3M5.75 8.5h4.5M5.75 10.75h3\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.3\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></button></header><ol class=\"ds-dock-log\"><li><time>15:06</time><span class=\"ds-dock-kind\">answer</span><span>Réponses reçues : la constante reçoit aussi REPLACE_BEFORE_PRODUCTION</span><span class=\"ds-dock-agent\">functional-grill</span></li><li><time>15:02</time><span class=\"ds-dock-kind\">step</span><span>Le cycle s'ouvre sur web-app</span><span class=\"ds-dock-agent\"></span></li></ol></section>",
+      "css": ".ds-dock { display: flex; flex-direction: column; height: 44px; border-top: 1px solid var(--line, oklch(0.905 0 0)); background: color-mix(in oklch, var(--rail, oklch(0.975 0 0)) 95%, transparent); backdrop-filter: blur(8px); font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; transition: height 300ms ease-out; } .ds-dock--open { height: 260px; } .ds-dock-bar { display: flex; align-items: center; gap: 8px; height: 44px; flex-shrink: 0; padding: 0 24px; font-size: 13px; } .ds-dock-label { color: var(--ink, oklch(0.16 0 0)); } .ds-dock-count { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-faint, oklch(0.62 0 0)); } .ds-dock-drift { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--drift, oklch(0.52 0.13 75)); } .ds-dock-handle { display: flex; align-items: center; gap: 6px; margin-left: auto; padding: 6px; border: 0; background: none; border-radius: 4px; color: var(--ink-faint, oklch(0.62 0 0)); cursor: pointer; } .ds-dock-handle:hover { color: var(--ink, oklch(0.16 0 0)); } .ds-dock-handle:focus-visible { outline: 2px solid var(--ink, oklch(0.16 0 0)); outline-offset: 2px; } .ds-dock-handle svg:first-child { transform: rotate(-90deg); } .ds-dock--open .ds-dock-handle svg:first-child { transform: rotate(90deg); } .ds-dock-log { list-style: none; margin: 0; padding: 16px 24px; overflow-y: auto; flex: 1; min-height: 0; border-top: 1px solid var(--line-soft, oklch(0.945 0 0)); font-size: 12px; color: var(--ink-soft, oklch(0.44 0 0)); } .ds-dock-log li { display: flex; align-items: baseline; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line-soft, oklch(0.945 0 0)); } .ds-dock-log li:last-child { border-bottom: 0; } .ds-dock-log time, .ds-dock-kind, .ds-dock-agent { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink-faint, oklch(0.62 0 0)); flex-shrink: 0; } .ds-dock-kind { width: 56px; } .ds-dock-log li > span:nth-child(3) { flex: 1; min-width: 0; } @media (prefers-reduced-motion: reduce) { .ds-dock { transition: none; } } "
     }
   ],
   "narrative": {
     "northStar": "The Case File",
-    "overview": "This is a dossier, not a dashboard. The page exists so that someone who opens a\ncold tab after an hour can read what the agents decided and on what evidence,\nand the build carries that literally: running prose in a bounded column, findings\ncited as `file:line`, hairline rules between entries, and not a single card. The\nmetric-tile grid that this whole software category ships was refused, and the\nrefusal is visible in the absence of any container with a background, a border\nradius above 4px, or a shadow.\n\nThe surface is built from two materials meeting on a vertical seam, under a\nbanner that spans the working column. On the left, a dense rail on its own\nslightly-shifted ground, 304px wide, full height, sticky: thirteen unnumbered\nsteps read as an index, and under the one that is live, the sub-agents that have\ntaken the floor, one of them pulsing. On the right, a document column capped at 640px\nwith running text at 68ch, and the leftover right margin used the way a printed\ndocument uses its margin — for a sticky index into the sections below. The build\nis recognisable with the text blurred out, which was the point.\n\nThe palette is greyscale ink at four weights, four state hues, and one ground\nindigo. The four state hues say what passed, what broke, what is waiting on you\nand what is going wide — and they say nothing else. The indigo is not a fifth\nstate: it is a ground, held to two jobs, the banner's floor and what is selected,\nat a tenth of the chroma of the dots that sit on it. Where the two would compete,\nthe floor loses its tint, never the dot. Emphasis is carried by ink weight and\ntype size. Light and dark are both shipped and the system picks, because this tab\nlives next to a terminal.",
+    "overview": "This is a dossier, not a dashboard. The page exists so that someone who opens a cold tab after an hour can read what the agents decided and on what evidence, and the build carries that literally: running prose in a bounded column, findings cited as `file:line`, hairline rules between entries, and not a single card. The metric-tile grid that this whole software category ships was refused, and the refusal is visible in the absence of any container with a background, a border radius above 4px, or a shadow. The surface is built from two materials meeting on a vertical seam, under a banner that spans the working column and over a bar pinned to the floor. On the left, a dense rail on its own slightly-shifted ground, 304px wide, sticky: thirteen unnumbered steps read as an index, the dossier folded beneath them, and under the step that is live, the agents that have taken the floor — nested, one indent per level of invocation. On the right, the workbench, full width, where what the run is fabricating stacks and disappears again. Along the bottom, a 44px bar that opens onto three quarters of the screen and holds the raw event log. The build is recognisable with the text blurred out, which was the point. **One thing runs at a time, and the page shows which.** The workflow has no parallelism, so the surface refuses to imply any: there is exactly one spinner on screen, and it sits on whatever is acting — a step while it works, its agent once it hands off, that agent's own child one indent deeper. The line that handed the floor over does not go dark; it breathes. Depth of work is read as depth in the list, which is the single idea the rail is built on. The palette is greyscale ink at four weights, four state hues, and one ground indigo. The four state hues say what passed, what broke, what is waiting on you and what is going wide — and they say nothing else. The indigo is not a fifth state: it is a ground, held to two jobs, the banner's floor and what is selected, at a tenth of the chroma of the dots that sit on it. Where the two would compete, the floor loses its tint, never the dot. Emphasis is carried by ink weight and type size. Light and dark are both shipped and the system picks, because this tab lives next to a terminal.",
     "keyCharacteristics": [
       "Hairlines and whitespace only; zero cards, zero shadows, zero elevation.",
       "Colour is a state channel; the one ground tint is confined to two jobs.",
       "\"Now\" is marked by full-weight ink against muted surroundings, never by a hue.",
-      "A dense rail on its own ground against a bounded prose column.",
+      "A dense rail on its own ground against a full-width workbench.",
       "Monospace is reserved for what is measured or located; everything else is sans.",
-      "Two continuous motions, never in the same row, and both survive reduced-motion."
+      "One progress scale, six states, one dot — steps and agents read identically.",
+      "Exactly one spinner on screen; the line that handed off breathes instead."
     ],
     "rules": [
+      {
+        "name": "The Selection-From-The-Surface Rule",
+        "body": "Inside a state region, what is selected is drawn from that region's own hue at full strength, never from ink. The question batch sits on a `human` wash, so the chosen option is `human` — the selection belongs to the same family as the thing it is inside. Filling it with ink imported the commit button's colour into a place where nothing is committed, and put the heaviest block on screen on something still being decided.",
+        "section": "colors"
+      },
       {
         "name": "The State-Only Colour Rule",
         "body": "Green, red, blue and amber may appear only where they report the status of something the run produced. No chromatic token may be used for emphasis, branding, hierarchy, decoration, or to distinguish one section from another. Audit test: for every coloured pixel on screen, name the thing whose state it reports. If you cannot, delete the colour.",
         "section": "colors"
       },
       {
-        "name": "The Two-Level Green Rule",
-        "body": "Green reports \"finished\" on the run and \"alive\" on a sub-agent, and that is allowed only because the two can never be on screen at once — a finished run has no agent running. Any second colour tempted into a double meaning must prove the same impossibility before it earns it.",
+        "name": "The One-Scale Rule",
+        "body": "A step and an agent are drawn from the same six-state scale and the same atom — not-started, running, handed-off, waiting on you, failed, rendered — so a reader learns the vocabulary once and applies it at every depth. The rail and the banner previously spoke two dialects of it, with green meaning \"alive\" in one and \"done\" in the other; recoupling two dialects twenty pixels apart is precisely the cost this page exists to remove. A state that cannot be expressed in the shared scale does not get a private colour; it gets a word.",
+        "section": "colors"
+      },
+      {
+        "name": "The Motion-Means-Acting Rule",
+        "body": "Aliveness is reported by motion, never by hue. The spinner marks what is acting; the slow fade marks what has handed off and is still open; a static dot marks everything else. Colour is then free to report outcome alone, which is the only way one palette can serve both questions.",
         "section": "colors"
       },
       {
         "name": "The Ink-Weight Now Rule",
-        "body": "\"Now\" is full-weight ink against soft and faint ink. Done is soft, not-yet is faint, current is full and medium-weight. The banner's indigo floor is not an exception: it separates a region, it does not say which step is current. Marking the current step with a hue instead of ink weight is a regression — it was scored as one in the finish review and reverted. The green under a live step is not an exception either: it marks the agent, not the step.",
+        "body": "\"Now\" is full-weight ink against soft and faint ink. Done is soft, not-yet is faint, current is full and medium-weight. The banner's indigo floor is not an exception: it separates a region, it does not say which step is current. Marking the current step with a hue instead of ink weight is a regression — it was scored as one in the finish review and reverted. The state dot beside a row is not an exception either: it reports that row's outcome, while ink weight reports where the reader is. The two answer different questions and a step can be green and current at once.",
         "section": "colors"
       },
       {
@@ -519,6 +538,11 @@
       {
         "name": "The Mono-Means-Measured Rule",
         "body": "Monospace is used only for what is measured or located: paths, line ranges, durations, timestamps, counters, ticket keys. It is never worn as a technical costume over prose — agent names are sans, because an agent is a who and not a measurement.",
+        "section": "typography"
+      },
+      {
+        "name": "The Named-Kind Rule",
+        "body": "A proper noun the reader has no way to classify is prefixed with its kind in faint ink: `agent - developer`, never `developer` bare. Set beside thirteen step labels written in French prose, an English hyphenated identifier reads as a fourteenth step. One muted word settles what it is, and it costs less than teaching the vocabulary.",
         "section": "typography"
       },
       {
@@ -538,12 +562,27 @@
       },
       {
         "name": "The Margin-Not-Gap Rule",
-        "body": "The prose column is bounded at the readable measure and the remainder is treated as a document margin. Do not widen text to fill it and do not drop a card into it; put an index, a timestamp, or nothing there.",
+        "body": "Prose is bounded at the readable measure (68ch) and the remainder is treated as a document margin. Do not widen text to fill it and do not drop a card into it; put a timestamp there, or nothing. The rule is about prose and only prose: grids, rows and counts take the full column, and bounding those at a reading measure leaves a column of dead space beside a widget that had room to breathe.",
         "section": "layout"
       },
       {
-        "name": "The One-Motion-Per-Row Rule",
-        "body": "The page runs two continuous animations — the spinner and the sub-agent pulse — and they are never stacked in the same place. A step with a pulsing agent beneath it drops its spinner and keeps its full ink; the banner carries the run's spinner permanently, so nothing is lost. Two things moving twenty pixels apart for one living thing is one too many, and any third continuous motion needs a state nothing else reports.",
+        "name": "The One-Content-One-View Rule",
+        "body": "No content is rendered twice on this page. A widget is the only place its subject exists, and every other mention of it — a rail entry, a count, a fold — is a way to get there, never a second copy. Two renderings of the same list are two things to keep in step, and the one you are not looking at is the one that goes stale.",
+        "section": "layout"
+      },
+      {
+        "name": "The Reserved-Floor Rule",
+        "body": "Anything pinned to the viewport reserves its own height from both columns — the page's bottom padding and the rail's height are computed from the bar's 44px. A fixed element that covers the last row costs exactly the row the reader came for, and it costs it silently.",
+        "section": "layout"
+      },
+      {
+        "name": "The One-Spinner Rule",
+        "body": "There is exactly one spinner on screen, on the deepest thing that is acting, and the rail's derivation guarantees it rather than hoping for it: a line that has handed the floor to another cannot be `running`. Two rings turning twenty pixels apart for one living thing claims a parallelism this workflow does not have.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Breath-Not-Pulse Rule",
+        "body": "A line that has handed off breathes: opacity 1 to 0.08 and back over 2.4s, `ease-in-out`, no scale and no colour change. It travels between its own two neighbouring states — the muted dot it is, and the empty ring of what has not started — so the motion reads as \"open, not mine\" rather than as a heartbeat. It must stay under the spinner's threshold: the spinner is the subject, the breath is the context. A third continuous motion needs a state nothing else reports; the drawer's height transition is not one, because it runs once on a gesture and then stops.",
         "section": "elevation"
       },
       {
@@ -561,12 +600,16 @@
       "**Do** spend colour only on state. `ok`, `ko`, `human` and `drift` report what passed, what broke, what is waiting on you and what is going wide, and nothing else. The indigo ground is the one exception, and it is confined to the banner floor and the selection wash.",
       "**Do** mark the present with full-weight ink against soft and faint ink.",
       "**Do** separate surfaces with a 1px hairline (`line` between regions, `line-soft` between repeating rows) or a single tonal step.",
-      "**Do** keep running text inside the measure — 640px for the docket column, 68ch for prose paragraphs — and treat the remainder as a margin.",
+      "**Do** keep running text inside the measure (68ch) and treat the remainder as a margin. Everything that is not prose — grids, rows, controls, counts — takes the full column.",
+      "**Do** put a subject in exactly one widget, and make every other mention of it a route to that widget.",
       "**Do** set monospace on anything measured or located, and make every changing number tabular.",
       "**Do** theme the browser's own surfaces from the palette: selection, caret, focus ring, scrollbar thumb and track, underline offset.",
       "**Do** write empty states as sentences that say where the run is.",
       "**Do** restate the rail's state in another form whenever a breakpoint removes the rail.",
-      "**Do** let `prefers-reduced-motion` freeze both the spinner and the pulse while keeping them visible.",
+      "**Do** let `prefers-reduced-motion` freeze the spinner and the breath while keeping them visible, and drop the drawer's height transition entirely.",
+      "**Do** draw a step and an agent from the same six-state scale and the same atom, at every depth of nesting.",
+      "**Do** prefix a bare identifier with its kind in faint ink when the reader has no way to classify it — `agent - developer`.",
+      "**Do** reserve the height of anything pinned to the viewport from every column it crosses.",
       "**Do** give every dot the same 12px footprint whatever its state, so changing state never moves the line it sits on.",
       "**Do** tint secondary text on a tinted surface from that surface's own hue, and darken it until it clears 4.5:1 — measure it, don't eyeball it.",
       "**Do** hide a rail section that has nothing in it, and surface its signal on the header when it is folded."
@@ -576,12 +619,16 @@
       "**Don't** mark the current step, or anything else, with colour instead of ink weight. This regression has already been shipped once and reverted.",
       "**Don't** put content in a card, a panel, or any box with a fill, a radius above 4px, and a border at once.",
       "**Don't** add a shadow of any kind, at rest or on hover.",
-      "**Don't** build a metric-tile grid. Numbers live inline against their label, in monospace, at the size of their neighbours.",
+      "**Don't** build a metric-tile grid. Numbers live inline against their label, in monospace, at the size of their neighbours. The checklist grid is not one: its squares carry no number and each one is a line you can open.",
+      "**Don't** render the same content in two places. One widget owns a subject; everything else routes to it.",
       "**Don't** round a region. Radius belongs to things that are touched or picked.",
-      "**Don't** let type exceed 15px, or introduce a display face. The docket heading is the largest thing on the page; emphasis is bought with weight, position and ink, never with size.",
+      "**Don't** let type exceed 15px, or introduce a display face. A widget heading is the largest thing on the page; emphasis is bought with weight, position and ink, never with size.",
       "**Don't** truncate agent-written prose without showing it in full somewhere on the same screen.",
-      "**Don't** add a third continuous animation, and don't stack the two that exist in the same row. The spinner and the sub-agent pulse are the whole budget.",
-      "**Don't** number the steps in the rail, and don't have the docket refer back to a step by number. The `<ol>` already carries position for anyone listening, and a back-reference that makes the reader count rows is the recoupling this page exists to remove.",
+      "**Don't** show two spinners at once. One thing acts at a time in this workflow, and the derivation must guarantee it rather than the layout hoping for it.",
+      "**Don't** report aliveness with a hue, or an outcome with motion. Colour says what happened; movement says what is happening. Green meaning \"still working\" cost this system its clearest distinction once already.",
+      "**Don't** add a third continuous animation. The spinner and the handed-off breath are the whole budget; a transition that runs once on a gesture is not a third.",
+      "**Don't** number the steps in the rail, and don't have a widget refer back to a step by number. The `<ol>` already carries position for anyone listening, and a back-reference that makes the reader count rows is the recoupling this page exists to remove.",
+      "**Don't** let a fixed element cover content it did not reserve room for.",
       "**Don't** use a text glyph as an icon. Rotating a `›` is not a chevron: it carries the font's weight and turns about its text box rather than its point. Draw an inline SVG at the stroke weight of the page — and draw it once: there is one caret atom, used by every disclosure."
     ]
   }
