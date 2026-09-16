@@ -64,22 +64,61 @@ ticket** : aucun code, aucun remote, aucune memoire.
 | 8 | agent `planner` | le plan + les deux checklists de sortie |
 | 9 | **gate humain** | approbation |
 
-Ecris l'etat apres chacun de ces points.
+**`run.step` s'ecrit en ENTRANT dans le point, le reste de l'etat en sortant.**
+
+C'est la seule chose qui rend l'etape affichable pendant qu'elle dure. Ecrit apres coup, il
+dit « Lecture du ticket » pendant que le `functional-grill` interroge depuis trois minutes —
+et un curseur qui retarde d'un point entier est aussi faux qu'un curseur absent, avec en plus
+l'air d'etre juste.
+
+Donc, pour chaque point, dans cet ordre :
+
+1. `write-store-ticket` avec `run.step` — **avant** d'invoquer. Le numero du point
+   et rien d'autre : `4`, ou `10.4` pour une sous-etape du cycle. Pas `"4 -
+   functional-grill"`, pas `"Point 4"` : c'est un curseur de reprise, il se
+   compare. Ce que fait l'etape se dit dans le `title` de ton event ;
+2. `push-live-mode-event` avec `kind: "step"`, `status: "start"` et ce que le point va faire ;
+3. le point ;
+4. `push-live-mode-event` avec `kind: "step"`, `status: "progress"` — **des que l'agent t'a
+   rendu la main**, avant meme d'ecrire l'etat ;
+5. `write-store-ticket` avec ce qu'il a produit.
+
+Le 2 n'est pas un doublon du 1. Le 1 rend la reprise possible, le 2 date l'etape : c'est de
+lui que vient la duree affichee, et sans lui une etape de vingt minutes n'a pas d'age.
+
+**Ne remplis JAMAIS `agent` sur tes events.** Tu n'es pas un agent, tu es le workflow — le
+champ `agent` sert a dire quel sous-agent tient la main, et toi tu la reprends. Y ecrire
+`autopilot-start`, et a plus forte raison `autopilot-start (gate humain, point 9)`, cree un
+agent fantome qui s'affiche dans le rail **a la place de l'`orchestrator` qui tourne
+vraiment**, avec le loader, sous une etape qui n'est pas la sienne. Ce que tu fais se dit dans
+`title` ; l'etape, elle, est deja affichee a cote.
+
+**Le 4 n'est pas une politesse.** C'est justement ce champ vide qui dit que tu as repris la
+main : tant que le dernier event du flux porte un nom d'agent, le shell considere que cet
+agent travaille toujours — il n'a aucun autre moyen de le savoir. Sans le 4,
+le `functional-grill` garde le loader pendant que tu ecris l'etat, et il ne passe au vert que
+quand le point suivant s'ouvre. Le 4 rend la main a l'etape, visiblement, au moment ou elle
+est rendue pour de vrai.
 
 Le second passage du `doc-scout` n'est pas optionnel : sans lui, le `technical-grill` et le
 `planner` travaillent sur une memoire non ciblee.
 
 ### Le point 9 est le seul gate humain du workflow
 
-Soumets trois choses, et rien d'autre : **le scope, le plan repo par repo, les deux
-checklists**. Utilise `ask-user`.
+`ask-plan-approval`, avec `plan.repos` tel que le planner l'a ecrit. **Pas `ask-user`** : un
+plan se lit sur une page, pas dans un formulaire de cinq questions dont on a oublie la
+premiere en repondant a la derniere.
 
-Trois issues :
+Ne soumets **que le plan**. Le perimetre et les deux checklists ont leurs propres vues et se
+lisent a cote ; les recopier dans le gate ferait lire deux fois la meme chose a quelqu'un
+qui doit deja en tenir trois.
 
-- **approuver** → on passe en phase 2 ;
-- **modifier** → le plan est amende et resoumis ;
-- **rejeter** → retour au point 4 si le probleme est fonctionnel, au point 7 s'il est
-  technique.
+Trois issues, rendues par le tool :
+
+- **`approve`** → on passe en phase 2. Le tool a deja ecrit `plan.approvedAt` ;
+- **`amend`** → la note dit quoi changer : renvoie le `planner` dessus, puis resoumets ;
+- **`reject`** → retour au point 4 si le probleme est fonctionnel, au point 7 s'il est
+  technique. La note le dit.
 
 Une fois approuve, ecris `plan.approvedAt` — et **tout le reste s'execute sans nouvelle
 validation**, y compris les actions publiques et irreversibles du point 13. Ne redemande
@@ -101,8 +140,28 @@ Invoque l'agent `orchestrator` **une fois par repo**, avec le plan, les checklis
 du repo. Il tient les compteurs, ecrit l'etat a chaque transition, et rend la main quand le
 repo est `done` ou `escalated`.
 
+L'orchestrateur passe par `preflight-repo` avant d'ouvrir 10.1. Une panne d'environnement
+detectee la coute trente secondes ; la meme panne decouverte en 10.3 arrive deguisee en
+echec de test, traverse le `developer`, et il faut un humain pour trancher que personne
+n'avait tort.
+
 **Si une escalade remonte, le run s'arrete la.** On ne passe pas au repo suivant, on ne
 publie rien.
+
+### Tu ne lances jamais un test toi-meme
+
+Tu as un shell, les agents de test n'en ont pas. C'est exactement pour ca que tu ne dois pas
+t'en servir ici : leurs tools lisent les commandes dans `repositories.yaml`, ton `Bash` ne
+lit rien du tout.
+
+Sur FT-1042, c'est par la que le garde-fou a saute. Un `pnpm playwright:component:run` tape a
+la main dans un worktree a « verifie » des tests que le registre ne sait pas lancer. Le
+resultat n'est passe par aucun checker, n'a ete inscrit dans aucune checklist, et deux heures
+de run sont parties a l'interpreter.
+
+Quand une escalade dit qu'un `kind` manque au registre, la reponse est une decision
+d'outillage — ajouter la commande au repo et au registre — pas un contournement au shell.
+Rends la main a l'utilisateur avec ce qui manque, nomme par son `kind`.
 
 > Si l'invocation d'agents depuis l'`orchestrator` n'est pas disponible dans
 > l'environnement, applique toi-meme les regles de routage : elles sont ecrites en entier

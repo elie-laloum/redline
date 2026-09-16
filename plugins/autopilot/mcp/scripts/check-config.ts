@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { loadConfig, loadRegistry, orderByLevel } from "../lib/config.ts";
+import { containerNeedsOf, loadConfig, loadRegistry, orderByLevel } from "../lib/config.ts";
 import { describeEnv } from "../lib/env.ts";
 import { ToolError } from "../lib/errors.ts";
 
@@ -42,6 +42,13 @@ try {
     console.log(`  ok L${repo.level} ${repo.name.padEnd(24)} ${tests}`);
     if (kinds.length === 0) {
       console.log("        ! le red-checker et le green-checker n'auront rien a lancer sur ce repo");
+    }
+    const needs = containerNeedsOf(repo);
+    if (needs.required || needs.images.length > 0) {
+      console.log(`        conteneurs : ${needs.images.join(", ") || "runtime seul"}`);
+    }
+    for (const [kind, path] of Object.entries(repo.reports ?? {})) {
+      console.log(`        rapport ${kind} : ${path}`);
     }
   }
 } catch (error) {

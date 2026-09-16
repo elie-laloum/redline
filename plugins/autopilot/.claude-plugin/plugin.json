@@ -14,7 +14,8 @@
       ],
       "env": {
         "AUTOPILOT_PROJECT_ROOT": "${CLAUDE_PLUGIN_ROOT}/../.."
-      }
+      },
+      "timeout": 28800000
     }
   },
   "experimental": {

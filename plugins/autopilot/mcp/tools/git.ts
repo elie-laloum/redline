@@ -224,6 +224,25 @@ export const gitTools: AnyTool[] = [
         );
       }
 
+      // Le decompte se lit avant le commit, pendant que l'index le porte encore.
+      // C'est ce que le live shell affiche du chantier : quels fichiers ont
+      // bouge et de combien, sans jamais recopier le diff lui-meme — ca, ca se
+      // lit dans la merge request.
+      const files = (await git(cwd, ["diff", "--cached", "--numstat"]))
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => {
+          const [added, removed, ...rest] = line.split("\t");
+          const path = rest.join("\t");
+          // `-` sur les deux colonnes : fichier binaire, il n'a pas de lignes.
+          return {
+            path,
+            added: added === "-" ? null : Number(added),
+            removed: removed === "-" ? null : Number(removed),
+          };
+        })
+        .filter((entry) => entry.path !== "");
+
       await git(cwd, [
         "-c",
         "user.name=l'utilisateur",
@@ -234,7 +253,7 @@ export const gitTools: AnyTool[] = [
         input.message,
       ]);
       const sha = await headSha(cwd);
-      return { committed: true, commitSha: sha, files: staged, repo: repo.name };
+      return { committed: true, commitSha: sha, files, repo: repo.name };
     },
   }),
 

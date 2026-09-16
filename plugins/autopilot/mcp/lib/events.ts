@@ -1,4 +1,13 @@
-import { closeSync, mkdirSync, openSync, readFileSync, writeFileSync, writeSync } from "node:fs";
+import {
+  closeSync,
+  fstatSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+  writeSync,
+} from "node:fs";
 import { Agent, request as httpRequest } from "node:http";
 import { dirname, join } from "node:path";
 import * as v from "valibot";
@@ -25,6 +34,8 @@ export const LIVE_EVENT_KINDS = [
   "todo",
   "question",
   "answer",
+  "plan",
+  "decision",
   "escalation",
   "message",
 ] as const;
@@ -108,6 +119,21 @@ const openLogs = new Map<string, number>();
 export function appendEvent(event: LiveEvent): void {
   const path = eventsPath(event.ticketId);
   let fd = openLogs.get(path);
+
+  if (fd !== undefined && !stillTheSameFile(fd, path)) {
+    // Le chemin ne designe plus ce qu'on tient ouvert : le fichier a ete
+    // efface, deplace, ou remplace. Garder le descripteur reviendrait a ecrire
+    // dans un inode que plus personne ne peut lire — sans la moindre erreur,
+    // parce qu'ecrire dans un fichier supprime reste parfaitement legal.
+    try {
+      closeSync(fd);
+    } catch {
+      // Deja ferme : rien a rattraper.
+    }
+    openLogs.delete(path);
+    fd = undefined;
+  }
+
   if (fd === undefined) {
     mkdirSync(dirname(path), { recursive: true });
     // Ouvert une fois et garde ouvert : `appendFileSync` refait un open/close a
@@ -118,6 +144,30 @@ export function appendEvent(event: LiveEvent): void {
     openLogs.set(path, fd);
   }
   writeSync(fd, `${JSON.stringify(event)}\n`);
+}
+
+/**
+ * Le descripteur ouvert designe-t-il toujours le fichier de ce chemin.
+ *
+ * Un serveur MCP vit des heures et traverse plusieurs runs. Vider
+ * `~/.autopilot/events/` entre deux runs — ce qui est un geste normal —
+ * suffisait a faire disparaitre en silence tout l'historique du run suivant :
+ * le journal continuait de s'ecrire dans l'inode detruit, le fichier
+ * n'existait plus, et le rejeu au redemarrage du shell ne trouvait rien.
+ *
+ * Deux `stat` par event, de l'ordre de la dizaine de microsecondes : deux
+ * ordres de grandeur sous l'open/close de 2,3 ms que le cache evite, et c'est
+ * ce qui rend vraie la promesse « sur disque avant d'etre diffuse ».
+ */
+function stillTheSameFile(fd: number, path: string): boolean {
+  try {
+    const open = fstatSync(fd);
+    const here = statSync(path);
+    return open.ino === here.ino && open.dev === here.dev;
+  } catch {
+    // Le chemin a disparu : il faut rouvrir.
+    return false;
+  }
 }
 
 /** Referme les logs ouverts. Les tests changent de `AUTOPILOT_HOME` en cours de route. */

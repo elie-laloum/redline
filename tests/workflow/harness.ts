@@ -45,6 +45,7 @@ export interface SandboxOptions {
 
 const TEST_CONTEXT: ToolContext = {
   canAskHuman: false,
+  heartbeat: () => {},
   askHuman: async () => ({ action: "cancel", content: null }),
 };
 

@@ -184,7 +184,7 @@ export function emptyTicketState(ticketId: string): Json {
     },
     figma: { urls: [] },
     arbitrages: { functional: [], technical: [] },
-    plan: { approvedAt: null, content: null, checklists: { tests: [], code: [] } },
+    plan: { approvedAt: null, content: null, repos: [], checklists: { tests: [], code: [] } },
     scope: [],
     memory: { contradictions: [], commit: null },
     publication: {

@@ -6,6 +6,7 @@ import { gitlabTools } from "./tools/gitlab.ts";
 import { humanTools } from "./tools/human.ts";
 import { jiraTools } from "./tools/jira.ts";
 import { memoryTools } from "./tools/memory.ts";
+import { preflightTools } from "./tools/preflight.ts";
 import { qualityTools } from "./tools/quality.ts";
 import { slackTools } from "./tools/slack.ts";
 import { stateTools } from "./tools/state.ts";
@@ -16,6 +17,7 @@ export const ALL_TOOLS: readonly AnyTool[] = [
   ...stateTools,
   ...memoryTools,
   ...gitTools,
+  ...preflightTools,
   ...qualityTools,
   ...gitlabTools,
   ...jiraTools,
@@ -88,6 +90,7 @@ export const TOOLS_BY_AGENT: Readonly<Record<string, readonly string[]>> = {
     "get-repositories-registry",
     "create-worktree",
     "setup-repo",
+    "preflight-repo",
     "remove-worktree",
     "monorepo-filter",
     "push-tag",
@@ -116,6 +119,7 @@ export const TOOLS_BY_AGENT: Readonly<Record<string, readonly string[]>> = {
     "run-test-ft",
     "run-test-ct",
     "run-test-e2e",
+    "preflight-repo",
     "get-repositories-registry",
     "push-live-mode-event",
     "escalate-to-human",
@@ -143,6 +147,7 @@ export const TOOLS_BY_AGENT: Readonly<Record<string, readonly string[]>> = {
     "run-test-e2e",
     "run-lint",
     "run-typecheck",
+    "preflight-repo",
     "get-repositories-registry",
     "push-live-mode-event",
     "escalate-to-human",

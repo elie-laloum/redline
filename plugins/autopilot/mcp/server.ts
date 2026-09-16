@@ -1,7 +1,15 @@
 #!/usr/bin/env node
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
+import type {
+  CallToolRequest,
+  ServerNotification,
+  ServerRequest,
+} from "@modelcontextprotocol/sdk/types.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+
+type RequestExtra = RequestHandlerExtra<ServerRequest, ServerNotification>;
 import { ToolError } from "./lib/errors.ts";
 import { validate } from "./lib/schema.ts";
 import type { ToolContext } from "./lib/tool.ts";
@@ -28,7 +36,7 @@ server.setRequestHandler(ListToolsRequestSchema, () => ({
   })),
 }));
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
+server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
   const tool = toolByName(request.params.name);
   if (!tool) {
     return errorResult(`Tool inconnu : ${request.params.name}.`, `Tools disponibles : ${ALL_TOOLS.map((t) => t.name).join(", ")}`);
@@ -38,7 +46,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   try {
     validate(tool.inputSchema, input, tool.name);
-    const output = await tool.handler(input, context());
+    const output = await tool.handler(input, context(request, extra));
     return {
       content: [{ type: "text" as const, text: stringify(output) }],
     };
@@ -50,15 +58,35 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 /**
- * Le seul canal direct vers l'humain. `ask-user` s'en sert comme repli quand le
- * live shell n'est pas la ; aucun autre tool n'a de raison d'y toucher.
+ * Ce qu'un tool peut demander au client : parler a l'humain, et dire qu'il
+ * travaille encore.
+ *
+ * Le second point n'est pas du confort. Un appel MCP qui ne dit rien pendant dix
+ * minutes est un appel que le client considere comme perdu, et `ask-user` attend
+ * par construction aussi longtemps qu'il faut. La progression est la seule chose
+ * du protocole qui remette ce compteur a zero.
  */
-function context(): ToolContext {
+function context(request: CallToolRequest, extra: RequestExtra): ToolContext {
   const capabilities = server.getClientCapabilities();
   const canAskHuman = Boolean(capabilities?.elicitation);
+  const progressToken = request.params._meta?.progressToken;
 
   return {
     canAskHuman,
+    heartbeat: (message) => {
+      // Sans jeton, le client n'a pas demande de progression : se taire est la
+      // bonne reponse, pas une erreur a remonter.
+      if (progressToken === undefined) return;
+      void extra
+        .sendNotification({
+          method: "notifications/progress",
+          params: { progressToken, progress: Date.now(), message },
+        })
+        .catch(() => {
+          // Le transport est parti. Le tool, lui, continue : c'est le run qui
+          // compte, pas la barre de progression.
+        });
+    },
     askHuman: async (message, fields) => {
       const properties: Record<string, { type: "string"; title?: string; description?: string }> = {};
       for (const [key, field] of Object.entries(fields)) {

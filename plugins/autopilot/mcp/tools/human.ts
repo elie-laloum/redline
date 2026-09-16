@@ -1,19 +1,20 @@
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync, rmSync } from "node:fs";
 import { createServer } from "node:net";
 import { loadConfig } from "../lib/config.ts";
 import {
   type LiveEvent,
   appendEvent,
   broadcast,
+  liveSessionPath,
   nextSeq,
   readLiveSession,
   validateEvent,
   writeLiveSession,
 } from "../lib/events.ts";
 import { fail } from "../lib/errors.ts";
-import { liveShellDir } from "../lib/paths.ts";
-import { anyValue, arr, enumOf, obj, str } from "../lib/schema.ts";
+import { agentsDir, liveShellDir } from "../lib/paths.ts";
+import { anyValue, arr, enumOf, num, obj, str } from "../lib/schema.ts";
 import { patchTicketState, readTicketState } from "../lib/store.ts";
 import { type AnyTool, type ToolContext, defineTool } from "../lib/tool.ts";
 import { LIVE_EVENT_KINDS, LIVE_EVENT_STATUSES } from "../lib/events.ts";
@@ -56,7 +57,6 @@ export const humanTools: AnyTool[] = [
     ) => {
       const asked = new Date().toISOString();
       const session = readLiveSession(input.ticketId);
-      const timeoutMs = loadConfig().timeouts.askUserSeconds * 1000;
 
       const questions = input.questions.map((entry, index) => ({
         key: entry.key?.trim() || `q${index + 1}`,
@@ -66,6 +66,20 @@ export const humanTools: AnyTool[] = [
       }));
 
       if (questions.length === 0) fail("`questions` est vide.", "Pose au moins une question.");
+
+      // Le gate du point 9 n'est pas un lot de questions.
+      //
+      // Il a sa propre vue — le plan entier, ses depots dans l'ordre, ses deux
+      // checklists — et ses trois sorties. Pose-le en question et l'humain voit
+      // « Une question arrete le run » au-dessus d'un champ vide, sans le plan
+      // qu'il est cense approuver. On refuse ici, ou l'erreur est encore
+      // corrigeable, plutot que de laisser passer un gate aveugle.
+      if (stepIndex(currentStep(input.ticketId)) === 9) {
+        fail(
+          "Le point 9 ne se pose pas avec `ask-user`.",
+          "Utilise `ask-plan-approval` avec `plan.repos` : il affiche le plan entier et rend `approve`, `amend` ou `reject`.",
+        );
+      }
       const thin = questions.filter((entry) => entry.options.length > 0 && entry.options.length < 2);
       if (thin.length > 0) {
         fail(
@@ -88,13 +102,27 @@ export const humanTools: AnyTool[] = [
         payload: { questions },
       });
 
-      // Transport 1 : le live shell, quand il tourne.
-      if (session) {
-        const answers = await askLiveShell(session.url, { questions, askedBy: input.askedBy ?? null }, timeoutMs);
+      // Transport 1 : le live shell, quand il tourne VRAIMENT.
+      //
+      // Le fichier de session survit au shell. Un shell ferme, tue, ou relance
+      // sur un autre port laisse derriere lui un fichier qui dit « je suis la »,
+      // et on partait poser les questions dans le vide avant de se replier en
+      // silence. On demande donc a l'app, pas au fichier.
+      const batchId = `q-${input.ticketId}-${Date.now().toString(36)}`;
+      if (session && (await isAlive(session.url))) {
+        const answers = await askLiveShell(
+          session.url,
+          { id: batchId, questions, askedBy: input.askedBy ?? null },
+          context.heartbeat,
+        );
         if (answers) {
           await finishQuestion(input.ticketId, input.askedBy ?? null, answers, "live");
           return { answers, transport: "live", askedAt: asked };
         }
+        // Rien n'est arrive a temps : on retire le lot avant de le reposer au
+        // terminal. Sans ce retrait, la page garde un formulaire qui ne
+        // debloque plus rien — et repondre dedans ne fait rien du tout.
+        await withdrawFromLiveShell(session.url, batchId);
       }
 
       // Transport 2 : le terminal, par elicitation. C'est aussi le repli quand
@@ -139,6 +167,122 @@ export const humanTools: AnyTool[] = [
         transport: "caller",
         questions,
         note: "Aucun canal direct disponible. Pose ces questions telles quelles a l'humain, en proposant les options, puis poursuis une fois les reponses obtenues.",
+      };
+    },
+  }),
+
+  defineTool({
+    name: "ask-plan-approval",
+    description:
+      "Soumet le plan au gate humain du point 9 et BLOQUE jusqu'au verdict. Remplace `ask-user` pour ce moment precis : un plan se lit sur une page, pas dans un formulaire de cinq questions. Trois sorties — `approve`, `amend`, `reject` — et les deux dernieres rendent une note qui dit quoi changer ou pourquoi. Ne soumets ni le perimetre ni les checklists : ils ont leurs propres vues et se lisent a cote.",
+    inputSchema: obj(
+      {
+        ticketId: str("Cle Jira."),
+        repos: arr(
+          "Les depots du plan, dans l'ordre d'execution — level croissant, amont vers aval. C'est cet ordre-la qui est approuve avec le reste.",
+          obj(
+            {
+              repo: str("Nom du depot, celui du registre."),
+              level: num("Son level, tel qu'il est dans le scope."),
+              changes: arr("Ce qui change, une ligne par chose.", str("Une chose qui change.")),
+              why: str("Pourquoi ce depot passe a ce moment-la."),
+            },
+            ["repo"],
+            { description: "Le plan d'un depot." },
+          ),
+        ),
+        note: str("Ce que tu veux dire en plus du plan lui-meme. Facultatif."),
+        askedBy: str("Nom de l'agent qui soumet, exactement celui de sa definition."),
+      },
+      ["ticketId", "repos"],
+    ),
+    handler: async (
+      input: {
+        ticketId: string;
+        repos: { repo: string; level?: number; changes?: string[]; why?: string }[];
+        note?: string;
+        askedBy?: string;
+      },
+      context: ToolContext,
+    ) => {
+      const repos = input.repos
+        .filter((entry) => entry?.repo?.trim())
+        .map((entry) => ({
+          repo: entry.repo.trim(),
+          level: typeof entry.level === "number" ? entry.level : null,
+          changes: (entry.changes ?? []).map((change) => String(change).trim()).filter(Boolean),
+          why: entry.why?.trim() || null,
+        }));
+      if (repos.length === 0) fail("`repos` est vide.", "Un plan sans depot n'est pas un plan.");
+
+      const asked = new Date().toISOString();
+      const session = readLiveSession(input.ticketId);
+      const planId = `p-${input.ticketId}-${Date.now().toString(36)}`;
+
+      await record(input.ticketId, {
+        kind: "plan",
+        status: "waiting",
+        agent: input.askedBy ?? null,
+        title: `Plan soumis : ${repos.map((entry) => entry.repo).join(", ")}`,
+        detail: repos
+          .map((entry) => `${entry.repo}${entry.why ? ` — ${entry.why}` : ""}\n  ${entry.changes.join("\n  ")}`)
+          .join("\n\n"),
+        payload: { repos, note: input.note?.trim() || null },
+      });
+
+      // Transport 1 : le live shell, quand il tourne vraiment. Meme pouls que
+      // pour un lot de questions : on attend tant que la page peut repondre.
+      if (session && (await isAlive(session.url))) {
+        const decision = await decideInLiveShell(
+          session.url,
+          { id: planId, repos, note: input.note?.trim() || null, askedBy: input.askedBy ?? null },
+          context.heartbeat,
+        );
+        if (decision) {
+          await finishPlan(input.ticketId, input.askedBy ?? null, decision, "live");
+          return { ...decision, transport: "live", askedAt: asked };
+        }
+        await withdrawFromLiveShell(session.url, planId);
+      }
+
+      // Transport 2 : le terminal. Le gate doit pouvoir se tenir sans la page —
+      // sinon le shell devient un point de defaillance, ce qu'il n'est pas.
+      if (context.canAskHuman) {
+        const result = await context.askHuman(formatPlan(repos, input.note?.trim() || null), {
+          verdict: { title: "Verdict", description: "approve | amend | reject" },
+          note: { title: "Ce qui cloche", description: "Obligatoire sauf sur approve." },
+        });
+        const verdict = String(result.content?.verdict ?? "").trim().toLowerCase();
+        if (result.action === "accept" && ["approve", "amend", "reject"].includes(verdict)) {
+          const decision = {
+            verdict: verdict as "approve" | "amend" | "reject",
+            note: String(result.content?.note ?? "").trim(),
+          };
+          if (decision.verdict !== "approve" && !decision.note) {
+            return {
+              verdict: null,
+              transport: "terminal",
+              note: "Un plan renvoye sans dire ce qui cloche repart sur la meme hypothese. Redemande le verdict avec sa raison.",
+            };
+          }
+          await finishPlan(input.ticketId, input.askedBy ?? null, decision, "terminal");
+          return { ...decision, transport: "terminal", askedAt: asked };
+        }
+        return {
+          verdict: null,
+          transport: "terminal",
+          declined: true,
+          note: "Pas de verdict. N'avance pas : le point 9 est le seul gate, et rien ne passe sans lui.",
+        };
+      }
+
+      // Transport 3 : aucun canal direct. Le plan revient a l'appelant, qui le
+      // posera dans le fil.
+      return {
+        verdict: null,
+        transport: "caller",
+        repos,
+        note: "Aucun canal direct disponible. Soumets ce plan tel quel a l'humain et attends `approve`, `amend` ou `reject` avant de poursuivre.",
       };
     },
   }),
@@ -210,6 +354,7 @@ export const humanTools: AnyTool[] = [
 
       const ready = await waitFor(url, 60_000);
       writeLiveSession({ runId, ticketId, port, url, pid: child.pid ?? -1, startedAt: new Date().toISOString() });
+      reapWithSession(child.pid ?? null, ticketId);
       patchTicketState(ticketId, { run: { liveRunId: runId } });
 
       if (ready && openBrowser) {
@@ -242,11 +387,20 @@ export const humanTools: AnyTool[] = [
           "Une ligne, l'action en cours ou ce que tu as trouve. Un verbe pour ce qui se fait, le constat d'abord pour un resultat. Vise 90 caracteres ; le long va dans `detail`.\n\nN'y mets RIEN de ce que l'interface affiche deja a cote : pas de numero ni de nom d'etape (« Point 3 », « 10.4 », « Gate », « Q1 / »), pas de ton nom ni de celui du tool, pas de mot d'etat (« en cours », « OK », « termine » — c'est `status` qui le dit), pas la cle du ticket.\n\nNon : « Point 3 — doc-scout : memoire quasi vide sur le sujet ». Oui : « La memoire ne sait presque rien : 3 notes, aucune sur l'A/B testing »."
         ),
         detail: str("Le detail : chiffres, chemins, preuves, raisonnement. Affiche sous le titre, et c'est la que va tout ce qui ne tient pas en une ligne."),
-        agent: str("Nom de l'agent."),
+        agent: str(
+          "Ton nom, exactement celui du champ `name` de ta definition — `doc-scout`, pas `memory-scout`, pas le titre de ton document. C'est cette chaine qui te rattache a ton etape dans l'interface ; un nom invente t'y fait apparaitre en agent fantome, rattache a rien.",
+        ),
         tool: str("Nom du tool en cours."),
         repo: str("Repo courant du cycle 10.x."),
         step: str("N'y touche pas : le tool lit l'etape courante dans l'etat du ticket. A ne forcer que pour rejouer un event hors de son moment."),
-        payload: anyValue("Donnee structuree propre au kind : compteur et budget, lignes de checklist, todo list."),
+        payload: anyValue(
+          "Donnee structuree propre au kind. Le live shell n'affiche QUE ce qu'il recoit ici — il ne reconstitue rien.\n\n" +
+            "- `loop` : `{ name, count, budget }`\n" +
+            "- `todo` : `{ items: [{ text, status }] }`, status parmi `pending` | `in_progress` | `completed`. Pousse la liste ENTIERE a chaque changement, elle remplace la precedente.\n" +
+            "- apres un commit : `{ commit: { sha, files } }` ou `files` est le tableau rendu par `create-commit`, chaque entree `{ path, added, removed }`.\n" +
+            "- apres une verification : `{ check: { kind, passed, durationMs } }`, repris tel quel du retour de `run-test-*`, `run-lint` ou `run-typecheck`.\n\n" +
+            "Renseigne aussi `repo` sur ces events : c'est lui qui rattache le chantier a son depot.",
+        ),
       },
       ["ticketId", "kind", "status", "title"],
     ),
@@ -263,6 +417,15 @@ export const humanTools: AnyTool[] = [
       step?: string;
       payload?: unknown;
     }) => {
+      // Un roster vide veut dire qu'on n'a pas su lire les definitions, pas
+      // qu'aucun agent n'existe : on ne refuse alors personne.
+      if (input.agent && knownAgents().size > 0 && !knownAgents().has(input.agent)) {
+        fail(
+          `Aucun agent ne s'appelle \`${input.agent}\`.`,
+          `Pousse ton nom exact, celui du champ \`name\` de ta definition : ${[...knownAgents()].sort().join(", ")}.`,
+        );
+      }
+
       const delivery = await record(input.ticketId, {
         kind: input.kind,
         status: input.status,
@@ -281,6 +444,33 @@ export const humanTools: AnyTool[] = [
 ];
 
 // ------------------------------------------------------------- interne ----
+
+/**
+ * Les noms d'agents qui existent vraiment.
+ *
+ * Un agent qui se pousse sous un nom invente — le `doc-scout` qui s'annonce
+ * `memory-scout` parce que son titre parle de memoire — n'est rattachable a
+ * rien : ni a son etape, ni a sa ligne dans le rail. Ca ne casse rien, ca
+ * degrade juste l'interface en silence, ce qui est pire. Le refus est immediat
+ * et l'agent corrige tout seul.
+ */
+let roster: Set<string> | null = null;
+
+function knownAgents(): Set<string> {
+  if (roster) return roster;
+  try {
+    roster = new Set(
+      readdirSync(agentsDir())
+        .filter((entry) => entry.endsWith(".md"))
+        .map((entry) => entry.slice(0, -3)),
+    );
+  } catch {
+    // Sans les definitions sous la main, on ne refuse rien : le flux vaut mieux
+    // qu'un run bloque sur une verification cosmetique.
+    roster = new Set();
+  }
+  return roster;
+}
 
 interface EventDraft {
   kind: LiveEvent["kind"];
@@ -348,9 +538,17 @@ async function finishQuestion(
   answers: Record<string, string>,
   transport: string,
 ): Promise<void> {
-  // Un lot repondu compte pour une intervention, pas pour trois : c'est un seul
-  // arret du workflow et un seul aller-retour humain.
-  patchTicketState(ticketId, { metrics: { humanInterventions: { __increment: 1 } } });
+  // Un arbitrage rendu compte pour un, pas un lot pour un.
+  //
+  // C'etait l'inverse, au motif qu'un lot est un seul arret du workflow. Mais ce
+  // compteur ne mesure pas les arrets, il mesure ce que l'humain a du trancher :
+  // cinquante et une reponses affichees « 14 interventions » ne decrivent rien
+  // de ce qui s'est passe. Le nombre d'arrets se lit deja dans le flux, une
+  // ligne `question` par lot.
+  const rendered = Object.keys(answers).length;
+  patchTicketState(ticketId, {
+    metrics: { humanInterventions: { __increment: rendered > 0 ? rendered : 1 } },
+  });
   const summary = Object.entries(answers)
     .map(([key, value]) => `${key} = ${value}`)
     .join(" · ");
@@ -366,23 +564,91 @@ async function finishQuestion(
   });
 }
 
+/** Le rythme du battement : dit qu'on travaille, et verifie que le shell vit. */
+const PULSE_MS = 20_000;
+
+/**
+ * On attend une reponse aussi longtemps que la page est la pour la donner.
+ *
+ * L'ancienne version posait une echeance sur le `fetch` : passe l'heure, elle
+ * rendait la main et reposait le lot au terminal. C'etait une limite de
+ * patience, et une limite de patience est exactement ce qu'on ne veut pas ici —
+ * un lot pose a 13h doit encore attendre a 16h si l'onglet est reste ouvert.
+ *
+ * La seule chose qui justifie d'abandonner est que **plus personne ne puisse
+ * repondre** : le shell ferme, tue, ou relance ailleurs. On ne compte donc plus
+ * le temps, on prend le pouls. Tant que `/rpc/health` repond, on attend ; des
+ * qu'il ne repond plus deux fois de suite, on se replie sur le terminal.
+ *
+ * Le battement sert aussi a dire au client qu'on travaille — mais il ne suffit
+ * pas, et c'est une limite du protocole : la limite de l'appel est un mur
+ * d'horloge, et une notification de progression ne la repousse pas. Elle ne
+ * nourrit que le chien de garde d'inactivite. Le temps d'attente maximal se
+ * regle donc **cote client**, dans `timeout` du serveur MCP — huit heures dans
+ * `plugin.json`, et c'est la seule chose qui rende cette attente vraiment
+ * longue.
+ */
 async function askLiveShell(
   url: string,
-  input: { questions: { key: string; header: string; question: string; options: string[] }[]; askedBy: string | null },
-  timeoutMs: number,
+  input: {
+    id: string;
+    questions: { key: string; header: string; question: string; options: string[] }[];
+    askedBy: string | null;
+  },
+  heartbeat: (message: string) => void,
 ): Promise<Record<string, string> | null> {
+  const abort = new AbortController();
+  const since = Date.now();
+  let missed = 0;
+
+  // Un `health` qui echoue une fois peut etre un rechargement de la page. Deux
+  // d'affilee, c'est que le shell est parti.
+  const pulse = setInterval(() => {
+    void isAlive(url).then((alive) => {
+      missed = alive ? 0 : missed + 1;
+      if (missed >= 2) {
+        abort.abort();
+        return;
+      }
+      const minutes = Math.round((Date.now() - since) / 60_000);
+      heartbeat(
+        minutes < 1
+          ? "En attente de ta reponse dans le live shell."
+          : `En attente de ta reponse dans le live shell depuis ${minutes} min.`,
+      );
+    });
+  }, PULSE_MS);
+  pulse.unref?.();
+
   try {
+    heartbeat("En attente de ta reponse dans le live shell.");
     const response = await fetch(`${url}/rpc/ask`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: abort.signal,
     });
     if (!response.ok) return null;
     const data = (await response.json()) as { answers?: Record<string, string> };
     return data.answers && typeof data.answers === "object" ? data.answers : null;
   } catch {
     return null;
+  } finally {
+    clearInterval(pulse);
+  }
+}
+
+/** Best effort : si le shell ne repond deja plus, il n'a plus de lot a retirer. */
+async function withdrawFromLiveShell(url: string, id: string): Promise<void> {
+  try {
+    await fetch(`${url}/rpc/withdraw`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id }),
+      signal: AbortSignal.timeout(1500),
+    });
+  } catch {
+    /* le shell est parti : le lot est parti avec lui */
   }
 }
 
@@ -434,4 +700,140 @@ function isFree(port: number): Promise<boolean> {
 function truncate(text: string, max: number): string {
   const single = text.replace(/\s+/g, " ").trim();
   return single.length <= max ? single : `${single.slice(0, max - 1)}…`;
+}
+
+/**
+ * Le shell meurt avec la session qui l'a ouvert.
+ *
+ * Il est lance `detached` pour que le run survive a un tool qui plante, ce qui
+ * est la bonne propriete — et qui a pour revers qu'il survit aussi a la session
+ * entiere. On se retrouvait avec un serveur vite par run abandonne, sur un port
+ * different a chaque fois, jusqu'au prochain redemarrage de la machine.
+ *
+ * Ce process-ci, lui, est un enfant de la session Claude : quand elle ferme, il
+ * recoit son signal ou perd son entree standard. C'est le seul endroit du
+ * systeme qui sache que la session est finie, donc c'est lui qui ramasse.
+ *
+ * Le groupe entier est tue, pas seulement le `pnpm` : `detached` lui donne son
+ * propre groupe de process, et `pnpm` n'est qu'un parent qui a lui-meme lance
+ * vite. Tuer le parent seul laisserait l'enfant qui ecoute le port.
+ */
+function reapWithSession(pid: number | null, ticketId: string): void {
+  if (pid === null || reaping.has(pid)) return;
+  reaping.add(pid);
+
+  const reap = () => {
+    try {
+      process.kill(-pid, "SIGTERM");
+    } catch {
+      // Deja parti, ou jamais demarre. Dans les deux cas il n'y a rien a tuer.
+    }
+    try {
+      rmSync(liveSessionPath(ticketId), { force: true });
+    } catch {
+      // Le fichier de session est un indice, pas une source de verite.
+    }
+  };
+
+  for (const signal of ["exit", "SIGINT", "SIGTERM", "SIGHUP"] as const) {
+    process.once(signal, reap);
+  }
+  // Stdio ferme sans signal : c'est ainsi qu'un client MCP s'en va proprement.
+  process.stdin.once("end", reap);
+  process.stdin.once("close", reap);
+}
+
+const reaping = new Set<number>();
+
+/**
+ * Le gate, par le meme chemin bloquant que les questions.
+ *
+ * Meme pouls, meme raison : on attend tant que quelqu'un peut repondre, et on se
+ * replie quand plus personne ne le peut. Le detail vit dans `askLiveShell`.
+ */
+async function decideInLiveShell(
+  url: string,
+  input: {
+    id: string;
+    repos: { repo: string; level: number | null; changes: string[]; why: string | null }[];
+    note: string | null;
+    askedBy: string | null;
+  },
+  heartbeat: (message: string) => void,
+): Promise<{ verdict: "approve" | "amend" | "reject"; note: string } | null> {
+  const abort = new AbortController();
+  let missed = 0;
+
+  const pulse = setInterval(() => {
+    void isAlive(url).then((alive) => {
+      missed = alive ? 0 : missed + 1;
+      if (missed >= 2) abort.abort();
+      else heartbeat("En attente de ton verdict sur le plan.");
+    });
+  }, PULSE_MS);
+  pulse.unref?.();
+
+  try {
+    heartbeat("En attente de ton verdict sur le plan.");
+    const response = await fetch(`${url}/rpc/ask-plan`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+      signal: abort.signal,
+    });
+    if (!response.ok) return null;
+    const data = (await response.json()) as {
+      decision?: { verdict?: string; note?: string };
+    };
+    const verdict = data.decision?.verdict;
+    if (verdict !== "approve" && verdict !== "amend" && verdict !== "reject") return null;
+    return { verdict, note: String(data.decision?.note ?? "") };
+  } catch {
+    return null;
+  } finally {
+    clearInterval(pulse);
+  }
+}
+
+/** Le verdict laisse une trace, et une approbation date le plan. */
+async function finishPlan(
+  ticketId: string,
+  agent: string | null,
+  decision: { verdict: "approve" | "amend" | "reject"; note: string },
+  transport: string,
+): Promise<void> {
+  patchTicketState(ticketId, { metrics: { humanInterventions: { __increment: 1 } } });
+  if (decision.verdict === "approve") {
+    patchTicketState(ticketId, { plan: { approvedAt: new Date().toISOString() } });
+  }
+  const said = { approve: "Plan approuve", amend: "Plan a amender", reject: "Plan rejete" }[decision.verdict];
+  await record(ticketId, {
+    kind: "decision",
+    status: decision.verdict === "approve" ? "ok" : "ko",
+    agent,
+    title: decision.note ? `${said} (${transport}) : ${truncate(decision.note, 140)}` : `${said} (${transport})`,
+    detail: decision.note || null,
+    payload: { transport, ...decision },
+  });
+}
+
+function formatPlan(
+  repos: { repo: string; level: number | null; changes: string[]; why: string | null }[],
+  note: string | null,
+): string {
+  const body = repos
+    .map((entry, index) => {
+      const head = `${index + 1}. ${entry.repo}${entry.level !== null ? ` (niveau ${entry.level})` : ""}`;
+      const why = entry.why ? `\n   ${entry.why}` : "";
+      const changes = entry.changes.map((change) => `\n   - ${change}`).join("");
+      return `${head}${why}${changes}`;
+    })
+    .join("\n\n");
+  return [note, "Le plan, dans l'ordre d'execution :", body].filter(Boolean).join("\n\n");
+}
+
+/** Le numero du point, quand on sait le lire. `-1` sinon. */
+function stepIndex(step: string | null): number {
+  const found = /^\s*(?:point\s*)?(\d{1,2})/i.exec(String(step ?? ""));
+  return found?.[1] ? Number(found[1]) : -1;
 }

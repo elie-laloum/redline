@@ -18,6 +18,7 @@ const askUser = toolByName("ask-user");
 /** Aucun canal direct : le tool doit rendre les questions a l'appelant. */
 const NO_CHANNEL: ToolContext = {
   canAskHuman: false,
+  heartbeat: () => {},
   askHuman: async () => ({ action: "cancel", content: null }),
 };
 
