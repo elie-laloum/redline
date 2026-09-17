@@ -1,5 +1,8 @@
+import { mkdirSync, renameSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { hasSecret, optionalSecret, secret } from "./env.ts";
-import { request } from "./http.ts";
+import { ToolError } from "./errors.ts";
+import { redact, request } from "./http.ts";
 
 /**
  * Les maquettes sont facultatives. Beaucoup de tickets n'en ont pas, et le run
@@ -79,4 +82,53 @@ export function outline(node: FigmaNode, depth = 0, maxDepth = 3): string[] {
   if (depth >= maxDepth) return lines;
   for (const child of node.children ?? []) lines.push(...outline(child, depth + 1, maxDepth));
   return lines;
+}
+
+/**
+ * Le pixel de la maquette, et pas seulement son arborescence.
+ *
+ * Un `outline` dit `Dialog > Title / content / buttons` — de quoi nommer les
+ * composants, jamais de quoi verifier qu'on a compris la meme chose que le
+ * designer. La maquette est une source au meme titre que la description du
+ * ticket, et une source qu'on ne peut pas relire n'en est pas une.
+ *
+ * Figma rend une URL S3 signee, valable une poignee de dizaines de minutes. On
+ * ne la garde donc pas : on tire le PNG tout de suite et c'est le fichier qui
+ * fait foi ensuite. C'est aussi ce qui rend le rejeu possible hors ligne.
+ */
+export async function renderFrame(
+  ref: FigmaRef,
+  nodeId: string,
+  scale = 2,
+): Promise<{ url: string } | null> {
+  const { data } = await request<{ err: string | null; images: Record<string, string | null> }>(
+    `${base()}/images/${ref.fileKey}?ids=${encodeURIComponent(nodeId)}&format=png&scale=${scale}`,
+    { headers: { "x-figma-token": secret("FIGMA_TOKEN") } },
+  );
+  if (data?.err) throw new ToolError(`Figma a refuse le rendu du node ${nodeId}.`, data.err);
+  const url = data?.images?.[nodeId];
+  return url ? { url } : null;
+}
+
+/**
+ * Le PNG sur disque, sous un nom qui ne peut pas sortir de son dossier.
+ *
+ * Un `nodeId` est de la forme `7155:19416`, mais il vient d'une URL que
+ * quelqu'un a collee : il traverse un nom de fichier, donc on ne lui fait pas
+ * confiance. Tout ce qui n'est pas alphanumerique devient un tiret.
+ */
+export async function downloadFrame(url: string, dir: string, nodeId: string): Promise<string> {
+  const name = `${nodeId.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "frame"}.png`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new ToolError(`Le rendu de la maquette a repondu ${response.status}.`, redact(url));
+  }
+  const bytes = Buffer.from(await response.arrayBuffer());
+  mkdirSync(dir, { recursive: true });
+  // Ecriture atomique : le shell surveille ce dossier et servirait volontiers
+  // un fichier a moitie ecrit, qui s'afficherait comme une image cassee.
+  const temp = join(dir, `.${name}.${process.pid}.tmp`);
+  writeFileSync(temp, bytes);
+  renameSync(temp, join(dir, name));
+  return name;
 }

@@ -1,4 +1,5 @@
 import * as figma from "../lib/figma.ts";
+import { figmaDir } from "../lib/paths.ts";
 import { arr, num, obj, str } from "../lib/schema.ts";
 import { type AnyTool, defineTool } from "../lib/tool.ts";
 
@@ -69,6 +70,46 @@ export const figmaTools: AnyTool[] = [
         }
       }
       return { found: true, files };
+    },
+  }),
+
+  defineTool({
+    name: "get-figma-image",
+    description:
+      "Rend la maquette en PNG et la garde a cote de l'etat du ticket, pour que le live shell puisse la montrer et qu'un run rejoue plus tard la retrouve. A appeler au point 2, une fois par frame retenue. Sans jeton Figma ou sans node, rend une absence et le run continue.",
+    inputSchema: obj(
+      {
+        ticketId: str("Cle Jira, par exemple FT-1025. Elle decide ou le PNG est range."),
+        url: str("URL du fichier ou du node Figma."),
+        nodeId: str("Identifiant du node, forme 123:456. Par defaut celui de l'URL."),
+        scale: num("Facteur de rendu. 2 par defaut, ce qui suffit a un ecran dense."),
+      },
+      ["ticketId", "url"],
+    ),
+    handler: async (input: { ticketId: string; url: string; nodeId?: string; scale?: number }) => {
+      const ref = figma.parseUrl(input.url);
+      if (!ref) return { captured: false, note: `URL Figma non reconnue : ${input.url}` };
+
+      const nodeId = input.nodeId ?? ref.nodeId;
+      if (!nodeId) {
+        return {
+          captured: false,
+          note: "L'URL ne designe aucun node precis. Un fichier entier ne se rend pas en une image ; repere le frame dans l'arborescence et redemande avec son nodeId.",
+        };
+      }
+      if (!figma.isConfigured()) {
+        return { captured: false, note: "FIGMA_TOKEN absent : la maquette est referencee mais illisible." };
+      }
+
+      try {
+        const rendered = await figma.renderFrame(ref, nodeId, input.scale ?? 2);
+        if (!rendered) return { captured: false, note: `Figma n'a rendu aucune image pour le node ${nodeId}.` };
+        const image = await figma.downloadFrame(rendered.url, figmaDir(input.ticketId), nodeId);
+        return { captured: true, image, fileKey: ref.fileKey, nodeId, url: ref.url };
+      } catch (error) {
+        // Une maquette illisible n'arrete pas un run : elle se signale.
+        return { captured: false, nodeId, note: error instanceof Error ? error.message : String(error) };
+      }
     },
   }),
 

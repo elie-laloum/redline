@@ -93,3 +93,49 @@ describe("le chien de garde de silence", () => {
     assert.match(beats[0] ?? "", /\d+s$/);
   });
 });
+
+/**
+ * Le chien de garde doit abattre l'arbre, pas la racine.
+ *
+ * `spawn` avec `shell: true` ouvre un `/bin/sh`, qui ouvre `npm`, qui ouvre le
+ * runner. `child.kill()` ne tuait que le premier : les deux autres survivaient,
+ * rattaches a launchd, en gardant les tubes de sortie ouverts. `close` n'arrive
+ * jamais quand un tube reste ouvert, donc la promesse ne se resolvait pas et
+ * l'agent restait muet jusqu'au plafond du serveur MCP — huit heures.
+ *
+ * Constate sur FT-1042 : le `mtr` d'UT du `red-checker` toujours vivant trente
+ * minutes apres son abandon, et un autre de l'avant-veille encore la apres un
+ * jour et seize heures. Aucun event, aucune escalade, juste un run arrete.
+ */
+describe("le chien de garde abat le groupe de processus", () => {
+  it("rend la main meme quand un petit-fils survit et tient les tubes", async () => {
+    const started = Date.now();
+    // Un petit-fils muet et long, lance en arriere-plan par le shell : il herite
+    // de stdout et le garde ouvert apres la mort de son parent.
+    const result = await run('node -e "setTimeout(()=>{}, 600000)" & sleep 600', {
+      cwd: PROJECT_ROOT,
+      timeoutMs: 60_000,
+      silenceMs: 3_000,
+    });
+    const elapsed = Date.now() - started;
+
+    assert.equal(result.stoppedBy, "silence");
+    // Le point du test : ca rend. L'ancienne version restait bloquee ici.
+    assert.ok(elapsed < 20_000, `la commande a mis ${elapsed} ms a rendre : la promesse ne se resout pas`);
+  });
+
+  it("ne laisse pas le petit-fils derriere lui", async () => {
+    const marker = `orphelin-${process.pid}-${Date.now()}`;
+    await run(`node -e "process.title='${marker}'; setTimeout(()=>{}, 600000)" & sleep 600`, {
+      cwd: PROJECT_ROOT,
+      timeoutMs: 60_000,
+      silenceMs: 3_000,
+    });
+
+    // `SIGTERM` puis `SIGKILL` deux secondes plus tard : on laisse passer le delai.
+    await new Promise((resolve) => setTimeout(resolve, 3_000));
+    const { execSync } = await import("node:child_process");
+    const alive = execSync(`pgrep -f ${marker} | wc -l`).toString().trim();
+    assert.equal(alive, "0", "un processus de test a survecu a l'abandon de sa commande");
+  });
+});

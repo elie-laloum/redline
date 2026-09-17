@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { loadConfig } from "../lib/config.ts";
 import { fail } from "../lib/errors.ts";
 import { getTicket as fetchJira } from "../lib/jira.ts";
 import { lockPath } from "../lib/paths.ts";
@@ -36,6 +37,7 @@ export const stateTools: AnyTool[] = [
         fail("`patch` doit etre un objet.", "Un patch est un fragment d'etat, pas une valeur isolee.");
       }
       guardStep(patch);
+      guardBudgets(ticketId, patch);
       const merged = patchTicketState(ticketId, patch);
       return { written: true, state: merged };
     },
@@ -73,10 +75,18 @@ export const stateTools: AnyTool[] = [
       mkdirSync(dirname(path), { recursive: true });
       if (existsSync(path)) {
         const holder = safeRead(path);
-        fail(
-          `Le ticket ${ticketId} est deja verrouille.`,
-          `Detenu par : ${holder}. Si ce run est mort, supprime ${path} puis relance.`,
-        );
+        // Un verrou dont le detenteur est mort n'est pas un verrou, c'est un
+        // debris. Il restait a effacer a la main, et c'etait la premiere chose
+        // a faire apres chaque run tue net — un nettoyage manuel impose par un
+        // fichier que le programme pouvait tres bien verifier lui-meme.
+        const stale = deadHolder(holder);
+        if (!stale) {
+          fail(
+            `Le ticket ${ticketId} est deja verrouille.`,
+            `Detenu par : ${holder}. Si ce run tourne vraiment, attends-le ; sinon supprime ${path}.`,
+          );
+        }
+        rmSync(path, { force: true });
       }
       const holder = { runId, pid: process.pid, at: new Date().toISOString() };
       // `wx` echoue si le fichier apparait entre le test et l'ecriture.
@@ -104,6 +114,30 @@ export const stateTools: AnyTool[] = [
 ];
 
 
+
+/**
+ * Le detenteur du verrou est-il encore en vie ?
+ *
+ * `process.kill(pid, 0)` ne tue rien : il demande au noyau si le process
+ * existe. Sans pid lisible on repond non — un verrou qu'on ne sait pas dater
+ * est plus dangereux a reprendre qu'a garder, et l'humain tranchera.
+ */
+function deadHolder(holder: string): boolean {
+  let pid: unknown;
+  try {
+    pid = (JSON.parse(holder) as { pid?: unknown }).pid;
+  } catch {
+    return false;
+  }
+  if (typeof pid !== "number" || !Number.isFinite(pid) || pid <= 1) return false;
+  try {
+    process.kill(pid, 0);
+    return false;
+  } catch (error) {
+    // EPERM : il existe mais appartient a quelqu'un d'autre. On ne le reprend pas.
+    return (error as NodeJS.ErrnoException).code === "ESRCH";
+  }
+}
 
 function safeRead(path: string): string {
   try {
@@ -141,4 +175,65 @@ function guardStep(patch: Json): void {
     `\`run.step\` vaut ${JSON.stringify(step)}, ce qui n'est pas un numero de point.`,
     "Ecris le point seul — `4`, ou `10.4` pour une sous-etape du cycle d'implementation. Ce que fait l'etape se dit dans le `title` de ton event, pas dans le curseur.",
   );
+}
+
+/**
+ * Un compteur de boucle ne depasse pas son budget. Jamais.
+ *
+ * Le plafond etait une consigne de prompt, et une consigne de prompt se rate :
+ * sur FT-1042, `redChecker` est monte a 4 pour un budget de 3, puis le run
+ * s'est arrete en annoncant « budgets epuises » — un diagnostic faux, puisque
+ * les tours supplementaires n'avaient rien converge, ils avaient seulement ete
+ * debites. Le compteur est de l'etat : c'est ici qu'il se defend.
+ *
+ * Le refus arrive AVANT l'ecriture. L'orchestrateur reprend donc la main avec
+ * un compteur intact et une seule issue, celle qu'il aurait du prendre tout
+ * seul : `escalate-to-human`.
+ */
+function guardBudgets(ticketId: string, patch: Json): void {
+  const entries = (patch as { scope?: unknown }).scope;
+  if (!Array.isArray(entries)) return;
+
+  const budgets = loadConfig().budgets as unknown as Record<string, number | undefined>;
+  const state = readTicketState(ticketId);
+  const base = Array.isArray((state as { scope?: unknown } | null)?.scope)
+    ? ((state as { scope: Json[] }).scope as Json[])
+    : [];
+
+  for (const entry of entries) {
+    if (!isObject(entry)) continue;
+    const loops = entry.loops;
+    if (!isObject(loops)) continue;
+
+    const name = typeof entry.name === "string" ? entry.name : typeof entry.repo === "string" ? entry.repo : null;
+    const current = base.find(
+      (candidate) => isObject(candidate) && (candidate.name === name || candidate.repo === name),
+    );
+    const currentLoops = isObject(current) && isObject(current.loops) ? current.loops : {};
+
+    for (const [loop, value] of Object.entries(loops)) {
+      const budget = budgets[loop];
+      if (typeof budget !== "number") continue;
+
+      const before = typeof currentLoops[loop] === "number" ? (currentLoops[loop] as number) : 0;
+      const after = nextCount(before, value);
+      if (after === null || after <= budget) continue;
+
+      fail(
+        `\`${loop}\` passerait a ${after} sur ${name ?? "ce repo"}, pour un budget de ${budget}.`,
+        "Le budget est atteint : ce tour ne s'ouvre pas. Appelle `escalate-to-human` avec le detail de ce qui n'a pas converge. " +
+          "Si la boucle s'est arretee sans rendre de verdict — environnement, harnais de test, sortie illisible — elle ne se debite pas : n'incremente rien et escalade avec `cause: environment`.",
+      );
+    }
+  }
+}
+
+function nextCount(before: number, value: Json): number | null {
+  if (typeof value === "number") return value;
+  if (isObject(value) && typeof value.__increment === "number") return before + value.__increment;
+  return null;
+}
+
+function isObject(value: unknown): value is { [key: string]: Json } {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

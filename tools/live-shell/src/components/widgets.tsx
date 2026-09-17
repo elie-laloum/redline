@@ -207,7 +207,9 @@ function Evidence({ line }: { line: string }) {
   return (
     <li className="flex flex-wrap items-baseline gap-x-2 border-b border-line-soft py-1 text-[12px] last:border-b-0">
       <code className="font-mono text-ink">{where}</code>
-      {what ? <span className="min-w-0 flex-1 text-ink-faint">{what}</span> : null}
+      {/* Une largeur plancher, sinon la prose descend en colonne d'un mot de
+          large dans ce qui reste a droite du chemin, au telephone. */}
+      {what ? <span className="min-w-[24ch] flex-1 text-ink-faint">{what}</span> : null}
     </li>
   );
 }

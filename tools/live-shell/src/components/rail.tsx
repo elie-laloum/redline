@@ -1,14 +1,14 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Caret, Elapsed, type Progress, ProgressDot } from "#/components/atoms";
-import { DOCKET_LABELS, STEPS, stepIndex, stepToken, type Ticket } from "#/lib/ticket";
-import type { LoopCounter, StepAgent } from "#/lib/use-live-run";
+import { STEPS, stepIndex, stepToken, type Ticket } from "#/lib/ticket";
+import type { StepAgent } from "#/lib/use-live-run";
 import { cn } from "#/lib/utils";
 
 /**
  * Le rail.
  *
- * Il sert de sommaire au dossier — choisir une étape filtre la colonne de
- * droite sur ce qu'elle a décidé — et il montre qui travaille, là, maintenant.
+ * Il montre une seule chose : où en est le run, et qui travaille là, maintenant.
+ * Rien ne s'y clique — ce qui se lit se lit dans l'établi, à droite.
  *
  * Les étapes n'ont plus de numéro. Un `<ol>` en porte déjà un pour qui écoute
  * la page, et treize libellés qui se lisent seuls valent mieux que treize
@@ -19,7 +19,6 @@ export interface RailProps {
   readonly ticket: Ticket;
   /** L'etape recoupee sur le flux, la meme que le bandeau. */
   readonly step: string;
-  readonly loops: readonly LoopCounter[];
   /**
    * L'état de chacune des treize étapes, dans l'ordre du rail.
    *
@@ -30,11 +29,9 @@ export interface RailProps {
   readonly steps: readonly Progress[];
   /** Les agents de chaque étape, dans l'ordre où ils ont pris la main. */
   readonly agents: ReadonlyMap<string, readonly StepAgent[]>;
-  /** Amene la colonne sur les notes de memoire contredites. */
-  readonly onOpenContradictions: () => void;
 }
 
-export function Rail({ ticket, step: cursor, loops, steps, agents, onOpenContradictions }: RailProps) {
+export function Rail({ ticket, step: cursor, steps, agents }: RailProps) {
   const { run } = ticket;
   const here = stepIndex(cursor);
 
@@ -56,12 +53,6 @@ export function Rail({ ticket, step: cursor, loops, steps, agents, onOpenContrad
           </li>
         ))}
       </ol>
-
-      {/* Empilé en bas. Il disparaît quand il n'a rien à dire : un bloc vide
-          entretenu en permanence apprend à ne plus lire la colonne. */}
-      <div className="mt-auto flex flex-col pt-6">
-        <Watch ticket={ticket} loops={loops} onOpen={onOpenContradictions} />
-      </div>
     </nav>
   );
 }
@@ -229,148 +220,6 @@ function AgentRow({ agent }: { agent: StepAgent }) {
         </ul>
       ) : null}
     </li>
-  );
-}
-
-/**
- * Ce qu'il faut surveiller.
- *
- * Deux choses ramènent au terminal et se comptent : une boucle qui approche son
- * budget, une note de mémoire contredite. Les deux autres dérives — une étape
- * anormalement longue, un agent qui part de travers — se lisent ailleurs, dans
- * la durée du bandeau et dans le dossier.
- */
-function Watch({
-  ticket,
-  loops,
-  onOpen,
-}: {
-  ticket: Ticket;
-  loops: readonly LoopCounter[];
-  onOpen: () => void;
-}) {
-  const contradictions = ticket.contradictions.length;
-  if (loops.length === 0 && contradictions === 0) return null;
-
-  const tight = loops.filter((loop) => loop.budget !== null && loop.count >= loop.budget - 1).length;
-  const alerts = tight + (contradictions > 0 ? 1 : 0);
-
-  return (
-    <Fold title="À surveiller" signal={alerts > 0 ? alerts : null} id="watch">
-      {loops.map((loop) => {
-        const spent = loop.budget !== null && loop.count >= loop.budget;
-        const close = loop.budget !== null && loop.count >= loop.budget - 1;
-        return (
-          <p key={loop.name} className="flex items-baseline justify-between gap-2">
-            <span className="truncate text-ink-soft">{loop.name}</span>
-            <span
-              className={cn(
-                "shrink-0 font-mono tabular-nums",
-                spent ? "text-ko" : close ? "text-drift" : "text-ink-faint",
-              )}
-            >
-              {loop.count}
-              {loop.budget !== null ? ` sur ${loop.budget}` : ""}
-            </span>
-          </p>
-        );
-      })}
-
-      {contradictions > 0 ? (
-        <button
-          type="button"
-          onClick={onOpen}
-          className="flex items-baseline gap-2 rounded-sm text-left hover:text-ink"
-        >
-          <span className="min-w-0 flex-1 truncate text-ink-soft">{DOCKET_LABELS.contradictions}</span>
-          <span className="shrink-0 font-mono tabular-nums text-drift">{contradictions}</span>
-        </button>
-      ) : null}
-    </Fold>
-  );
-}
-
-/**
- * Un bloc repliable du bas du rail.
- *
- * Replier ne doit jamais cacher un problème : quand le bloc est fermé et qu'il
- * porte un signal, son en-tête le montre. C'est ce qui rend le repli sans
- * risque, et donc utilisable.
- *
- * L'état se retient d'un rechargement à l'autre — le shell est rejoué souvent,
- * replier trois blocs par heure serait une corvée. `localStorage` peut jeter
- * (navigation privée, données de site bloquées) : le bloc reste alors ouvert,
- * ce qui est le bon défaut.
- */
-function Fold({
-  title,
-  signal,
-  id,
-  count,
-  defaultOpen = true,
-  children,
-}: {
-  title: string;
-  signal: number | null;
-  id: string;
-  /** Le nombre d'entrees, visible ouvert comme ferme. */
-  count?: number | null;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-}) {
-  const key = `rail.fold.${id}`;
-  const [open, setOpen] = useState(defaultOpen);
-
-  // Après le montage seulement : le rendu serveur n'a pas de `localStorage`, et
-  // rendre fermé côté client ce que le serveur a rendu ouvert casserait
-  // l'hydratation.
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(key);
-      if (saved === "closed") setOpen(false);
-      if (saved === "open") setOpen(true);
-    } catch {
-      /* le bloc garde son etat par defaut */
-    }
-  }, [key]);
-
-  function toggle() {
-    setOpen((value) => {
-      try {
-        localStorage.setItem(key, value ? "closed" : "open");
-      } catch {
-        /* sans mémoire, mais pliable quand même */
-      }
-      return !value;
-    });
-  }
-
-  return (
-    <section className="border-t border-line-soft py-2.5 first:border-t-0 first:pt-0">
-      <h2>
-        <button
-          type="button"
-          onClick={toggle}
-          aria-expanded={open}
-          aria-controls={`fold-${id}`}
-          className="flex w-full items-center gap-1.5 rounded-sm text-left text-[11px] font-medium uppercase tracking-wide text-ink-faint hover:text-ink-soft"
-        >
-          <Caret open={open} />
-          <span className="min-w-0 flex-1 truncate">{title}</span>
-          {!open && signal !== null ? (
-            <span className="shrink-0 font-mono tabular-nums text-drift">{signal}</span>
-          ) : typeof count === "number" ? (
-            <span className="shrink-0 font-mono tabular-nums text-ink-faint">{count}</span>
-          ) : null}
-        </button>
-      </h2>
-
-      {open ? (
-        <div id={`fold-${id}`} className="flex flex-col gap-1 pt-1.5 pl-[1.125rem] text-[12px]">
-          {children}
-        </div>
-      ) : null}
-    </section>
   );
 }
 

@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { Banner } from "#/components/banner";
 import { Dock } from "#/components/dock";
 import { Rail } from "#/components/rail";
 import { StateStrip } from "#/components/state-strip";
-import { anchorOf, type Focus } from "#/components/widgets";
+import type { Focus } from "#/components/widgets";
 import { Blocking, Workbench } from "#/components/workbench";
 import { useNotify } from "#/lib/notify";
 import { getSnapshot } from "#/lib/snapshot-fn";
@@ -23,12 +23,11 @@ export const Route = createFileRoute("/")({
  * le dossier en sections depliables. A droite, l'etabli — le lot de questions
  * qui attend, le chantier du depot, la revue, les checklists, les arbitrages.
  *
- * **Le rail ne bascule plus la colonne.** Il l'a fait longtemps : cliquer une
- * entree du dossier remplacait l'etabli par un document, donc le chantier et la
- * revue quittaient l'ecran pendant qu'on lisait une decision, et il fallait
- * revenir en arriere pour savoir ou en etait le run. Un contenu, une vue : le
- * rail fait defiler jusqu'au widget et l'ouvre a la bonne entree, rien ne
- * disparait.
+ * **Le rail ne commande plus rien.** Il a longtemps bascule la colonne : cliquer
+ * une entree du dossier remplacait l'etabli par un document, donc le chantier et
+ * la revue quittaient l'ecran pendant qu'on lisait une decision. Il a ensuite
+ * fait defiler jusqu'au widget. Il ne fait plus que montrer ou en est le run —
+ * tout ce qui se lit se lit dans l'etabli, d'un seul defilement.
  */
 function LiveShell() {
   const run = useLiveRun(Route.useLoaderData());
@@ -37,32 +36,12 @@ function LiveShell() {
   // onglet : quand le run s'est arrete sur toi.
   const notify = useNotify(run.ticket, run.question, run.plan);
 
-  const open = useCallback((next: Focus) => {
-    setFocus(next);
-    // Le widget doit d'abord etre rendu a la bonne entree : on attend la frame
-    // suivante avant d'aller chercher l'ancre.
-    requestAnimationFrame(() => {
-      const quiet = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      document.getElementById(anchorOf(next.section))?.scrollIntoView({
-        block: "start",
-        behavior: quiet ? "auto" : "smooth",
-      });
-    });
-  }, []);
-
   const blocked = Boolean(run.question || run.plan || run.ticket.run.escalation);
 
   return (
     <div className="flex min-h-screen pb-11">
       <aside className="sticky top-0 hidden h-[calc(100vh-2.75rem)] w-[19rem] shrink-0 border-r bg-rail text-rail-ink lg:block">
-        <Rail
-          ticket={run.ticket}
-          step={run.step}
-          loops={run.loops}
-          steps={run.steps}
-          agents={run.agents}
-          onOpenContradictions={() => open({ section: "contradictions", index: 0 })}
-        />
+        <Rail ticket={run.ticket} step={run.step} steps={run.steps} agents={run.agents} />
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">

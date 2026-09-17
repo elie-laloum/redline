@@ -94,7 +94,7 @@ export function Dock({ ticket, events, ignored, notify, onNotify }: DockProps) {
             className="relative ml-auto flex shrink-0 items-center gap-1.5 rounded-sm px-2 py-1 text-[12px] text-ink-faint hover:bg-field hover:text-ink"
           >
             <BellGlyph />
-            Me prévenir quand le run m'attend
+            Activer les notifications
           </button>
         ) : null}
 

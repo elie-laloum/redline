@@ -106,6 +106,6 @@ function wait(ms: number): Promise<void> {
 }
 
 /** Une URL peut porter un jeton en query. Elle ne doit pas finir dans un message. */
-function redact(url: string): string {
+export function redact(url: string): string {
   return url.replace(/([?&](token|access_token|private_token)=)[^&]+/gi, "$1<masque>");
 }

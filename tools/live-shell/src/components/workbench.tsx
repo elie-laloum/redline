@@ -1,9 +1,10 @@
 import { At, Mark, type MarkTone, Nothing, StateDot } from "#/components/atoms";
 import { PlanGate } from "#/components/plan-gate";
 import { QuestionModule } from "#/components/question-module";
+import { Maquette, MemoryUpdate, Scouted, TicketSource } from "#/components/sources";
 import { Contradictions, Decisions, type Focus, Repos, Review } from "#/components/widgets";
 import type { PendingPlan, PendingQuestion, PlanVerdict } from "#/lib/event";
-import { DOCKET_LABELS, type Escalation, STEPS, stepIndex, type Ticket } from "#/lib/ticket";
+import { DOCKET_LABELS, type Escalation, stepIndex, type Ticket } from "#/lib/ticket";
 import type { Check, Todo, TouchedFile, Worksite } from "#/lib/use-live-run";
 import { cn } from "#/lib/utils";
 
@@ -15,10 +16,18 @@ import { cn } from "#/lib/utils";
  * qui est **vivant et perissable** : un lot de questions qui attend, la todo du
  * developer, ce qu'un commit vient de toucher, une checklist qui se remplit.
  *
- * Les modules s'empilent par urgence et **aucun ne se replie**. Un module
- * repliable devient un module qu'on ne rouvre pas ; un module qui ne dit rien
- * disparait a la place. Chacun tient en quelques lignes : c'est un etabli, pas
- * une page a derouler.
+ * **Ce qui se fabrique ne se replie pas.** Un module repliable devient un module
+ * qu'on ne rouvre pas, et on ouvre la revue precisement pour la surveiller ; un
+ * module qui ne dit rien disparait a la place. Chacun tient en quelques lignes :
+ * c'est un etabli, pas une page a derouler.
+ *
+ * **Ce qui a ete ingere se replie, et par defaut.** L'enonce du ticket, la
+ * maquette, ce que la memoire savait : ce sont des sources, elles ne bougent
+ * plus une fois posees, et on y revient quand un arbitrage surprend — pas
+ * toutes les dix minutes. Elles vivent dans `sources.tsx` et n'obeissent pas a
+ * la regle ci-dessus, parce que celle-ci a ete ecrite pour ce qui bouge. Leur
+ * rangee fermee porte un resume : un pli qui n'informe pas est un pli qu'on
+ * paie deux fois.
  */
 
 /**
@@ -62,53 +71,136 @@ export interface WorkbenchProps {
 /**
  * L'ordre des widgets est fixe, et c'est ce qui les rend lisibles.
  *
- * Le plan ouvre, la revue suit : ce sont les deux blocs qu'on vient voir
- * pendant le cycle, et ils gardent leurs deux places quoi qu'il arrive. Ils ne
- * suivent pas le defilement — un bloc colle mange le haut de l'ecran pendant
- * qu'on lit autre chose ; c'est leur **position** qui est fixe, pas leur
- * pixel. Derriere eux, du plus perissable au plus etabli — ce qui se fabrique, puis
- * les depots, puis ce qui a ete decide. Les arbitrages ferment la marche : ce
- * sont les plus anciens, et les seuls qui ne bougeront plus.
+ * **Le plus recent en haut, et c'est calcule.** Chaque widget declare le point
+ * du workflow qui l'a produit, et la pile se trie par point decroissant. Un
+ * ordre tape a la main dans un tableau se defait au premier ajout — quelqu'un
+ * insere un widget quelque part, et la page ne raconte plus le run a l'envers
+ * mais dans l'ordre ou le fichier a ete edite. Ici la regle est le tri, donc
+ * elle tient toute seule.
  *
- * Un ordre qui changerait avec l'etape obligerait a chercher, a chaque
- * ouverture, ou est passe ce qu'on etait venu lire.
+ * Deux places sont epinglees devant : le plan approuve, rendu au-dessus par
+ * `Blocking`, puis la revue. Ce sont les deux blocs qu'on vient voir pendant le
+ * cycle, et ils gardent leurs places quoi qu'il arrive. Ils ne suivent pas le
+ * defilement — un bloc colle mange le haut de l'ecran pendant qu'on lit autre
+ * chose ; c'est leur **position** qui est fixe, pas leur pixel.
+ *
+ * L'ordre ne change pas avec l'etape : le point est attache au **type** de
+ * widget, pas a l'etat du run. Ce qui bouge, c'est seulement ce qui apparait —
+ * jamais ou. Chercher a chaque ouverture ou est passe ce qu'on etait venu lire
+ * est exactement ce que cette page existe pour supprimer.
  */
 export function Workbench({ ticket, step, blocked, worksites, focus, onFocus }: WorkbenchProps) {
   const sites = openSites(worksites);
   const shared = { ticket, focus, onFocus };
-  const widgets = [
-    <Review key="review" {...shared} step={step} />,
-    ...sites.map((site) => (
-      <Site key={`site:${site.repo}`} site={site} current={site.repo === ticket.run.currentRepo} />
-    )),
-    <Repos key="scope" {...shared} />,
-    <Contradictions key="contradictions" {...shared} />,
-    <Decisions
-      key="technical"
-      section="technical"
-      title={DOCKET_LABELS.technical}
-      entries={ticket.technical}
-      focus={focus}
-      onFocus={onFocus}
-    />,
-    <Decisions
-      key="functional"
-      section="functional"
-      title={DOCKET_LABELS.functional}
-      entries={ticket.functional}
-      focus={focus}
-      onFocus={onFocus}
-    />,
-  ].filter(Boolean);
+  const scope = ticket.scope.filter((repo) => repo.reason || repo.evidence.length > 0);
+  // Le point 2 est celui des maquettes : « passe » veut dire strictement apres.
+  const searched = stepIndex(ticket.run.step) > stepIndex("2");
 
-  const empty = widgets.length === 0 || widgets.every((widget) => widget === null);
+  /**
+   * Le point qui a produit chaque widget. C'est la seule chose qui decide de
+   * l'ordre, et `when` la seule qui decide de la presence — un widget sans
+   * matiere n'est pas un widget vide, il n'existe pas.
+   */
+  const stack: { at: number; when: boolean; node: React.ReactNode }[] = [
+    {
+      at: 12,
+      when: ticket.memoryOperations.length > 0 || ticket.memoryCommit !== null,
+      node: <MemoryUpdate key="memory-written" ticket={ticket} />,
+    },
+    {
+      at: 11,
+      when: ticket.contradictions.length > 0,
+      node: <Contradictions key="contradictions" {...shared} />,
+    },
+    // Les chantiers sont tous au point 10 : le tri est stable, donc c'est cet
+    // ordre-ci qui tient. On le renverse pour que le dernier depot traite soit
+    // en tete — c'est celui qu'on vient voir, les precedents sont finis.
+    ...[...sites].reverse().map((site) => ({
+      at: 10,
+      when: true,
+      node: <Site key={`site:${site.repo}`} site={site} current={site.repo === ticket.run.currentRepo} />,
+    })),
+    {
+      at: 7,
+      when: ticket.technical.length > 0,
+      node: (
+        <Decisions
+          key="technical"
+          section="technical"
+          title={DOCKET_LABELS.technical}
+          entries={ticket.technical}
+          focus={focus}
+          onFocus={onFocus}
+        />
+      ),
+    },
+    ...scouts(ticket),
+    { at: 5, when: scope.length > 0, node: <Repos key="scope" {...shared} /> },
+    {
+      at: 4,
+      when: ticket.functional.length > 0,
+      node: (
+        <Decisions
+          key="functional"
+          section="functional"
+          title={DOCKET_LABELS.functional}
+          entries={ticket.functional}
+          focus={focus}
+          onFocus={onFocus}
+        />
+      ),
+    },
+    {
+      at: 2,
+      // Une URL n'est pas une maquette. `figmaOverrides` est ecrit avant le
+      // point 1, des la ligne de commande : le widget apparaissait donc a la
+      // seconde zero pour annoncer qu'il n'avait pas l'image d'une maquette
+      // que personne n'avait encore ouverte. Il faut soit l'image, soit que le
+      // point 2 soit derriere nous — c'est-a-dire que le run ait cherche et
+      // qu'une absence veuille enfin dire quelque chose.
+      when: ticket.figmaFrames.length > 0 || (searched && ticket.figmaUrls.length > 0),
+      node: <Maquette key="maquette" ticket={ticket} />,
+    },
+    {
+      at: 1,
+      // Une cle et une URL ne sont pas de la matiere ingeree : elles existent
+      // avant que le run ait lu quoi que ce soit, et le bandeau les porte deja.
+      when: Boolean(ticket.description || ticket.acceptanceCriteria),
+      node: <TicketSource key="ticket" ticket={ticket} />,
+    },
+  ];
+
+  const shown = stack.filter((entry) => entry.when).sort((a, b) => b.at - a.at);
+  const review = ticket.planApprovedAt !== null && ticket.tests.length + ticket.code.length > 0;
 
   return (
-    <div className="flex flex-col">
-      {widgets}
-      {!blocked && empty ? <Quiet ticket={ticket} step={step} /> : null}
+    // `flex-1` n'est pas de la decoration : c'est ce qui donne au vide une
+    // hauteur ou se centrer quand il est seul, et ca ne change rien des que la
+    // pile a de la matiere — la colonne est alors plus haute que l'ecran.
+    <div className="flex flex-1 flex-col">
+      {/* Epinglee, et deuxieme : le plan approuve la precede, au-dessus. */}
+      <Review {...shared} step={step} />
+      {shown.map((entry) => entry.node)}
+      {!blocked && !review && shown.length === 0 ? <Quiet /> : null}
     </div>
   );
+}
+
+/**
+ * Les deux passages du doc-scout, chacun a sa place dans la pile.
+ *
+ * Le tour large est au point 3 et le tour cible au point 6 : deux widgets
+ * separes par tout le cadrage, et c'est exact — entre les deux, le
+ * `functional-grill` a interroge et le `scope-scout` a etabli le perimetre. Un
+ * seul widget « Memoire » les aurait fusionnes et aurait fait disparaitre le
+ * seul endroit ou l'on voit que le second passage a bien eu lieu.
+ */
+function scouts(ticket: Ticket): { at: number; when: boolean; node: React.ReactNode }[] {
+  return ticket.scouted.map((scout) => ({
+    at: scout.pass === "ciblee" ? 6 : 3,
+    when: true,
+    node: <Scouted key={`scouted:${scout.pass}`} scout={scout} />,
+  }));
 }
 
 /** Une escalade bloque visuellement : on comprend pourquoi sans cliquer. */
@@ -254,25 +346,38 @@ function Checks({ checks }: { checks: readonly Check[] }) {
   );
 }
 
-/** Rien de vivant : ca aussi dit ou en est le run. */
-function Quiet({ ticket, step }: { ticket: Ticket; step: string }) {
-  const here = stepIndex(step);
-  const label = here >= 0 ? STEPS[here]?.label : null;
-  const decided =
-    ticket.functional.length + ticket.technical.length + ticket.tests.length + ticket.code.length > 0;
-
+/**
+ * L'etabli vide, et c'est un etat, pas un trou.
+ *
+ * Centre sur les deux axes du vide qu'il occupe : un run qui n'a encore rien
+ * pousse a une page qui a l'air finie, pas une page qui a l'air coupee. Une
+ * phrase de deux lignes vivait ici, a la place ou un widget se lit et dans son
+ * alignement — donc on la lisait comme du contenu, et on cherchait ce qu'elle
+ * voulait de nous. Un dessin occupe ce vide sans se faire lire, et la ligne
+ * dessous suffit a dire pourquoi il est la.
+ *
+ * Elle ne nomme ni l'etape ni ce qui a deja ete tranche : le bandeau porte
+ * l'etape juste au-dessus, le dossier porte les decisions juste a gauche, et
+ * les deux sont a l'ecran a l'instant ou on lit ca. Recopier l'un des deux
+ * aurait fait une phrase a maintenir a chaque changement d'etape.
+ *
+ * **Le dessin est au trait et en gris, et c'est ce qui le rend portable.** Il
+ * s'inverse en sombre plutot que d'exister en deux fichiers a tenir en phase —
+ * le ciel de jour devient un ciel de nuit, et aucune couleur d'etat n'est
+ * empruntee au passage. Il est decoratif, donc `alt` est vide : ce qu'il y a a
+ * comprendre est ecrit dessous, et le faire lire deux fois est une gene.
+ */
+function Quiet() {
   return (
-    <section className="px-6 py-8">
-      <Nothing>
-        {label ? (
-          <>Rien ne réclame ton attention. Le run est à l'étape « {label} » et travaille. </>
-        ) : (
-          <>Le run n'a encore rien poussé. </>
-        )}
-        {decided
-          ? "Ce qui a déjà été tranché se lit dans le dossier, à gauche."
-          : "Les décisions apparaîtront dans le dossier, à gauche, à mesure que le run les produit."}
-      </Nothing>
+    <section className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-16">
+      <img
+        src="/empty-sky.png"
+        alt=""
+        width={475}
+        height={415}
+        className="w-52 max-w-full opacity-90 dark:invert"
+      />
+      <Nothing>Le run n'a encore rien ingéré ni produit.</Nothing>
     </section>
   );
 }

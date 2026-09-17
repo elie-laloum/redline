@@ -60,6 +60,54 @@ export interface Contradiction {
   readonly at: string | null;
 }
 
+/**
+ * Une maquette, telle que le run l'a lue.
+ *
+ * `image` est un nom de fichier, pas une URL Figma : le PNG a ete tire au point
+ * 2 et range a cote de l'etat du ticket. Une URL de rendu Figma expire en
+ * quelques dizaines de minutes, et le lien du fichier demande un jeton que le
+ * navigateur n'a pas — un run relu trois semaines plus tard montrerait un cadre
+ * vide a la place de la maquette sur laquelle il a ete cadre.
+ */
+export interface FigmaFrame {
+  readonly url: string;
+  readonly nodeId: string | null;
+  readonly name: string | null;
+  readonly image: string | null;
+  readonly outline: readonly string[];
+}
+
+/** Une note que le doc-scout a retenue, et ce qu'il en a tire. */
+export interface ScoutedNote {
+  readonly path: string;
+  readonly says: string | null;
+}
+
+/**
+ * Un passage du doc-scout.
+ *
+ * Il y en a deux et ils ne se fusionnent pas : le tour large cherche le sujet
+ * du ticket sans connaitre les depots, le tour cible ne lit que les depots
+ * retenus. Les confondre ferait croire que la memoire a ete lue une fois.
+ */
+export interface MemoryScout {
+  readonly pass: "large" | "ciblee";
+  readonly at: string | null;
+  readonly filesRead: number | null;
+  readonly notes: readonly ScoutedNote[];
+  /** Ce sur quoi la memoire est muette. Compte autant que ce qu'elle dit. */
+  readonly silentOn: readonly string[];
+}
+
+export type MemoryOp = "create" | "update" | "delete";
+
+/** Ce que le memory-writer a applique au point 12. */
+export interface MemoryOperation {
+  readonly op: MemoryOp;
+  readonly path: string;
+  readonly why: string | null;
+}
+
 export interface Metrics {
   readonly humanInterventions: number | null;
   readonly loopTurnsTotal: number | null;
@@ -71,6 +119,16 @@ export interface Ticket {
   readonly title: string | null;
   readonly url: string | null;
   readonly jiraStatus: string | null;
+  readonly type: string | null;
+  /** L'enonce, tel que le run l'a lu. Jira n'est pas rappele depuis la page. */
+  readonly description: string | null;
+  readonly acceptanceCriteria: string | null;
+  /** Les maquettes referencees, meme celles qu'on n'a pas su lire. */
+  readonly figmaUrls: readonly string[];
+  readonly figmaFrames: readonly FigmaFrame[];
+  readonly scouted: readonly MemoryScout[];
+  readonly memoryOperations: readonly MemoryOperation[];
+  readonly memoryCommit: string | null;
   readonly run: RunState;
   readonly scope: readonly RepoEntry[];
   readonly functional: readonly Arbitrage[];
@@ -104,6 +162,14 @@ export const EMPTY_TICKET: Ticket = {
   title: null,
   url: null,
   jiraStatus: null,
+  type: null,
+  description: null,
+  acceptanceCriteria: null,
+  figmaUrls: [],
+  figmaFrames: [],
+  scouted: [],
+  memoryOperations: [],
+  memoryCommit: null,
   run: {
     phase: null,
     // Sans fichier d'etat, on ne connait aucune etape — pas meme la premiere.
@@ -140,12 +206,23 @@ export function readTicket(raw: unknown): Ticket {
   const checklists = asRecord(plan.checklists) ?? {};
   const memory = asRecord(root.memory) ?? {};
   const metrics = asRecord(root.metrics) ?? {};
+  const figma = asRecord(root.figma) ?? {};
 
   return {
     key: text(ticket.key),
     title: text(ticket.title),
     url: text(ticket.url),
     jiraStatus: text(ticket.statusAtStart),
+    type: text(ticket.type),
+    description: text(ticket.description),
+    acceptanceCriteria: text(ticket.acceptanceCriteria),
+    // Les `--figma` de la ligne de commande s'ajoutent a ceux du ticket, et
+    // c'est le cas courant : la maquette existe rarement sur le ticket.
+    figmaUrls: [...new Set([...list(figma.urls), ...list(root.figmaOverrides)].map(text).filter(isPresent))],
+    figmaFrames: list(figma.frames).map(readFrame).filter(isPresent),
+    scouted: list(memory.scouted).map(readScout).filter(isPresent),
+    memoryOperations: list(memory.operations).map(readOperation).filter(isPresent),
+    memoryCommit: text(memory.commit),
     run: {
       phase: text(run.phase),
       // Les agents ecrivent tantot "10.4", tantot 8.
@@ -229,6 +306,54 @@ function readContradiction(raw: unknown): Contradiction | null {
     raisedBy: text(entry.raisedBy),
     at: text(entry.at),
   };
+}
+
+function readFrame(raw: unknown): FigmaFrame | null {
+  const entry = asRecord(raw);
+  const url = entry && text(entry.url);
+  if (!entry || !url) return null;
+  return {
+    url,
+    nodeId: text(entry.nodeId),
+    name: text(entry.name),
+    image: text(entry.image),
+    outline: list(entry.outline).map(text).filter(isPresent),
+  };
+}
+
+function readScout(raw: unknown): MemoryScout | null {
+  const entry = asRecord(raw);
+  if (!entry) return null;
+  const notes = list(entry.notes)
+    .map((note) => {
+      const record = asRecord(note);
+      // Un agent ecrit tantot l'objet, tantot le chemin seul.
+      if (!record) return text(note) ? { path: text(note) as string, says: null } : null;
+      const path = text(record.path);
+      return path ? { path, says: text(record.says) ?? text(record.summary) } : null;
+    })
+    .filter(isPresent);
+
+  return {
+    pass: text(entry.pass) === "ciblee" ? "ciblee" : "large",
+    at: text(entry.at),
+    filesRead: number(entry.filesRead),
+    notes,
+    silentOn: list(entry.silentOn).map(text).filter(isPresent),
+  };
+}
+
+const MEMORY_OPS: readonly MemoryOp[] = ["create", "update", "delete"];
+
+function readOperation(raw: unknown): MemoryOperation | null {
+  const entry = asRecord(raw);
+  const path = entry && text(entry.path);
+  if (!entry || !path) return null;
+  // `rewrite` chez le memory-planner, `update` dans l'etat : les deux disent
+  // qu'une note existante a ete reecrite.
+  const written = text(entry.op) === "rewrite" ? "update" : text(entry.op);
+  const op = MEMORY_OPS.find((candidate) => candidate === written);
+  return op ? { op, path, why: text(entry.why) ?? text(entry.reason) } : null;
 }
 
 function readEscalation(raw: unknown): Escalation | null {

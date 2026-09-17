@@ -171,6 +171,11 @@ export function emptyTicketState(ticketId: string): Json {
       url: null,
       statusAtStart: null,
       notes: null,
+      // Ce que le run a lu du ticket, garde ici parce que Jira n'est pas
+      // toujours joignable et qu'un run se relit des semaines plus tard. Sans
+      // ca, l'interface montre les decisions sans jamais montrer l'enonce.
+      description: null,
+      acceptanceCriteria: null,
     },
     figmaOverrides: [],
     run: {
@@ -182,11 +187,15 @@ export function emptyTicketState(ticketId: string): Json {
       updatedAt: now,
       escalation: null,
     },
-    figma: { urls: [] },
+    // `urls` sont les references brutes ; `frames` ce que le run en a
+    // reellement tire — un nom, une arborescence, et le PNG sur disque.
+    figma: { urls: [], frames: [] },
     arbitrages: { functional: [], technical: [] },
     plan: { approvedAt: null, content: null, repos: [], checklists: { tests: [], code: [] } },
     scope: [],
-    memory: { contradictions: [], commit: null },
+    // `scouted` : les deux passages du doc-scout, large puis cible.
+    // `operations` : ce que le memory-writer a applique au point 12.
+    memory: { contradictions: [], scouted: [], operations: [], commit: null },
     publication: {
       mergeRequests: [],
       slackChannel: { id: null, name: null, invited: [] },

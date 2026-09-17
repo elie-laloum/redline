@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-15T17:29:27.082546Z",
+  "generatedAt": "2026-09-17T12:17:45.305635Z",
   "title": "Design System: Autopilot Live Shell",
   "extensions": {
     "colorMeta": {
@@ -460,6 +460,22 @@
       "css": ".ds-evidence { list-style: none; margin: 0; padding: 4px 0 0; display: flex; flex-direction: column; gap: 6px; font-size: 12px; line-height: 1.625; } .ds-evidence-loc { font-family: ui-monospace, 'SF Mono', Menlo, monospace; color: var(--ink, oklch(0.16 0 0)); } .ds-evidence-why { color: var(--ink-faint, oklch(0.62 0 0)); }"
     },
     {
+      "name": "Source Row (folded)",
+      "kind": "custom",
+      "refersTo": "source-row",
+      "description": "An ingested source, closed. Caret, title, a summary that answers without opening, and a measure pushed right.",
+      "html": "<button class=\"ds-source-row\" aria-expanded=\"false\"><svg class=\"ds-source-caret\" viewBox=\"0 0 12 12\" aria-hidden=\"true\"><path d=\"M4.5 2.5 8 6l-3.5 3.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg><span class=\"ds-source-title\">Mémoire retenue, tour large</span><span class=\"ds-source-summary ds-drift\">3 fichiers lus · aucune note sur le sujet</span><span class=\"ds-source-meta\">10:40</span></button>",
+      "css": ".ds-source-row { display: flex; width: 100%; align-items: baseline; gap: 8px; padding: 10px 24px; background: transparent; border: none; border-bottom: 1px solid var(--line, #e6e6e6); border-radius: 4px; text-align: left; font: 400 13px/1.375 ui-sans-serif, system-ui, sans-serif; color: var(--ink-soft, #6b6b6b); cursor: pointer; } .ds-source-row:hover { color: var(--ink, #292929); } .ds-source-row:focus-visible { outline: 2px solid var(--ink, #292929); outline-offset: 2px; } .ds-source-caret { width: 12px; height: 12px; flex: none; transform: translateY(2px) rotate(0deg); transition: transform .3s cubic-bezier(0.16,1,0.3,1); } .ds-source-row[aria-expanded=\"true\"] .ds-source-caret { transform: translateY(2px) rotate(90deg); } .ds-source-title { flex: none; font-weight: 500; } .ds-source-summary { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--ink-faint, #9a9a9a); } .ds-source-summary.ds-drift { color: var(--drift, #8a6a1f); } .ds-source-meta { flex: none; font: 400 11px ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; color: var(--ink-faint, #9a9a9a); }"
+    },
+    {
+      "name": "Mock-Up Frame",
+      "kind": "custom",
+      "refersTo": "maquette-frame",
+      "description": "The captured Figma frame, the only raster in the system. Hairline on field ground, capped at 60vh, caption and outbound link beneath.",
+      "html": "<figure class=\"ds-maquette\"><div class=\"ds-maquette-frame\"><div class=\"ds-maquette-img\">maquette PNG</div></div><figcaption class=\"ds-maquette-caption\"><span class=\"ds-maquette-name\">LAB - pondération altair - popup opened</span><code class=\"ds-maquette-node\">7155:19416</code><a class=\"ds-maquette-link\" href=\"#\">Ouvrir dans Figma</a></figcaption></figure>",
+      "css": ".ds-maquette { display: flex; flex-direction: column; gap: 8px; margin: 0; } .ds-maquette-frame { display: flex; justify-content: center; max-height: 60vh; overflow: hidden; padding: 8px; background: var(--field, #fff); border: 1px solid var(--line, #e6e6e6); border-radius: 0; } .ds-maquette-img { display: grid; place-items: center; width: 100%; aspect-ratio: 1212 / 654; background: repeating-linear-gradient(135deg, var(--line-soft, #f1f1f1) 0 10px, transparent 10px 20px); font: 400 12px ui-sans-serif, system-ui, sans-serif; color: var(--ink-faint, #9a9a9a); } .ds-maquette-caption { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; font-size: 12px; } .ds-maquette-name { color: var(--ink-soft, #6b6b6b); } .ds-maquette-node { font: 400 12px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink-faint, #9a9a9a); } .ds-maquette-link { margin-left: auto; color: var(--ink-soft, #6b6b6b); text-decoration: underline; text-decoration-color: var(--line, #e6e6e6); text-underline-offset: 3px; } .ds-maquette-link:hover { color: var(--ink, #292929); text-decoration-color: var(--ink-faint, #9a9a9a); }"
+    },
+    {
       "name": "Progress Dot",
       "kind": "custom",
       "refersTo": null,
@@ -502,7 +518,10 @@
       "A dense rail on its own ground against a full-width workbench.",
       "Monospace is reserved for what is measured or located; everything else is sans.",
       "One progress scale, six states, one dot — steps and agents read identically.",
-      "Exactly one spinner on screen; the line that handed off breathes instead."
+      "Exactly one spinner on screen; the line that handed off breathes instead.",
+      "Two registers: what the run produces never folds, what it ingested folds shut.",
+      "The widget order is the run read backwards, computed from a declared step.",
+      "One raster in the whole system — the captured mock-up, framed as evidence."
     ],
     "rules": [
       {
@@ -552,7 +571,7 @@
       },
       {
         "name": "The Uncut Sentence Rule",
-        "body": "Agent-written text is shown whole or not at all. A truncated title is more expensive than an absent one, because it is believed — so the banner's second level shows the bounded title and then the full text beneath it, `whitespace-pre-wrap`.",
+        "body": "Agent-written text is shown whole, or bounded somewhere the whole is still reachable — never quietly cut. A truncated title is more expensive than an absent one, because it is believed, so the banner's second level shows the bounded title and then the detail beneath it, `whitespace-pre-wrap`.",
         "section": "typography"
       },
       {
@@ -591,45 +610,60 @@
         "section": "elevation"
       },
       {
+        "name": "The Two-Registers Rule",
+        "body": "What the run produces never folds; what the run ingested folds, and is closed by default. The distinction is movement, not importance: a review folded is a review nobody reopens, and reopening it is the entire reason it exists, whereas a ticket statement is fixed the moment it is read and is consulted when an arbitration surprises — not every ten minutes. A produced module that has nothing to say disappears instead of collapsing. An ingested one stays, closed, carrying its summary, because its absence and its emptiness are different facts.",
+        "section": "elevation"
+      },
+      {
         "name": "The Flat-Forever Rule",
         "body": "No `box-shadow`, no `drop-shadow`, no simulated lift, at rest or on any state. A surface that needs to separate from its neighbour gets a hairline or a tonal step, and if neither reads, it is in the wrong place in the layout.",
         "section": "elevation"
       }
     ],
     "dos": [
-      "**Do** spend colour only on state. `ok`, `ko`, `human` and `drift` report what passed, what broke, what is waiting on you and what is going wide, and nothing else. The indigo ground is the one exception, and it is confined to the banner floor and the selection wash.",
-      "**Do** mark the present with full-weight ink against soft and faint ink.",
-      "**Do** separate surfaces with a 1px hairline (`line` between regions, `line-soft` between repeating rows) or a single tonal step.",
-      "**Do** keep running text inside the measure (68ch) and treat the remainder as a margin. Everything that is not prose — grids, rows, controls, counts — takes the full column.",
-      "**Do** put a subject in exactly one widget, and make every other mention of it a route to that widget.",
-      "**Do** set monospace on anything measured or located, and make every changing number tabular.",
-      "**Do** theme the browser's own surfaces from the palette: selection, caret, focus ring, scrollbar thumb and track, underline offset.",
-      "**Do** write empty states as sentences that say where the run is.",
-      "**Do** restate the rail's state in another form whenever a breakpoint removes the rail.",
-      "**Do** let `prefers-reduced-motion` freeze the spinner and the breath while keeping them visible, and drop the drawer's height transition entirely.",
-      "**Do** draw a step and an agent from the same six-state scale and the same atom, at every depth of nesting.",
-      "**Do** prefix a bare identifier with its kind in faint ink when the reader has no way to classify it — `agent - developer`.",
-      "**Do** reserve the height of anything pinned to the viewport from every column it crosses.",
-      "**Do** give every dot the same 12px footprint whatever its state, so changing state never moves the line it sits on.",
-      "**Do** tint secondary text on a tinted surface from that surface's own hue, and darken it until it clears 4.5:1 — measure it, don't eyeball it.",
-      "**Do** hide a rail section that has nothing in it, and surface its signal on the header when it is folded."
+      "Do spend colour only on state. `ok`, `ko`, `human` and `drift` report what passed, what broke, what is waiting on you and what is going wide, and nothing else. The indigo ground is the one exception, and it is confined to the banner floor and the selection wash.",
+      "Do mark the present with full-weight ink against soft and faint ink.",
+      "Do separate surfaces with a 1px hairline (`line` between regions, `line-soft` between repeating rows) or a single tonal step.",
+      "Do keep running text inside the measure (68ch) and treat the remainder as a margin. Everything that is not prose — grids, rows, controls, counts — takes the full column.",
+      "Do put a subject in exactly one widget, and make every other mention of it a route to that widget.",
+      "Do set monospace on anything measured or located, and make every changing number tabular.",
+      "Do theme the browser's own surfaces from the palette: selection, caret, focus ring, scrollbar thumb and track, underline offset.",
+      "Do write empty states as sentences that say where the run is.",
+      "Do restate the rail's state in another form whenever a breakpoint removes the rail.",
+      "Do let `prefers-reduced-motion` freeze the spinner and the breath while keeping them visible, and drop the drawer's height transition entirely.",
+      "Do draw a step and an agent from the same six-state scale and the same atom, at every depth of nesting.",
+      "Do prefix a bare identifier with its kind in faint ink when the reader has no way to classify it — `agent - developer`.",
+      "Do reserve the height of anything pinned to the viewport from every column it crosses.",
+      "Do give every dot the same 12px footprint whatever its state, so changing state never moves the line it sits on.",
+      "Do tint secondary text on a tinted surface from that surface's own hue, and darken it until it clears 4.5:1 — measure it, don't eyeball it.",
+      "Do hide a rail section that has nothing in it, and surface its signal on the header when it is folded.",
+      "Do derive the widget order from the workflow point each widget declares, sorted newest-first, with only the approved plan and the review pinned ahead of it.",
+      "Do give a folded row a summary that answers the question the reader opened it with, and let that summary carry drift amber when it reports something to look at.",
+      "Do state what is missing without asserting why, when the page cannot tell an unwritten field from an empty one.",
+      "Do give a wrapping two-part row a floor on its prose column (24ch) so it drops to its own line instead of stacking one word wide on a phone."
     ],
     "donts": [
-      "**Don't** let the ground indigo leave its two jobs — the banner floor and the selection wash — or rise in chroma to where it reads as a state. No other decorative hue, brand colour, or section-identity tint may join it.",
-      "**Don't** mark the current step, or anything else, with colour instead of ink weight. This regression has already been shipped once and reverted.",
-      "**Don't** put content in a card, a panel, or any box with a fill, a radius above 4px, and a border at once.",
-      "**Don't** add a shadow of any kind, at rest or on hover.",
-      "**Don't** build a metric-tile grid. Numbers live inline against their label, in monospace, at the size of their neighbours. The checklist grid is not one: its squares carry no number and each one is a line you can open.",
-      "**Don't** render the same content in two places. One widget owns a subject; everything else routes to it.",
-      "**Don't** round a region. Radius belongs to things that are touched or picked.",
-      "**Don't** let type exceed 15px, or introduce a display face. A widget heading is the largest thing on the page; emphasis is bought with weight, position and ink, never with size.",
-      "**Don't** truncate agent-written prose without showing it in full somewhere on the same screen.",
-      "**Don't** show two spinners at once. One thing acts at a time in this workflow, and the derivation must guarantee it rather than the layout hoping for it.",
-      "**Don't** report aliveness with a hue, or an outcome with motion. Colour says what happened; movement says what is happening. Green meaning \"still working\" cost this system its clearest distinction once already.",
-      "**Don't** add a third continuous animation. The spinner and the handed-off breath are the whole budget; a transition that runs once on a gesture is not a third.",
-      "**Don't** number the steps in the rail, and don't have a widget refer back to a step by number. The `<ol>` already carries position for anyone listening, and a back-reference that makes the reader count rows is the recoupling this page exists to remove.",
-      "**Don't** let a fixed element cover content it did not reserve room for.",
-      "**Don't** use a text glyph as an icon. Rotating a `›` is not a chevron: it carries the font's weight and turns about its text box rather than its point. Draw an inline SVG at the stroke weight of the page — and draw it once: there is one caret atom, used by every disclosure."
+      "Don't let the ground indigo leave its two jobs — the banner floor and the selection wash — or rise in chroma to where it reads as a state. No other decorative hue, brand colour, or section-identity tint may join it.",
+      "Don't mark the current step, or anything else, with colour instead of ink weight. This regression has already been shipped once and reverted.",
+      "Don't put content in a card, a panel, or any box with a fill, a radius above 4px, and a border at once.",
+      "Don't add a shadow of any kind, at rest or on hover.",
+      "Don't build a metric-tile grid. Numbers live inline against their label, in monospace, at the size of their neighbours. The checklist grid is not one: its squares carry no number and each one is a line you can open.",
+      "Don't render the same content in two places. One widget owns a subject; everything else routes to it.",
+      "Don't round a region. Radius belongs to things that are touched or picked.",
+      "Don't let type exceed 15px, or introduce a display face. A widget heading is the largest thing on the page; emphasis is bought with weight, position and ink, never with size.",
+      "Don't truncate agent-written prose without showing it in full somewhere on the same screen. The banner's three-line clamp is allowed because the drawer carries the whole detail; a clamp with nowhere to read the rest is not.",
+      "Don't let the banner grow with what an agent wrote. It is sticky and first in the column, so it spends the workbench's space: bound the detail, and say nothing at all when a module below already renders it whole.",
+      "Don't show two spinners at once. One thing acts at a time in this workflow, and the derivation must guarantee it rather than the layout hoping for it.",
+      "Don't report aliveness with a hue, or an outcome with motion. Colour says what happened; movement says what is happening. Green meaning \"still working\" cost this system its clearest distinction once already.",
+      "Don't add a third continuous animation. The spinner and the handed-off breath are the whole budget; a transition that runs once on a gesture is not a third.",
+      "Don't number the steps in the rail, and don't have a widget refer back to a step by number. The `<ol>` already carries position for anyone listening, and a back-reference that makes the reader count rows is the recoupling this page exists to remove.",
+      "Don't let a fixed element cover content it did not reserve room for.",
+      "Don't use a text glyph as an icon. Rotating a `›` is not a chevron: it carries the font's weight and turns about its text box rather than its point. Draw an inline SVG at the stroke weight of the page — and draw it once: there is one caret atom, used by every disclosure.",
+      "Don't fold anything the run is still producing, and don't leave a folded row without a summary. A fold that says only its own title has moved a click in front of the reader and bought nothing.",
+      "Don't type the widget order into an array. It decays into the order the file was edited in; the sort on the declared point is the rule.",
+      "Don't infer an absence from an empty field. \"No acceptance criteria\" and \"nobody wrote the acceptance criteria\" are different sentences, and only one of them is knowable from here — a stated absence that turns out to be a missing write costs more than saying nothing, because it gets believed.",
+      "Don't add a second reading measure. Running prose is bounded at 68ch wherever it appears, ingested documents included.",
+      "Don't introduce imagery that is not evidence. The captured mock-up is the only raster the system carries; an illustration, a stock photograph or a placeholder box would be the first decoration on a surface that has none."
     ]
   }
 }

@@ -13,7 +13,9 @@ type RequestExtra = RequestHandlerExtra<ServerRequest, ServerNotification>;
 import { ToolError } from "./lib/errors.ts";
 import { validate } from "./lib/schema.ts";
 import type { ToolContext } from "./lib/tool.ts";
+import { killRunningCommands } from "./lib/exec.ts";
 import { ALL_TOOLS, toolByName } from "./registry.ts";
+import { reapLiveShells } from "./tools/human.ts";
 
 /**
  * Le serveur de tools de l'autopilot.
@@ -119,5 +121,44 @@ function errorResult(message: string, hint: string | null) {
     content: [{ type: "text" as const, text: hint ? `${message}\n\n${hint}` : message }],
   };
 }
+
+/**
+ * La fin de vie du serveur, en un seul endroit.
+ *
+ * Il n'y en avait aucune : le process ne sortait jamais de lui-meme. Quand la
+ * session Claude mourait sans lui envoyer de signal — terminal ferme, crash —
+ * il restait la, orphelin, avec tout ce qu'il avait lance. Quatorze serveurs
+ * vivants ont ete comptes un jeudi, le plus ancien datant du mardi precedent,
+ * et avec eux les runners de tests qu'ils n'avaient plus personne pour tuer.
+ *
+ * **La fermeture de `stdin` est le signal qui compte.** C'est ainsi qu'un
+ * client MCP s'en va, proprement ou non : le tube se ferme. Les signaux ne
+ * couvrent que le depart poli, et un `kill -9` ne se couvre pas — rien ne
+ * s'execute apres lui, et c'est la seule fuite qui reste possible.
+ */
+let leaving = false;
+
+function shutdown(code: number): void {
+  if (leaving) return;
+  leaving = true;
+  // L'ordre compte : les commandes d'abord, parce que ce sont elles qui
+  // tiennent un CPU, le shell ensuite, qui ne tient qu'un port.
+  killRunningCommands();
+  reapLiveShells();
+  // On laisse partir les SIGTERM avant de quitter : sortir dans la foulee
+  // laisserait les groupes vivants une poignee de millisecondes de trop.
+  setTimeout(() => process.exit(code), 300).unref();
+}
+
+for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const) {
+  process.on(signal, () => shutdown(0));
+}
+process.stdin.on("end", () => shutdown(0));
+process.stdin.on("close", () => shutdown(0));
+// Une erreur non rattrapee ne doit pas laisser un orphelin derriere elle.
+process.on("uncaughtException", (error) => {
+  console.error("[autopilot] exception non rattrapee :", error);
+  shutdown(1);
+});
 
 await server.connect(new StdioServerTransport());

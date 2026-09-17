@@ -43,6 +43,18 @@ export function worktreePath(ticketId: string, repo: string): string {
   return join(autopilotHome(), "worktrees", ticketId, repo);
 }
 
+/**
+ * Les maquettes rendues, en PNG, a cote de l'etat du ticket.
+ *
+ * L'URL que Figma rend pour une image expire au bout de quelques dizaines de
+ * minutes, et le lien du fichier demande un jeton. Un run rejoue trois semaines
+ * plus tard afficherait donc un cadre vide a la place de la maquette sur
+ * laquelle il a ete cadre. On garde le pixel.
+ */
+export function figmaDir(ticketId: string): string {
+  return join(autopilotHome(), "figma", ticketId);
+}
+
 /** Les definitions d'agents. Leur nom de fichier est leur nom, il fait foi. */
 export function agentsDir(): string {
   return join(projectRoot(), "plugins", "autopilot", "agents");

@@ -3,7 +3,9 @@ import {
   answer,
   ask,
   askPlan,
+  collect,
   decide,
+  figmaImage,
   ingest,
   replay,
   snapshot,
@@ -20,7 +22,13 @@ import {
  * |----------------------------|-------------------------------|
  * | session Claude -> app      | rpc POST /rpc/event           |
  * | app -> navigateur          | SSE /rpc/stream               |
- * | app -> session Claude      | reponse de POST /rpc/ask      |
+ * | app -> session Claude      | GET /rpc/collect, par releve  |
+ *
+ * Le troisieme canal etait la reponse d'un POST tenu ouvert jusqu'a ce que
+ * l'humain reponde. Une requete HTTP ne dure pas des heures : le client de
+ * l'appelant coupe a cinq minutes, et le lot repartait au terminal en plein
+ * cadrage. Le lot se depose maintenant en une requete courte, et l'appelant
+ * revient le relever — rien n'est tenu ouvert, donc rien ne peut etre coupe.
  *
  * Tout le reste part au rendu SSR du routeur.
  */
@@ -33,6 +41,21 @@ export default {
 
     if (url.pathname.startsWith("/rpc/")) {
       return rpc(url.pathname, request);
+    }
+
+    // Les maquettes rendues au point 2. Servies depuis `~/.autopilot`, jamais
+    // depuis le bundle : elles appartiennent au run, pas a l'application.
+    if (url.pathname.startsWith("/maquette/")) {
+      const image = figmaImage(decodeURIComponent(url.pathname.slice("/maquette/".length)));
+      if (!image) return json({ error: "Maquette introuvable" }, 404);
+      return new Response(image, {
+        headers: {
+          "content-type": "image/png",
+          // Le fichier ne change jamais sous un nom donne : il est ecrit une
+          // fois au point 2, et un nouveau rendu porterait un autre node.
+          "cache-control": "private, max-age=31536000, immutable",
+        },
+      });
     }
 
     // @ts-expect-error — la signature exacte du handler varie avec l'adaptateur.
@@ -81,18 +104,25 @@ async function rpc(pathname: string, request: Request): Promise<Response> {
 
       if (questions.length === 0) return json({ error: "`questions` vide" }, 400);
 
-      // On bloque ici, volontairement, jusqu'a ce que le lot entier soit
-      // repondu dans l'interface. Le timeout est cote appelant : c'est lui qui
-      // sait a partir de quand il doit se rabattre sur le terminal.
-      const answers = await ask({
+      // On depose et on rend la main. Tenir la reponse dans cette requete
+      // paraissait plus simple — un appel, un resultat — mais une requete HTTP
+      // n'est pas faite pour durer huit heures : le client de l'appelant coupe
+      // au bout de cinq minutes et le lot repart au terminal en plein cadrage.
+      // Le blocage du workflow est reel, il est juste tenu ailleurs.
+      const batch = ask({
         questions,
         askedBy: body?.askedBy ?? null,
         id: body?.id ?? null,
       });
-      // `null` veut dire que l'appelant a retire le lot : il a repris la main
-      // ailleurs, et la page a deja ete prevenue.
-      if (answers === null) return json({ withdrawn: true }, 409);
-      return json({ answers });
+      return json({ id: batch.id, status: "pending" });
+    }
+
+    // La releve, pour les deux formes. Courte par construction : elle rend
+    // l'etat du casier, jamais une attente.
+    case "/rpc/collect": {
+      const id = new URL(request.url).searchParams.get("id");
+      if (!id) return json({ error: "`id` requis" }, 400);
+      return json(collect(id));
     }
 
     case "/rpc/ask-plan": {
@@ -115,16 +145,15 @@ async function rpc(pathname: string, request: Request): Promise<Response> {
 
       if (repos.length === 0) return json({ error: "`repos` vide" }, 400);
 
-      // Meme blocage que `/rpc/ask`, et pour la meme raison : le point 9 est un
-      // arret du workflow, pas une notification.
-      const decision = await askPlan({
+      // Meme depot que les questions, pour la meme raison : le point 9 est un
+      // arret du workflow, pas une requete HTTP qu'on tient ouverte.
+      const submitted = askPlan({
         repos,
         note: body?.note?.trim() || null,
         askedBy: body?.askedBy ?? null,
         id: body?.id ?? null,
       });
-      if (decision === null) return json({ withdrawn: true }, 409);
-      return json({ decision });
+      return json({ id: submitted.id, status: "pending" });
     }
 
     case "/rpc/decide": {

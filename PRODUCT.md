@@ -71,7 +71,15 @@ et une escalade. Repliés par défaut : les messages bruts, le détail des event
 des adversaires.
 
 **Trois canaux, tous locaux.** RPC HTTP entrant pour les events, SSE sortant vers le
-navigateur, et un POST bloquant pour `ask-user`. Mesuré : environ 1,6 ms par event.
+navigateur, et un dépôt puis relève pour `ask-user`. Mesuré : environ 1,6 ms par event.
+
+`ask-user` a longtemps tenu un POST ouvert jusqu'à la réponse. Ça ne tient pas : le client
+HTTP de Node abandonne une requête dont les en-têtes n'arrivent pas au bout de 300 s, et le
+lot repartait au terminal au bout de cinq minutes alors que huit heures sont annoncées. Le
+lot se dépose désormais en une requête courte et l'appelant revient le relever toutes les
+deux secondes. **Le workflow bloque toujours** — c'est le contrat — mais le blocage est tenu
+par une boucle chez l'appelant, pas par une connexion. Effet de bord utile : un shell qui
+redémarre pendant l'attente répond « inconnu », et le lot est redéposé au lieu d'être perdu.
 
 **Les questions se posent par lots.** `ask-user` prend une liste — chaque question avec son
 étiquette, trois ou quatre options et un champ libre toujours offert. Le lot ne se rend que

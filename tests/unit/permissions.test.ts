@@ -224,7 +224,7 @@ describe("les tools", () => {
     // `ask-plan-approval` en fait partie : le gate du point 9 est un moment du
     // workflow, pas le travail d'un agent — c'est la skill qui route les trois
     // sorties, dont un rejet qui renvoie au point 4 ou au point 7.
-    const bySkill = new Set(["launch-live-mode", "get-figma-components", "get-figma-component", "get-jira-ticket", "get-autopilot-env", "update-jira-ticket", "get-gitlab-branch", "get-gitlab-note", "remove-worktree", "get-slack-channel", "ask-plan-approval"]);
+    const bySkill = new Set(["launch-live-mode", "get-figma-components", "get-figma-component", "get-figma-image", "get-jira-ticket", "get-autopilot-env", "update-jira-ticket", "get-gitlab-branch", "get-gitlab-note", "remove-worktree", "get-slack-channel", "ask-plan-approval"]);
     const orphans = ALL_TOOLS.map((tool) => tool.name).filter((name) => !attributed.has(name) && !bySkill.has(name));
     assert.deepEqual(orphans, []);
   });

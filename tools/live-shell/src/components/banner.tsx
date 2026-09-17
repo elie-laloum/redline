@@ -45,6 +45,16 @@ export interface BannerProps {
   readonly connection: Connection;
 }
 
+/**
+ * Les events dont le `detail` est deja rendu, en entier, dans un module de
+ * l'etabli. Le bandeau se tait sur ceux-la : il dit ce qui se passe, pas ce qui
+ * a ete decide.
+ *
+ * `plan` a rejoint la liste apres avoir rempli l'ecran a lui seul — cinquante
+ * lignes de plan dans un en-tete d'etat, au-dessus du gate qu'elles decrivent.
+ */
+const ECHOED_BELOW = new Set(["answer", "plan", "decision"]);
+
 export function Banner({ ticket, step: raw, current, question, mark, stepSince, connection }: BannerProps) {
   const here = stepIndex(raw);
   const step = here >= 0 ? STEPS[here] : null;
@@ -92,22 +102,29 @@ export function Banner({ ticket, step: raw, current, question, mark, stepSince, 
         </p>
 
         {/* Le titre est borné à l'écriture ; quand il a été coupé, le texte
-            entier vit dans le detail. On le montre plutôt que de laisser croire
-            que la phrase s'arrête là.
+            entier vit dans le detail. On en montre le début plutôt que de
+            laisser croire que la phrase s'arrête au titre.
 
-            Rien de tout ça pendant qu'un lot attend : son module est juste en
-            dessous, en pleine largeur. Un bandeau qui recopie six questions
-            qu'on lit déjà sous lui n'ajoute pas une information, il en retire
-            une — celle qu'il était le seul à porter.
+            **Trois lignes, et pas une de plus.** Le bandeau est collant et il
+            est le premier bloc de la colonne : ce qu'il occupe, il le prend à
+            l'établi, qui commence en dessous. Un `detail` de plan fait cinquante
+            lignes — l'en-tête remplissait alors l'écran entier et poussait hors
+            de vue le module d'approbation qu'on était précisément venu
+            actionner. Un bandeau qui cache le bouton qu'il annonce est pire
+            qu'un bandeau muet.
 
-            Rien non plus pour un lot répondu, et c'est la même règle vue de
-            l'autre côté : le detail d'un `answer` est la recopie intégrale des
-            six arbitrages, qui sont déjà dans le dossier et qui y restent. Le
-            bandeau dit ce qui se passe, pas ce qui a été décidé — six blocs de
-            décision collés dans un en-tête d'état le repoussent hors de
-            l'écran, et c'était la seule chose qu'on venait y lire. */}
-        {current?.detail && !question && current.kind !== "answer" ? (
-          <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-primary-faint">
+            La phrase coupée n'est pas perdue : le tiroir du bas porte le detail
+            entier de chaque event, sur le même écran. C'est ce qui rend la
+            coupe permise ici — on ne tronque jamais sans que le texte complet
+            soit joignable.
+
+            Rien de tout ça pendant qu'un lot attend, qu'il vient d'être répondu,
+            ou qu'un plan est soumis : ces trois-là ont leur module en pleine
+            largeur juste en dessous, qui les rend en entier. Un bandeau qui
+            recopie ce qu'on lit déjà sous lui n'ajoute pas une information, il
+            en retire une — celle qu'il était le seul à porter. */}
+        {current?.detail && !question && !ECHOED_BELOW.has(current.kind) ? (
+          <p className="line-clamp-3 whitespace-pre-wrap text-[13px] leading-relaxed text-primary-faint">
             {current.detail}
           </p>
         ) : null}

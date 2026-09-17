@@ -19,6 +19,9 @@ import { patchTicketState, readTicketState } from "../lib/store.ts";
 import { type AnyTool, type ToolContext, defineTool } from "../lib/tool.ts";
 import { LIVE_EVENT_KINDS, LIVE_EVENT_STATUSES } from "../lib/events.ts";
 
+/** Les causes d'escalade. Ce qui n'est pas dans cette liste vaut `convergence`. */
+const CAUSES = ["convergence", "environment", "arbitrage"];
+
 export const humanTools: AnyTool[] = [
   defineTool({
     name: "ask-user",
@@ -290,7 +293,7 @@ export const humanTools: AnyTool[] = [
   defineTool({
     name: "escalate-to-human",
     description:
-      "Arrete le run et rend la main. Ce n'est pas une question, c'est un arret : budget de boucle epuise, timeout CI, meme test conteste deux fois. Jamais d'abandon silencieux, jamais de livraison en l'etat.",
+      "Arrete le run et rend la main. Ce n'est pas une question, c'est un arret : budget de boucle epuise, timeout CI, meme test conteste deux fois, harnais de test inutilisable. Jamais d'abandon silencieux, jamais de livraison en l'etat.",
     inputSchema: obj(
       {
         ticketId: str("Cle Jira."),
@@ -298,15 +301,34 @@ export const humanTools: AnyTool[] = [
         step: str("Point exact du workflow, par exemple 10.6."),
         repo: str("Repo concerne, s'il y en a un."),
         detail: str("Le detail utile pour reprendre a la main : compteurs, derniers retours, sorties de test."),
+        cause: str(
+          "Ce qui a bloque, au choix : `convergence` (les agents ne se mettent pas d'accord, le budget est epuise), " +
+            "`environment` (le harnais, l'infra ou l'outillage empechent de rendre un verdict — la boucle n'a rien juge, elle n'a pas pu), " +
+            "`arbitrage` (une decision produit qui n'appartient pas a un agent). Par defaut `convergence`.",
+        ),
       },
       ["ticketId", "reason", "step"],
     ),
-    handler: async (input: { ticketId: string; reason: string; step: string; repo?: string; detail?: string }) => {
+    handler: async (input: {
+      ticketId: string;
+      reason: string;
+      step: string;
+      repo?: string;
+      detail?: string;
+      cause?: string;
+    }) => {
       const at = new Date().toISOString();
+      // Toutes les escalades ne disent pas la meme chose. Une escalade de
+      // convergence accuse le travail : les tours ont eu lieu, ils n'ont pas
+      // suffi. Une escalade d'environnement n'accuse rien du tout — la boucle
+      // n'a pas juge, elle n'a pas pu. Les confondre a coute trois heures sur
+      // FT-1042, ou un run s'est arrete sur « budgets epuises » alors que le
+      // seul obstacle etait une sortie de test coupee au milieu.
+      const cause = CAUSES.includes(input.cause ?? "") ? (input.cause as string) : "convergence";
       patchTicketState(input.ticketId, {
         run: {
           phase: "escalated",
-          escalation: { at, step: input.step, repo: input.repo ?? null, reason: input.reason },
+          escalation: { at, step: input.step, repo: input.repo ?? null, reason: input.reason, cause },
         },
         metrics: { humanInterventions: { __increment: 1 } },
       });
@@ -316,12 +338,17 @@ export const humanTools: AnyTool[] = [
         repo: input.repo ?? null,
         title: `Escalade au point ${input.step} : ${truncate(input.reason, 120)}`,
         detail: input.detail ?? null,
-        payload: { step: input.step, repo: input.repo ?? null },
+        payload: { step: input.step, repo: input.repo ?? null, cause },
       });
       return {
         escalated: true,
         at,
-        note: "Rien n'est publie : ni MR, ni canal, ni transition. Les commits et les tags deja poses restent en place. Relancer /autopilot-start reprendra ici.",
+        cause,
+        note:
+          "Rien n'est publie : ni MR, ni canal, ni transition. Les commits et les tags deja poses restent en place. Relancer /autopilot-start reprendra ici." +
+          (cause === "environment"
+            ? " Cause `environment` : les compteurs de boucle ne doivent pas avoir bouge, la reprise repart avec le meme budget."
+            : ""),
       };
     },
   }),
@@ -565,29 +592,32 @@ async function finishQuestion(
 }
 
 /** Le rythme du battement : dit qu'on travaille, et verifie que le shell vit. */
-const PULSE_MS = 20_000;
 
 /**
  * On attend une reponse aussi longtemps que la page est la pour la donner.
  *
- * L'ancienne version posait une echeance sur le `fetch` : passe l'heure, elle
- * rendait la main et reposait le lot au terminal. C'etait une limite de
- * patience, et une limite de patience est exactement ce qu'on ne veut pas ici —
- * un lot pose a 13h doit encore attendre a 16h si l'onglet est reste ouvert.
+ * **Le lot se depose, puis on revient le relever.** Il a longtemps voyage dans
+ * un seul POST qu'on tenait ouvert jusqu'a la reponse, et ca ne tenait pas : le
+ * client HTTP de Node abandonne une requete dont les en-tetes ne sont pas
+ * arrives au bout de cinq minutes — `UND_ERR_HEADERS_TIMEOUT` — et comme
+ * l'erreur ressemblait a un shell mort, le lot repartait au terminal en plein
+ * cadrage. Huit heures annoncees, cinq minutes tenues.
  *
- * La seule chose qui justifie d'abandonner est que **plus personne ne puisse
- * repondre** : le shell ferme, tue, ou relance ailleurs. On ne compte donc plus
- * le temps, on prend le pouls. Tant que `/rpc/health` repond, on attend ; des
- * qu'il ne repond plus deux fois de suite, on se replie sur le terminal.
+ * Aucun reglage ne repare vraiment ca. Allonger le delai du client deplace le
+ * mur ; il en reste un, et il reste invisible. Ce qui le supprime, c'est de ne
+ * plus rien tenir ouvert : deposer en une requete courte, revenir voir en
+ * requetes courtes. Plus aucune horloge n'a de prise, et le seul plafond qui
+ * reste est celui du serveur MCP — huit heures, celui qu'on voulait.
  *
- * Le battement sert aussi a dire au client qu'on travaille — mais il ne suffit
- * pas, et c'est une limite du protocole : la limite de l'appel est un mur
- * d'horloge, et une notification de progression ne la repousse pas. Elle ne
- * nourrit que le chien de garde d'inactivite. Le temps d'attente maximal se
- * regle donc **cote client**, dans `timeout` du serveur MCP — huit heures dans
- * `plugin.json`, et c'est la seule chose qui rende cette attente vraiment
- * longue.
+ * Le retour vaut mieux que l'attente pour une deuxieme raison : un shell qui
+ * redemarre pendant qu'on attend ne connait plus le lot, et le dit. On le
+ * redepose, et la question survit au rechargement de la page — ce que la
+ * requete tenue ouverte ne savait pas faire, puisqu'elle mourait avec lui.
  */
+const POLL_MS = 2_000;
+/** Combien de temps le shell peut rester injoignable avant qu'on le declare parti. */
+const GRACE_MS = 60_000;
+
 async function askLiveShell(
   url: string,
   input: {
@@ -597,45 +627,101 @@ async function askLiveShell(
   },
   heartbeat: (message: string) => void,
 ): Promise<Record<string, string> | null> {
-  const abort = new AbortController();
-  const since = Date.now();
-  let missed = 0;
+  const collected = await waitOnSlot(url, "/rpc/ask", input, input.id, heartbeat);
+  return (collected?.answers as Record<string, string> | undefined) ?? null;
+}
 
-  // Un `health` qui echoue une fois peut etre un rechargement de la page. Deux
-  // d'affilee, c'est que le shell est parti.
-  const pulse = setInterval(() => {
-    void isAlive(url).then((alive) => {
-      missed = alive ? 0 : missed + 1;
-      if (missed >= 2) {
-        abort.abort();
-        return;
-      }
+async function askPlanLiveShell(
+  url: string,
+  input: { id: string; repos: unknown[]; note: string | null; askedBy: string | null },
+  heartbeat: (message: string) => void,
+): Promise<{ verdict?: string; note?: string } | null> {
+  const collected = await waitOnSlot(url, "/rpc/ask-plan", input, input.id, heartbeat);
+  return (collected?.decision as { verdict?: string; note?: string } | undefined) ?? null;
+}
+
+/**
+ * Deposer, puis relever jusqu'a ce qu'il y ait quelque chose — ou que la page
+ * soit vraiment partie.
+ *
+ * « Vraiment partie » n'est pas « n'a pas repondu tout de suite » : un
+ * rechargement d'onglet, une machine qui se reveille, un `vite` qui recompile
+ * rendent le shell muet quelques secondes. On accorde donc une minute continue
+ * d'injoignabilite avant de se replier, la ou l'ancienne version partait au
+ * bout de deux sondes ratees.
+ */
+async function waitOnSlot(
+  url: string,
+  route: string,
+  body: unknown,
+  id: string,
+  heartbeat: (message: string) => void,
+): Promise<{ answers?: unknown; decision?: unknown } | null> {
+  if (!(await postJson(`${url}${route}`, body))) return null;
+
+  const since = Date.now();
+  let unreachableSince: number | null = null;
+  let lastBeat = Date.now();
+
+  heartbeat("En attente de ta reponse dans le live shell.");
+
+  for (;;) {
+    await wait(POLL_MS);
+    const slot = await getJson<{ status: string; answers?: unknown; decision?: unknown }>(
+      `${url}/rpc/collect?id=${encodeURIComponent(id)}`,
+    );
+
+    if (slot === null) {
+      unreachableSince ??= Date.now();
+      if (Date.now() - unreachableSince > GRACE_MS) return null;
+      continue;
+    }
+    unreachableSince = null;
+
+    if (slot.status === "answered") return slot;
+    // Le shell a redemarre : il ne connait plus le lot, on le redepose tel quel.
+    if (slot.status === "gone" && !(await postJson(`${url}${route}`, body))) return null;
+    if (slot.status === "withdrawn") return null;
+
+    // Le battement dit au client qu'on travaille encore. Il ne repousse pas le
+    // plafond de l'appel, il nourrit le chien de garde d'inactivite.
+    if (Date.now() - lastBeat >= 20_000) {
+      lastBeat = Date.now();
       const minutes = Math.round((Date.now() - since) / 60_000);
       heartbeat(
         minutes < 1
           ? "En attente de ta reponse dans le live shell."
           : `En attente de ta reponse dans le live shell depuis ${minutes} min.`,
       );
-    });
-  }, PULSE_MS);
-  pulse.unref?.();
+    }
+  }
+}
 
+async function postJson(url: string, body: unknown): Promise<boolean> {
   try {
-    heartbeat("En attente de ta reponse dans le live shell.");
-    const response = await fetch(`${url}/rpc/ask`, {
+    const response = await fetch(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(input),
-      signal: abort.signal,
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(10_000),
     });
-    if (!response.ok) return null;
-    const data = (await response.json()) as { answers?: Record<string, string> };
-    return data.answers && typeof data.answers === "object" ? data.answers : null;
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function getJson<T>(url: string): Promise<T | null> {
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+    return response.ok ? ((await response.json()) as T) : null;
   } catch {
     return null;
-  } finally {
-    clearInterval(pulse);
   }
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /** Best effort : si le shell ne repond deja plus, il n'a plus de lot a retirer. */
@@ -722,7 +808,7 @@ function reapWithSession(pid: number | null, ticketId: string): void {
   if (pid === null || reaping.has(pid)) return;
   reaping.add(pid);
 
-  const reap = () => {
+  reapers.add(() => {
     try {
       process.kill(-pid, "SIGTERM");
     } catch {
@@ -733,23 +819,41 @@ function reapWithSession(pid: number | null, ticketId: string): void {
     } catch {
       // Le fichier de session est un indice, pas une source de verite.
     }
-  };
+  });
+}
 
-  for (const signal of ["exit", "SIGINT", "SIGTERM", "SIGHUP"] as const) {
-    process.once(signal, reap);
+/**
+ * Ce que l'arret du serveur doit ramasser.
+ *
+ * Les signaux ne sont plus ecoutes ici. Ils l'etaient, et c'etait une faute
+ * discrete : `process.once("SIGTERM", …)` **remplace** le comportement par
+ * defaut de Node, qui est de sortir. Un serveur qui posait ce handler sans
+ * appeler `exit` devenait sourd a SIGTERM et survivait a la session qui l'avait
+ * ouvert. Le cycle de vie appartient maintenant a `server.ts`, en un seul
+ * endroit, et lui sort vraiment.
+ */
+const reapers = new Set<() => void>();
+
+export function reapLiveShells(): void {
+  for (const reap of [...reapers]) {
+    try {
+      reap();
+    } catch {
+      // Le ramassage est un best effort : ce qui echoue ici n'empeche pas le reste.
+    }
   }
-  // Stdio ferme sans signal : c'est ainsi qu'un client MCP s'en va proprement.
-  process.stdin.once("end", reap);
-  process.stdin.once("close", reap);
+  reapers.clear();
 }
 
 const reaping = new Set<number>();
 
 /**
- * Le gate, par le meme chemin bloquant que les questions.
+ * Le gate, par le meme chemin que les questions.
  *
- * Meme pouls, meme raison : on attend tant que quelqu'un peut repondre, et on se
- * replie quand plus personne ne le peut. Le detail vit dans `askLiveShell`.
+ * Meme depot, meme releve, meme repli : le point 9 est le meme moment du run —
+ * il s'arrete et il attend quelqu'un. Le detail vit dans `waitOnSlot`, et le
+ * partager est ce qui garantit que le gate ne se remettra pas, tout seul, a
+ * lacher au bout de cinq minutes le jour ou on corrige les questions.
  */
 async function decideInLiveShell(
   url: string,
@@ -761,38 +865,12 @@ async function decideInLiveShell(
   },
   heartbeat: (message: string) => void,
 ): Promise<{ verdict: "approve" | "amend" | "reject"; note: string } | null> {
-  const abort = new AbortController();
-  let missed = 0;
-
-  const pulse = setInterval(() => {
-    void isAlive(url).then((alive) => {
-      missed = alive ? 0 : missed + 1;
-      if (missed >= 2) abort.abort();
-      else heartbeat("En attente de ton verdict sur le plan.");
-    });
-  }, PULSE_MS);
-  pulse.unref?.();
-
-  try {
-    heartbeat("En attente de ton verdict sur le plan.");
-    const response = await fetch(`${url}/rpc/ask-plan`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(input),
-      signal: abort.signal,
-    });
-    if (!response.ok) return null;
-    const data = (await response.json()) as {
-      decision?: { verdict?: string; note?: string };
-    };
-    const verdict = data.decision?.verdict;
-    if (verdict !== "approve" && verdict !== "amend" && verdict !== "reject") return null;
-    return { verdict, note: String(data.decision?.note ?? "") };
-  } catch {
-    return null;
-  } finally {
-    clearInterval(pulse);
-  }
+  const decision = await askPlanLiveShell(url, input, (message) =>
+    heartbeat(message.replace("de ta reponse", "de ton verdict sur le plan")),
+  );
+  const verdict = decision?.verdict;
+  if (verdict !== "approve" && verdict !== "amend" && verdict !== "reject") return null;
+  return { verdict, note: String(decision?.note ?? "") };
 }
 
 /** Le verdict laisse une trace, et une approbation date le plan. */

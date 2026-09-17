@@ -173,6 +173,29 @@ components:
     typography: "{typography.title}"
     rounded: "0"
     padding: "16px 24px"
+  source-row:
+    backgroundColor: "transparent"
+    textColor: "{colors.ink-soft}"
+    typography: "{typography.ui}"
+    rounded: "0"
+    padding: "10px 24px"
+  source-row-hover:
+    backgroundColor: "transparent"
+    textColor: "{colors.ink}"
+    typography: "{typography.ui}"
+    rounded: "0"
+    padding: "10px 24px"
+  source-summary:
+    backgroundColor: "transparent"
+    textColor: "{colors.ink-faint}"
+    typography: "{typography.meta}"
+    rounded: "0"
+    padding: "0"
+  maquette-frame:
+    backgroundColor: "{colors.field}"
+    textColor: "{colors.ink-faint}"
+    rounded: "0"
+    padding: "8px"
   grid-cell:
     backgroundColor: "transparent"
     textColor: "{colors.ink-faint}"
@@ -252,6 +275,9 @@ lives next to a terminal.
 - Monospace is reserved for what is measured or located; everything else is sans.
 - One progress scale, six states, one dot — steps and agents read identically.
 - Exactly one spinner on screen; the line that handed off breathes instead.
+- Two registers: what the run produces never folds, what it ingested folds shut.
+- The widget order is the run read backwards, computed from a declared step.
+- One raster in the whole system — the captured mock-up, framed as evidence.
 
 ## Colors
 
@@ -431,10 +457,24 @@ costs less than teaching the vocabulary.
 A counter that changes width when it changes value makes the line jump, and the
 reader believes something moved.
 
-**The Uncut Sentence Rule.** Agent-written text is shown whole or not at all. A
-truncated title is more expensive than an absent one, because it is believed —
-so the banner's second level shows the bounded title and then the full text
-beneath it, `whitespace-pre-wrap`.
+**The Uncut Sentence Rule.** Agent-written text is shown whole, or bounded
+somewhere the whole is still reachable — never quietly cut. A truncated title is
+more expensive than an absent one, because it is believed, so the banner's
+second level shows the bounded title and then the detail beneath it,
+`whitespace-pre-wrap`.
+
+That detail is clamped to three lines with an ellipsis, and the clamp is not a
+nicety. The banner is sticky and first in the column, so every pixel it takes it
+takes from the workbench below: a plan's detail measured 951px on a desktop and
+2789px on a phone — three screens of header — and the approval module it
+announced was pushed out of sight. A banner that hides the button it is
+advertising is worse than a silent one. The cut is permitted because the drawer
+along the floor carries every event's detail in full, on the same screen.
+
+Three kinds never reach the banner at all — an answered batch, a submitted plan,
+a verdict. Each already has a full-width module directly beneath rendering it
+whole, and a header that repeats what is legible under it removes the one thing
+only it could say.
 
 ## Layout
 
@@ -546,6 +586,15 @@ cannot hide a problem. A fold that carries a signal shows its count, in the
 signal's hue, on its own header. If a signal cannot be summarised into the
 header, the section does not get to fold.
 
+**The Two-Registers Rule.** What the run produces never folds; what the run
+ingested folds, and is closed by default. The distinction is movement, not
+importance: a review folded is a review nobody reopens, and reopening it is the
+entire reason it exists, whereas a ticket statement is fixed the moment it is
+read and is consulted when an arbitration surprises — not every ten minutes. A
+produced module that has nothing to say disappears instead of collapsing. An
+ingested one stays, closed, carrying its summary, because its absence and its
+emptiness are different facts.
+
 **The Flat-Forever Rule.** No `box-shadow`, no `drop-shadow`, no simulated
 lift, at rest or on any state. A surface that needs to separate from its
 neighbour gets a hairline or a tonal step, and if neither reads, it is in the
@@ -574,6 +623,17 @@ Borders are always 1px, always one of the two rule tokens, and are set globally
 so that any bordered element inherits the correct colour in both schemes. The
 spinner is the one exception at 1.5px, because a hairline ring at 12px would
 disappear.
+
+**Imagery is evidence or it is absent.** The system ships exactly one kind of
+image — the captured Figma frame — and it is there because the run's visual
+arbitrations cannot be checked against a text outline. There is no illustration,
+no icon set beyond the drawn atoms, no photograph, no decorative graphic, and no
+placeholder standing in for content that has not arrived. An image is framed
+like any other region: a 1px rule on the field ground, square, no shadow, height
+capped so it cannot push the rest of the run off the screen. Whatever palette
+the image carries is its own and is exempt from the state-colour rule — it is a
+quotation from another tool, not a surface of this one, and the frame is what
+marks the boundary.
 
 ## Components
 
@@ -662,14 +722,29 @@ amputation rather than a responsive trade.
 ### The Widgets (signature component)
 
 The stack that replaced the docket column, and the reason the surface exists.
-Six of them, in a fixed order from the most perishable to the most settled — the
-worksite, the review, the exit checklists, the functional arbitrations, the
-technical ones, the repos, the contradicted memory notes. Each is a 15px heading
-on a hairline with its count in monospace, then its content, and nothing else:
-no card, no fill, no radius. What separates two widgets is the hairline of the
-next. **The order never changes with the step**, because an order that moved
-would make the reader hunt, on every visit, for where the thing they came to read
-went.
+Each is a 15px heading on a hairline with its count in monospace, then its
+content, and nothing else: no card, no fill, no radius. What separates two
+widgets is the hairline of the next.
+
+**The order is the run, read backwards, and it is computed rather than typed.**
+Every widget declares the workflow point that produced it, and the stack sorts
+on that number, descending: the newest thing the run made is the first thing
+read. Two places are pinned ahead of the sort — the approved plan, then the
+review — because those are the two blocks the reader comes back for during the
+three hours of the cycle. The rest follow in reverse production order: the
+memory write, the contradicted notes, the worksites, the technical
+arbitrations, the targeted memory pass, the repos, the functional
+arbitrations, the broad memory pass, the mock-up, the ticket. Where several
+worksites are open they sit together at their shared point, most recently
+opened first; the sort is stable, so the sequence within a point is the
+sequence the array declares.
+
+**The order never changes with the step**, because the number belongs to the
+kind of widget and not to the state of the run. What moves is only which
+widgets exist, never where they sit. An order that moved would make the reader
+hunt, on every visit, for where the thing they came to read went — and a hand-
+typed order decays into the sequence the file happened to be edited in, which
+is why the rule is the sort and not a list.
 
 No section cites a step number: the rail stopped numbering, and a back-reference
 that makes you count rows is the recoupling the page exists to remove.
@@ -703,6 +778,52 @@ full ink because it is a location, the explanation half in faint prose.
 Empty states are written, never hidden: "retained without a written reason —
 check before approving the plan", "no located evidence — the scope-scout cited
 nothing". An absence is information about how far the run has got.
+
+### The Source Register (signature component)
+
+The second register of the workbench, and the only one that folds. A widget
+shows what the run **produced**; a source shows what it **ingested** — the
+ticket's statement, the mock-up, what memory already knew on each of the two
+scout passes, and what the run wrote back to memory. Four kinds, sitting at
+their own points in the same sort as everything else.
+
+**Closed, a source is one 13px row** at half the vertical padding of a widget
+(10px against 16px): the caret, the title in medium weight, a one-line summary
+in faint ink that truncates, and an optional monospace measure or timestamp
+pushed right. Open, it drops its content below at the widget's own rhythm. The
+row is the same object the approved plan has always been — one disclosure
+pattern, one caret atom, used at every depth including the mock-up's own
+component outline.
+
+**The summary is the whole justification for the fold.** "Mock-up" is an
+invitation to click; "Mock-up — LAB pondération altair, popup opened" answers
+without one. Where the summary reports something worth looking at rather than
+something merely counted, it takes drift amber and nothing else changes: "3
+files read · nothing on the subject", "1 referenced, no image".
+
+**A source states a fact, never a cause it cannot know.** An absent field and
+an empty one are indistinguishable from the page, so a source renders only on
+positive ingested material and phrases its gaps as observations. The ticket
+source does not appear on a key and a URL alone — those exist before the run
+has read anything, and a widget built on them would announce "no acceptance
+criteria" about a run that simply had not written them yet.
+
+#### The Mock-Up Frame
+
+The one raster in a page built entirely of ink and hairlines, and it earns the
+exception because a component outline names the parts while only the image
+settles what was actually agreed. It sits in a 1px `line` frame on the field
+ground with 8px of padding, capped at 60vh and centred, the PNG scaled to fit
+inside. No radius, no shadow, no lightbox: full size is reached through the
+Figma link, because the page does not become a second viewer of something it
+does not own. Beneath it, a caption row carries the frame name in soft ink, the
+node id in monospace, and the outbound link pushed right; the component outline
+folds below that, closed.
+
+The pixels are served from `~/.autopilot`, never from Figma. A render URL
+expires within the hour and the file link wants a token the browser does not
+have, so a run reopened three weeks later would frame an empty box around the
+thing its arbitrations were decided on.
 
 ### The Banner
 
@@ -839,6 +960,16 @@ fold without a modal, an overlay, or a scroll lock.
   darken it until it clears 4.5:1 — measure it, don't eyeball it.
 - **Do** hide a rail section that has nothing in it, and surface its signal on the
   header when it is folded.
+- **Do** derive the widget order from the workflow point each widget declares,
+  sorted newest-first, with only the approved plan and the review pinned ahead
+  of it.
+- **Do** give a folded row a summary that answers the question the reader
+  opened it with, and let that summary carry drift amber when it reports
+  something to look at.
+- **Do** state what is missing without asserting why, when the page cannot tell
+  an unwritten field from an empty one.
+- **Do** give a wrapping two-part row a floor on its prose column (24ch) so it
+  drops to its own line instead of stacking one word wide on a phone.
 
 ### Don't:
 
@@ -860,7 +991,11 @@ fold without a modal, an overlay, or a scroll lock.
   is the largest thing on the page; emphasis is bought with weight, position and
   ink, never with size.
 - **Don't** truncate agent-written prose without showing it in full somewhere on
-  the same screen.
+  the same screen. The banner's three-line clamp is allowed because the drawer
+  carries the whole detail; a clamp with nowhere to read the rest is not.
+- **Don't** let the banner grow with what an agent wrote. It is sticky and first
+  in the column, so it spends the workbench's space: bound the detail, and say
+  nothing at all when a module below already renders it whole.
 - **Don't** show two spinners at once. One thing acts at a time in this workflow,
   and the derivation must guarantee it rather than the layout hoping for it.
 - **Don't** report aliveness with a hue, or an outcome with motion. Colour says
@@ -878,3 +1013,17 @@ fold without a modal, an overlay, or a scroll lock.
   carries the font's weight and turns about its text box rather than its point.
   Draw an inline SVG at the stroke weight of the page — and draw it once: there is
   one caret atom, used by every disclosure.
+- **Don't** fold anything the run is still producing, and don't leave a folded
+  row without a summary. A fold that says only its own title has moved a click
+  in front of the reader and bought nothing.
+- **Don't** type the widget order into an array. It decays into the order the
+  file was edited in; the sort on the declared point is the rule.
+- **Don't** infer an absence from an empty field. "No acceptance criteria" and
+  "nobody wrote the acceptance criteria" are different sentences, and only one
+  of them is knowable from here — a stated absence that turns out to be a
+  missing write costs more than saying nothing, because it gets believed.
+- **Don't** add a second reading measure. Running prose is bounded at 68ch
+  wherever it appears, ingested documents included.
+- **Don't** introduce imagery that is not evidence. The captured mock-up is the
+  only raster the system carries; an illustration, a stock photograph or a
+  placeholder box would be the first decoration on a surface that has none.

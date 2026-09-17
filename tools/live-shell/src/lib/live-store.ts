@@ -1,6 +1,6 @@
 import { readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 import {
   type AskQuestion,
@@ -32,16 +32,32 @@ const subscribers = new Set<Subscriber>();
  * s'arrete et il attend quelqu'un. Ils partagent donc la meme table, le meme
  * retrait, le meme repli terminal — ouvrir un second canal aurait fait deux
  * mecaniques a tenir en phase pour une seule verite.
+ *
+ * **Ce n'est plus une promesse tenue ouverte, c'est un casier qu'on releve.**
+ * Le tool deposait sa question dans un POST qui ne rendait la main qu'a la
+ * reponse — une requete HTTP maintenue pendant des heures. Elle ne tenait pas :
+ * le client HTTP de Node coupe une requete dont les en-tetes n'arrivent pas au
+ * bout de cinq minutes, et le lot repartait au terminal en plein milieu d'un
+ * cadrage. On depose maintenant, et l'appelant revient voir. Rien n'est tenu
+ * ouvert, donc rien ne peut etre coupe.
  */
 type Waiting =
-  | {
-      kind: "questions";
-      question: PendingQuestion;
-      resolve: (answers: Record<string, string> | null) => void;
-    }
-  | { kind: "plan"; plan: PendingPlan; resolve: (decision: PlanDecision | null) => void };
+  | { kind: "questions"; question: PendingQuestion; answers: Record<string, string> | null }
+  | { kind: "plan"; plan: PendingPlan; decision: PlanDecision | null };
+
+/**
+ * L'etat d'un casier, vu par celui qui l'a depose.
+ *
+ * `gone` est le seul qui demande quelque chose : le shell a redemarre et ne
+ * connait plus ce lot. L'appelant le redepose alors tel quel, et la question
+ * survit au redemarrage de la page — ce que la promesse tenue ouverte ne
+ * savait pas faire, puisqu'elle mourait avec le process.
+ */
+export type SlotStatus = "pending" | "answered" | "withdrawn" | "gone";
 
 const pending = new Map<string, Waiting>();
+/** Les lots releves ou retires, gardes pour que l'appelant sache lequel des deux. */
+const settled = new Map<string, { status: Exclude<SlotStatus, "pending" | "gone">; at: number }>();
 const ignored: { at: string; reason: string }[] = [];
 
 let ticketId: string | null = process.env.AUTOPILOT_TICKET_ID ?? null;
@@ -141,6 +157,35 @@ export function snapshot(): {
   };
 }
 
+/**
+ * Le PNG d'une maquette, lu sur disque.
+ *
+ * Le shell ne detient pas l'image et ne la telecharge pas : `get-figma-image`
+ * l'a tiree au point 2 et rangee a cote de l'etat du ticket. On la sert, c'est
+ * tout — la page reste une fenetre, y compris sur les pixels.
+ *
+ * Le nom de fichier vient de l'etat du ticket, donc d'un agent : il est traite
+ * comme une entree hostile. Un seul segment, une extension connue, et le chemin
+ * resolu doit rester dans le dossier du ticket.
+ */
+export function figmaImage(name: string): ArrayBuffer | null {
+  if (!ticketId) return null;
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*\.png$/.test(name) || name.includes("..")) return null;
+
+  const dir = resolve(join(autopilotHome(), "figma", ticketId));
+  const file = resolve(join(dir, name));
+  if (file !== join(dir, name)) return null;
+
+  try {
+    const bytes = readFileSync(file);
+    // `Buffer` est une vue sur un pool partage : on ne rend que la tranche qui
+    // appartient a ce fichier, sinon la reponse emporte la memoire des voisins.
+    return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+  } catch {
+    return null;
+  }
+}
+
 export function subscribe(subscriber: Subscriber): () => void {
   subscribers.add(subscriber);
   watchTicket();
@@ -197,29 +242,28 @@ function broadcast(type: string, data: unknown): void {
 // --------------------------------------------------------------- ask-user ----
 
 /**
- * `ask-user` bloque la session Claude : il depose la question et attend. C'est
- * volontaire, le workflow ne doit pas avancer pendant qu'il attend un arbitrage.
- * Le timeout et le repli terminal sont geres cote tool, pas ici.
+ * `ask-user` bloque la session Claude : il depose la question et revient la
+ * relever. Le blocage est reel — le workflow n'avance pas — mais il est tenu
+ * par une boucle chez l'appelant, pas par une requete HTTP ouverte.
  */
 export function ask(input: {
   questions: readonly AskQuestion[];
   askedBy: string | null;
   id?: string | null;
-}): Promise<Record<string, string> | null> {
+}): PendingQuestion {
   const entry: PendingQuestion = {
     questions: input.questions,
     askedBy: input.askedBy,
-    // L'appelant fournit l'identifiant : c'est lui qui devra retirer le lot
-    // s'il se replie sur le terminal, et il ne peut pas le faire sans le
-    // connaitre avant que la reponse arrive.
+    // L'appelant fournit l'identifiant : c'est lui qui reviendra relever le
+    // casier, et il ne peut pas le faire sans le connaitre avant la reponse.
     id: input.id?.trim() || `q-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     askedAt: new Date().toISOString(),
     answerable: true,
   };
-  return new Promise<Record<string, string> | null>((resolve) => {
-    pending.set(entry.id, { kind: "questions", question: entry, resolve });
-    broadcast("question", entry);
-  });
+  pending.set(entry.id, { kind: "questions", question: entry, answers: null });
+  settled.delete(entry.id);
+  broadcast("question", entry);
+  return entry;
 }
 
 /**
@@ -228,14 +272,14 @@ export function ask(input: {
  * Le point 9 passait par `ask-user` : cinq questions dont on avait oublie la
  * premiere en repondant a la derniere, pour valider un objet qui se lit sur une
  * page. Il a maintenant sa forme, et c'est la seule chose qui change — le
- * blocage, le retrait et le repli restent ceux qui ont deja tourne.
+ * depot, le retrait et le repli restent ceux des questions.
  */
 export function askPlan(input: {
   repos: readonly PlanRepo[];
   note: string | null;
   askedBy: string | null;
   id?: string | null;
-}): Promise<PlanDecision | null> {
+}): PendingPlan {
   const entry: PendingPlan = {
     repos: input.repos,
     note: input.note,
@@ -244,25 +288,58 @@ export function askPlan(input: {
     askedAt: new Date().toISOString(),
     answerable: true,
   };
-  return new Promise<PlanDecision | null>((resolve) => {
-    pending.set(entry.id, { kind: "plan", plan: entry, resolve });
-    broadcast("plan", entry);
-  });
+  pending.set(entry.id, { kind: "plan", plan: entry, decision: null });
+  settled.delete(entry.id);
+  broadcast("plan", entry);
+  return entry;
+}
+
+/**
+ * Relever le casier.
+ *
+ * Un lot repondu se rend **une fois** : on le retire en le rendant, pour que
+ * deux releves concurrentes ne fassent pas repartir le run deux fois sur la
+ * meme reponse. Ce qui reste derriere est une trace — repondu ou retire — que
+ * l'appelant peut relire s'il repasse.
+ */
+export function collect(id: string): {
+  status: SlotStatus;
+  answers?: Record<string, string>;
+  decision?: PlanDecision;
+} {
+  const entry = pending.get(id);
+  if (entry) {
+    if (entry.kind === "questions" && entry.answers) {
+      pending.delete(id);
+      settled.set(id, { status: "answered", at: Date.now() });
+      return { status: "answered", answers: entry.answers };
+    }
+    if (entry.kind === "plan" && entry.decision) {
+      pending.delete(id);
+      settled.set(id, { status: "answered", at: Date.now() });
+      return { status: "answered", decision: entry.decision };
+    }
+    return { status: "pending" };
+  }
+
+  const done = settled.get(id);
+  if (done) return { status: done.status };
+  // Inconnu : le shell a redemarre depuis le depot. L'appelant redepose.
+  return { status: "gone" };
 }
 
 /**
  * Le retrait d'un lot que l'appelant a repris ailleurs.
  *
- * `ask-user` attend un temps borne puis se replie sur le terminal. Sans ce
- * retrait, le lot restait affiche pour toujours : on repondait dans une page a
- * un run qui attendait deja la meme reponse dans un terminal, et le clic ne
- * resolvait qu'une promesse que plus personne n'ecoutait.
+ * Sans ce retrait, le lot restait affiche pour toujours : on repondait dans une
+ * page a un run qui attendait deja la meme reponse dans un terminal, et le clic
+ * ne resolvait rien du tout.
  */
 export function withdraw(id: string): { withdrawn: boolean } {
   const entry = pending.get(id);
   if (!entry) return { withdrawn: false };
   pending.delete(id);
-  entry.resolve(null);
+  settled.set(id, { status: "withdrawn", at: Date.now() });
   broadcast("withdraw", { id });
   return { withdrawn: true };
 }
@@ -281,8 +358,9 @@ export function decide(id: string, decision: PlanDecision): { delivered: boolean
     return { delivered: false, missing: true };
   }
 
-  pending.delete(id);
-  entry.resolve(decision);
+  // On garde le casier jusqu'a ce que l'appelant vienne le relever : c'est lui
+  // qui debloque le run, et l'effacer ici perdrait le verdict entre deux tours.
+  entry.decision = decision;
   broadcast("decision", { id, ...decision });
   return { delivered: true, missing: false };
 }
@@ -331,19 +409,26 @@ export function answer(
     .map((question) => question.key);
   if (missing.length > 0) return { delivered: false, missing };
 
-  pending.delete(id);
-  entry.resolve(answers);
+  // Le casier reste en place jusqu'a ce que l'appelant le releve : c'est cette
+  // releve qui debloque le run. L'effacer ici perdrait la reponse dans
+  // l'intervalle entre le clic et le tour de boucle suivant.
+  entry.answers = answers;
   broadcast("answer", { id, answers });
   return { delivered: true, missing: [] };
 }
 
+// Un casier deja rempli n'attend plus personne : il attend d'etre releve, ce
+// qui n'est pas la meme chose. Le montrer reposerait la question a qui
+// rechargerait la page dans la seconde suivant sa reponse.
 export function pendingQuestion(): PendingQuestion | null {
-  for (const entry of pending.values()) if (entry.kind === "questions") return entry.question;
+  for (const entry of pending.values()) {
+    if (entry.kind === "questions" && !entry.answers) return entry.question;
+  }
   return replayedQuestion();
 }
 
 export function pendingPlan(): PendingPlan | null {
-  for (const entry of pending.values()) if (entry.kind === "plan") return entry.plan;
+  for (const entry of pending.values()) if (entry.kind === "plan" && !entry.decision) return entry.plan;
   return replayedPlan();
 }
 

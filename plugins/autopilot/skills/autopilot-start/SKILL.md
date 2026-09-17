@@ -1,7 +1,7 @@
 ---
 name: autopilot-start
 description: Implemente un ticket Jira de bout en bout — cadrage et gate humain, TDD adversarial repo par repo dans l'ordre des dependances, capitalisation memoire, publication en un bloc. TRIGGER quand l'utilisateur donne une URL ou une cle de ticket Jira a implementer, ou tape /autopilot-start. NE PAS TRIGGER pour une question sur un ticket sans intention de l'implementer.
-argument-hint: <url-ou-cle-jira> [--notes "…"] [--figma <url>…] [--live]
+argument-hint: <url-ou-cle-jira> [--notes "…"] [--figma <url>…] [--live] [--clear]
 ---
 
 # autopilot-start
@@ -10,7 +10,7 @@ Tu pilotes le run. Tu ne codes pas, tu ne juges pas : tu invoques les agents dan
 tu t'assures que l'etat est ecrit a chaque transition.
 
 ```
-/autopilot-start <url-ou-cle-jira> [--notes "…"] [--figma <url>…] [--live]
+/autopilot-start <url-ou-cle-jira> [--notes "…"] [--figma <url>…] [--live] [--clear]
 ```
 
 `--figma` est **repetable** et **complementaire** : les maquettes sont d'abord cherchees dans
@@ -25,6 +25,52 @@ pas de zero. `run.phase`, `run.step` et `run.currentRepo` donnent le curseur exa
 
 **Un run relance ne refait jamais un repo `done`.** Reprends a l'etape exacte ou le run
 precedent s'est arrete.
+
+## Repartir de zero
+
+`--clear` est l'exact inverse de la reprise : il efface l'etat local du run pour que le ticket
+reparte vierge. **Ne nettoie jamais a la main** — un fichier oublie, et le run suivant reprend
+un curseur mort ou bute sur un lock que plus personne ne detient.
+
+```
+node plugins/autopilot/mcp/scripts/clear-run.ts <ticket> [--force] [--dry-run]
+```
+
+Ce qu'il efface : l'etat du ticket, le lock, le journal d'events, la session live et le
+processus du shell, les maquettes rendues, les worktrees du ticket — detaches proprement,
+`git worktree prune` compris — et les branches locales qui portent la cle du ticket.
+
+Ce qu'il ne touche pas : ce qui est parti sur un remote. Une MR, un tag pousse, un canal
+slack, une transition Jira lui survivent ; il les liste en fin de rapport, c'est a l'utilisateur de
+decider lesquels defaire.
+
+Il **s'arrete sans rien effacer** devant un worktree sale ou une branche qui porte des commits
+non pousses : ce travail-la n'existe nulle part ailleurs. Il sort alors en code 1 et dit
+exactement ce qui bloque. `--force` est la seule facon de passer outre, `--dry-run` montre le
+nettoyage sans le faire. Lis ce qu'il liste avant de forcer, et rends la liste a l'utilisateur plutot
+que de forcer a sa place.
+
+`--clear` seul nettoie et rend la main. Accompagne d'autres flags, il nettoie **puis** demarre
+un run neuf derriere, sur une base vide.
+
+### Le disque n'est pas la seule memoire du run
+
+`--clear` efface des fichiers. Il n'efface pas ta fenetre de contexte, et c'est le seul
+endroit ou le run precedent survit vraiment.
+
+Une session qui vient de conduire un cadrage tient encore les arbitrages, le scope et les
+preuves. Relancer le run depuis cette meme session les lui fait **reinjecter** — proposer de
+les reecrire dans l'etat, les passer aux agents, sauter les points qui les ont produits —
+alors que plus aucun fichier ne les porte. Le run a l'air de repartir de zero et repart en
+fait sur des conclusions que personne ne peut plus relire.
+
+Donc : **apres un `--clear`, le run suivant se lance dans une session neuve.** Dis-le a l'utilisateur
+plutot que de poursuivre, et n'enchaine pas dans la foulee.
+
+Et dans tous les cas, la regle qui tient meme quand la session n'est pas neuve : **seul
+l'etat du ticket fait foi.** Ce dont tu te souviens d'un run precedent n'est pas un acquis —
+tu ne l'ecris pas dans l'etat, tu ne le passes pas aux agents, tu ne t'en sers pas pour
+sauter un point. Si un cadrage a ete efface, il se refait.
 
 ## Avant le point 1
 
@@ -55,7 +101,7 @@ ticket** : aucun code, aucun remote, aucune memoire.
 | # | Qui | Produit |
 |---|---|---|
 | 1 | tool `get-ticket` | le ticket — echec s'il n'existe pas ou n'est pas accessible |
-| 2 | tool `get-figma-components` | les maquettes, celles du ticket **plus** celles du flag. **Optionnel** : sans maquette, le run continue |
+| 2 | tools `get-figma-components` puis `get-figma-image` | les maquettes, celles du ticket **plus** celles du flag, et le PNG de chaque frame retenue. **Optionnel** : sans maquette, le run continue |
 | 3 | agent `doc-scout` | memoire pertinente, passe large |
 | 4 | agent `functional-grill` | arbitrages fonctionnels, tours non bornes |
 | 5 | agent `scope-scout` | repos impactes, ordonnes par `level`, avec preuves |
@@ -102,6 +148,32 @@ est rendue pour de vrai.
 
 Le second passage du `doc-scout` n'est pas optionnel : sans lui, le `technical-grill` et le
 `planner` travaillent sur une memoire non ciblee.
+
+### Ce que tu ecris en sortant de chaque point
+
+L'etat du ticket ne porte pas que des decisions : il porte aussi **ce sur quoi elles ont ete
+prises**. Le live shell n'a pas d'autre source — il ne rappelle pas Jira, n'a pas de jeton
+Figma, et ne voit jamais ce qu'un agent t'a rendu. Ce que tu n'ecris pas ici n'existe pour
+personne d'autre que toi, et disparait avec ton contexte.
+
+| Point | Patch `write-store-ticket` |
+|---|---|
+| 1 | `ticket.description` et `ticket.acceptanceCriteria`, tels que `get-ticket` les rend |
+| 2 | `figma.frames` — un objet par frame : `{ url, fileKey, nodeId, name, image, outline }`, `image` etant le nom de fichier rendu par `get-figma-image` (`null` s'il n'a rien capture) |
+| 3 et 6 | on **ajoute** une entree a `memory.scouted` : `{ pass: "large"` ou `"ciblee"`, `at`, `filesRead`, `notes: [{ path, says }]`, `silentOn: [...] }` |
+| 12 | `memory.operations` — une entree par operation appliquee : `{ op: "create" \| "update" \| "delete", path, why }` — et `memory.commit` |
+
+`memory.scouted` a deux entrees a la fin du cadrage, jamais une : les deux passages du
+`doc-scout` ne disent pas la meme chose et se lisent separement. Utilise
+`{__replace: [...]}` avec les deux entrees plutot que d'ecraser la premiere.
+
+**`silentOn` compte autant que `notes`.** Une memoire muette n'est pas une memoire d'accord,
+et c'est le cas courant aujourd'hui : sur FT-1042 le tour large a lu trois notes et n'en a
+trouve aucune sur le sujet. Ecrire seulement ce qui a ete trouve donnerait une interface qui
+affiche « rien » la ou la bonne reponse est « on a cherche, il n'y avait rien ».
+
+Ni le `doc-scout` ni le `memory-writer` n'ecrivent l'etat du ticket — ce n'est pas leur role
+et ils n'ont pas le tool. C'est toi qui persistes ce qu'ils te rendent.
 
 ### Le point 9 est le seul gate humain du workflow
 
@@ -182,6 +254,11 @@ Une seule fois, quand **tous** les repos du scope sont passes.
 
 Il n'y a **pas** de gate humain aux points 11 et 12. « Valide » veut dire revocable : le
 commit unique se relit et se `revert`.
+
+En sortant du point 12, ecris `memory.operations` et `memory.commit` — voir le tableau des
+patchs de la phase 1. Le sha seul dit qu'il s'est passe quelque chose sans dire quoi, et
+personne ne va lire un `git show` pour savoir si le run a appris trois choses ou en a efface
+une.
 
 ---
 
