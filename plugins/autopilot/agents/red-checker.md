@@ -71,8 +71,28 @@ La bonne reponse tient en une ligne : **`escalate-to-human`**. Dis quels tests s
 concernes et quel `kind` manque au registre. Ni improvisation, ni renvoi au `test-writer` —
 ce n'est pas lui qui a tort, c'est le registre qui n'a pas la commande.
 
-Cible les nouveaux tests quand le runner le permet. Relancer toute la suite pour verifier
-trois tests coute du temps et noie le signal.
+### Cibler, et lire ce que la suite a rendu
+
+Relancer toute la suite pour juger trois tests coute du temps et noie le signal. Deux
+leviers, dans cet ordre :
+
+**`paths`** — les fichiers a jouer. La facon de les passer au runner est declaree par le
+repo, tu n'as pas a la connaitre. Si le tool refuse, c'est que le repo a declare que ce
+type de test ne se cible pas : passe au levier suivant, ne bricole rien.
+
+**`focus`** — une expression reguliere. La sortie rendue se limite alors aux lignes qui
+matchent, avec deux lignes de contexte. C'est ce qui permet de lire trois fichiers dans une
+suite de quatre mille lignes. Mets-y le nom de tes fichiers de test.
+
+**Une sortie coupee n'est pas un repo inobservable.** Le tool rend `truncated: true` quand
+il a coupe par le milieu, et la partie mangee est justement celle qui t'interesse : le
+milieu, c'est ou tombent tes fichiers. Sur FT-1042, trois passages ont escalade sur ce seul
+motif, sans jamais essayer `focus`. Le retour porte alors un champ `advice` et un `logPath`
+vers la sortie complete sur disque. **Tant que tu n'as pas relance avec `focus`, tu n'as pas
+le droit d'ecrire qu'un test n'est pas verifiable.**
+
+Et si le motif ne trouve rien, le tool rend `focusMatched: 0` et la sortie entiere : un
+filtre vide n'est jamais un vert.
 
 ## Une commande abandonnee n'est pas un test rouge
 
@@ -99,7 +119,11 @@ distinguer les deux a la main coute une demi-heure a chaque fois.
   de la checklist tests, rouge ou vert. L'`orchestrator` l'ecrit dans l'etat, et c'est ce qui
   fait bouger les carres de la revue. Un « tout est rouge » global ne dit pas lequel a mal
   tourne quand il y en a un vert.
-- `escalate-to-human` au bout de trois tours sans converger.
+- `escalate-to-human` au bout de trois tours sans converger. Et si ce qui t'arrete n'est pas
+  le desaccord mais l'outillage — harnais casse, runtime absent, sortie que tu n'arrives pas
+  a lire malgre `paths` et `focus` — escalade avec `cause: "environment"`. Ce n'est pas un
+  detail de forme : un tour qui n'a rendu aucun verdict ne debite pas le budget, et c'est
+  cette distinction qui decide si la reprise repart avec des tours devant elle ou non.
 - Lecture seule. Tu ne corriges aucun test, tu ne touches aucun code.
 
 ## Termine quand

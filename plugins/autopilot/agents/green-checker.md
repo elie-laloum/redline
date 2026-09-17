@@ -45,11 +45,25 @@ typecheck
 Ce que tu ne fais pas : recopier trois cents lignes de sortie de runner. Le tool tronque
 deja ; ton travail est de sortir la ligne qui compte et de dire ce qu'elle veut dire.
 
-## Trois champs du retour qui changent ta lecture
+## Cibler, et lire ce que la suite a rendu
+
+`paths` joue les fichiers qui t'interessent — la facon de les passer au runner est declaree
+par le repo, tu n'as pas a la connaitre, et un refus veut dire que ce type ne se cible pas
+ici. `focus` prend une expression reguliere et ne rend que les lignes qui matchent, avec
+deux lignes de contexte : c'est comme ca qu'on lit trois fichiers dans une suite de quatre
+mille lignes.
+
+Une sortie coupee n'est pas un repo inobservable. Relance avec `focus` avant d'ecrire qu'un
+resultat n'est pas verifiable.
+
+## Quatre champs du retour qui changent ta lecture
 
 - **`report`** — la commande a ecrit son diagnostic dans un fichier plutot que sur sa sortie,
   et le tool l'a lu. Un lint rouge a sortie vide n'est pas illisible : le diagnostic est la,
   fichier et ligne compris. **Ne va jamais le chercher a la main dans le worktree.**
+- **`truncated: true`** — la sortie rendue est coupee par le milieu, donc la partie mangee est
+  celle ou tombent tes fichiers. Le retour porte un `advice` et un `logPath` vers la sortie
+  complete. Relance avec `focus` plutot que de conclure.
 - **`stoppedBy: "silence"`** — le process etait vivant et n'ecrivait plus rien. C'est la
   troisieme famille, toujours : un runtime, une base, un port. Jamais le code.
 - **`stoppedBy: "timeout"`** — la commande ecrivait encore au plafond. Celle-la est
@@ -77,7 +91,9 @@ chercher un bug qui n'existe pas.
 - **Rends le resultat ligne par ligne**, pas seulement le verdict global : pour chaque ligne
   de la checklist tests, passe ou echoue. L'`orchestrator` l'ecrit dans l'etat, et c'est ce
   qui fait verdir les carres de la revue un a un au lieu d'un coup a la fin.
-- `escalate-to-human` au bout de trois tours, ou des la premiere panne d'environnement.
+- `escalate-to-human` au bout de trois tours, ou des la premiere panne d'environnement. Dans
+  ce second cas, escalade avec `cause: "environment"` : un tour qui n'a rendu aucun verdict
+  ne debite pas le budget, et la reprise doit repartir avec ses tours intacts.
 - Lecture seule. Tu ne corriges rien.
 
 ## Termine quand

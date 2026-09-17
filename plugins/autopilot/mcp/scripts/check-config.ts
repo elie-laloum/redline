@@ -50,6 +50,19 @@ try {
     for (const [kind, path] of Object.entries(repo.reports ?? {})) {
       console.log(`        rapport ${kind} : ${path}`);
     }
+    for (const [kind, template] of Object.entries(repo.targeting ?? {})) {
+      if (template === null) {
+        console.log(`        ciblage ${kind} : aucun — la suite se lance entiere`);
+        continue;
+      }
+      console.log(`        ciblage ${kind} : ${template}`);
+      // Un gabarit sans emplacement ne cible rien : il ajoute un drapeau nu a
+      // la commande, ce qui fait tourner le glob par defaut du runner en
+      // croyant cibler. Silencieux, et faux.
+      if (!template.includes("{paths}") && !template.includes("{glob}")) {
+        ko(`${repo.name} : le gabarit de ciblage ${kind} n'a ni {paths} ni {glob}`);
+      }
+    }
   }
 } catch (error) {
   ko(describe(error));

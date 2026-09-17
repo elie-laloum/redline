@@ -101,7 +101,7 @@ export const beats: Beat[] = [
     },
   },
   {
-    ago: 170,
+    ago: 171.5,
     kind: "answer",
     status: "ok",
     step: "4",
@@ -110,7 +110,7 @@ export const beats: Beat[] = [
     payload: { transport: "live", answers: { a: "Non, ils sont indépendants" } },
   },
   {
-    ago: 169,
+    ago: 171,
     kind: "question",
     status: "waiting",
     step: "4",
@@ -128,7 +128,7 @@ export const beats: Beat[] = [
     },
   },
   {
-    ago: 166,
+    ago: 169.5,
     kind: "answer",
     status: "ok",
     step: "4",
@@ -137,7 +137,7 @@ export const beats: Beat[] = [
     payload: { transport: "live", answers: { a: "À l'enregistrement" } },
   },
   {
-    ago: 165,
+    ago: 169,
     kind: "question",
     status: "waiting",
     step: "4",
@@ -155,7 +155,7 @@ export const beats: Beat[] = [
     },
   },
   {
-    ago: 162,
+    ago: 167.5,
     kind: "answer",
     status: "ok",
     step: "4",
@@ -164,12 +164,93 @@ export const beats: Beat[] = [
     payload: { transport: "live", answers: { a: "Associé et Expert-comptable" } },
   },
   {
+    ago: 167,
+    kind: "question",
+    status: "waiting",
+    step: "4",
+    agent: "functional-grill",
+    title: "Que devient un réglage abandonné en cours de route ?",
+    payload: {
+      questions: [
+        {
+          key: "a",
+          header: "Abandon",
+          question: "Que devient un réglage en cours si on ferme le panneau sans enregistrer ?",
+          options: ["Il est perdu, sans confirmation", "Une confirmation est demandée"],
+        },
+      ],
+    },
+  },
+  {
+    ago: 165.5,
+    kind: "answer",
+    status: "ok",
+    step: "4",
+    agent: "functional-grill",
+    title: "Réponse reçue (live) — perdu, sans confirmation",
+    payload: { transport: "live", answers: { a: "Il est perdu, sans confirmation" } },
+  },
+  {
+    ago: 165,
+    kind: "question",
+    status: "waiting",
+    step: "4",
+    agent: "functional-grill",
+    title: "Un critère peut-il peser 0 % ?",
+    payload: {
+      questions: [
+        {
+          key: "a",
+          header: "Zéro",
+          question: "Un critère peut-il être ramené à 0 %, donc sortir du calcul ?",
+          options: ["Oui, 0 est une valeur valide", "Non, le minimum est 5 %"],
+        },
+      ],
+    },
+  },
+  {
+    ago: 163.5,
+    kind: "answer",
+    status: "ok",
+    step: "4",
+    agent: "functional-grill",
+    title: "Réponse reçue (live) — 0 est une valeur valide",
+    payload: { transport: "live", answers: { a: "Oui, 0 est une valeur valide" } },
+  },
+  {
+    ago: 163,
+    kind: "question",
+    status: "waiting",
+    step: "4",
+    agent: "functional-grill",
+    title: "Les feuilles archivées sont-elles recalculées ?",
+    payload: {
+      questions: [
+        {
+          key: "a",
+          header: "Archives",
+          question: "Changer les pondérations recalcule-t-il le score des feuilles déjà archivées ?",
+          options: ["Non, seules les feuilles actives", "Oui, tout l'historique est recalculé"],
+        },
+      ],
+    },
+  },
+  {
+    ago: 161.5,
+    kind: "answer",
+    status: "ok",
+    step: "4",
+    agent: "functional-grill",
+    title: "Réponse reçue (live) — seules les feuilles actives",
+    payload: { transport: "live", answers: { a: "Non, seules les feuilles actives" } },
+  },
+  {
     ago: 161,
     kind: "agent",
     status: "ok",
     step: "4",
     agent: "functional-grill",
-    title: "Compréhension fonctionnelle complète — 3 arbitrages écrits",
+    title: "Compréhension fonctionnelle complète — 6 arbitrages écrits",
   },
 
   // 5 — perimetre
@@ -233,7 +314,7 @@ export const beats: Beat[] = [
     },
   },
   {
-    ago: 141,
+    ago: 142.5,
     kind: "answer",
     status: "ok",
     step: "7",
@@ -242,7 +323,7 @@ export const beats: Beat[] = [
     payload: { transport: "live", answers: { a: "Colonne weights JSONB sur lab_worksheet" } },
   },
   {
-    ago: 140,
+    ago: 142,
     kind: "question",
     status: "waiting",
     step: "7",
@@ -260,7 +341,7 @@ export const beats: Beat[] = [
     },
   },
   {
-    ago: 137,
+    ago: 140.5,
     kind: "answer",
     status: "ok",
     step: "7",
@@ -269,7 +350,7 @@ export const beats: Beat[] = [
     payload: { transport: "live", answers: { a: "Le back calcule et renvoie le score" } },
   },
   {
-    ago: 136,
+    ago: 140,
     kind: "question",
     status: "waiting",
     step: "7",
@@ -287,7 +368,7 @@ export const beats: Beat[] = [
     },
   },
   {
-    ago: 133,
+    ago: 138.5,
     kind: "answer",
     status: "ok",
     step: "7",
@@ -296,12 +377,93 @@ export const beats: Beat[] = [
     payload: { transport: "live", answers: { a: "Par le paquet versionné" } },
   },
   {
+    ago: 138,
+    kind: "question",
+    status: "waiting",
+    step: "7",
+    agent: "technical-grill",
+    title: "Que vaut la colonne pour les feuilles déjà en base ?",
+    payload: {
+      questions: [
+        {
+          key: "a",
+          header: "Existant",
+          question: "Que vaut la nouvelle colonne pour les feuilles déjà en base ?",
+          options: ["La migration écrit 30/30/25/15 partout", "NULL, et le calcul retombe sur les constantes"],
+        },
+      ],
+    },
+  },
+  {
+    ago: 136.5,
+    kind: "answer",
+    status: "ok",
+    step: "7",
+    agent: "technical-grill",
+    title: "Réponse reçue (live) — la migration écrit 30/30/25/15 partout",
+    payload: { transport: "live", answers: { a: "La migration écrit 30/30/25/15 partout" } },
+  },
+  {
+    ago: 136,
+    kind: "question",
+    status: "waiting",
+    step: "7",
+    agent: "technical-grill",
+    title: "Le total à 100 % est-il vérifié côté serveur ?",
+    payload: {
+      questions: [
+        {
+          key: "a",
+          header: "Garde-fou",
+          question: "Le total à 100 % est-il revérifié côté serveur, ou le front suffit-il ?",
+          options: ["Oui, refusé à l'enregistrement", "Non, le front garantit déjà la règle"],
+        },
+      ],
+    },
+  },
+  {
+    ago: 134.5,
+    kind: "answer",
+    status: "ok",
+    step: "7",
+    agent: "technical-grill",
+    title: "Réponse reçue (live) — refusé côté serveur hors 100 %",
+    payload: { transport: "live", answers: { a: "Oui, refusé à l'enregistrement" } },
+  },
+  {
+    ago: 134,
+    kind: "question",
+    status: "waiting",
+    step: "7",
+    agent: "technical-grill",
+    title: "Comment les tests de composant simulent-ils les droits ?",
+    payload: {
+      questions: [
+        {
+          key: "a",
+          header: "Tests",
+          question: "Comment les tests de composant simulent-ils le profil de l'utilisateur ?",
+          options: ["Par le contexte de session, comme le reste de la feuille", "Par un mock du hook de droits"],
+        },
+      ],
+    },
+  },
+  {
+    ago: 132.5,
+    kind: "answer",
+    status: "ok",
+    step: "7",
+    agent: "technical-grill",
+    title: "Réponse reçue (live) — par le contexte de session",
+    payload: { transport: "live", answers: { a: "Par le contexte de session, comme le reste de la feuille" } },
+  },
+  {
     ago: 132,
     kind: "agent",
     status: "ok",
     step: "7",
     agent: "technical-grill",
-    title: "Compréhension technique complète — 3 arbitrages écrits",
+    title: "Compréhension technique complète — 6 arbitrages écrits",
   },
 
   // 8 — plan

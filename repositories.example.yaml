@@ -18,6 +18,14 @@
 # sur sa sortie. Sans cette ligne, un `biome ci --reporter=gitlab > fichier.json`
 # rend un `exit 1` muet, et le diagnostic se cherche a la main.
 #
+# `targeting` dit comment ce repo se laisse cibler sur un fichier. Tous les
+# runners ne prennent pas une liste de chemins en arguments libres : certains
+# refusent tout positionnel et veulent un drapeau. Sans cette cle, un agent qui
+# recoit le refus en conclut que le repo entier n'est pas ciblable, et relit une
+# suite de plusieurs milliers de lignes pour y chercher trois tests. Le gabarit
+# porte `{paths}` ou `{glob}` ; absent il vaut `{paths}`, a `null` il dit que ce
+# type ne se cible pas.
+#
 # `containers` dit ce que la machine doit avoir debout avant le premier test.
 # Meme regle que pour les commandes : on ne declare que ce qui est verifie.
 # Un repo qui n'en a pas besoin n'a pas la cle.

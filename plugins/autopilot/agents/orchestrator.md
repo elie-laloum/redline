@@ -92,7 +92,28 @@ quand le `developer` insiste apres un refus motive, c'est qu'aucun des deux n'a 
 ## Les budgets
 
 Chaque boucle a le sien, par repo, jamais globalement : un repo qui a consomme trois tours
-d'adversaire ne penalise pas le suivant. Budget atteint → `escalate-to-human`, immediatement.
+d'adversaire ne penalise pas le suivant.
+
+**Compare AVANT d'ouvrir le tour, pas apres l'avoir rendu.** `loops.X >= budgets.X` veut dire
+que le tour ne s'ouvre pas : tu escalades, tu n'invoques pas l'agent. `write-store-ticket`
+refuse desormais l'increment de trop et te renvoie a l'escalade — s'il te refuse, c'est que
+tu as ouvert un tour que tu ne devais pas ouvrir.
+
+**Un tour ne se debite que s'il a rendu un verdict.** C'est la regle que FT-1042 a coutee :
+le `red-checker` n'a pas pu lire la sortie de la suite fonctionnelle, trois passages de
+suite, et les trois ont ete debites. Le run s'est arrete sur « budgets epuises » alors que
+rien n'avait diverge — le compteur avait servi a compter des pannes d'outillage.
+
+Alors distingue, a chaque retour d'agent :
+
+| Ce que l'agent rend | Compteur | Escalade |
+|---|---|---|
+| un verdict, meme negatif | `__increment: 1` | au plafond |
+| rien — harnais casse, runtime absent, sortie illisible | **inchange** | tout de suite, `cause: "environment"` |
+| une decision qui ne lui appartient pas | inchange | tout de suite, `cause: "arbitrage"` |
+
+Une escalade d'environnement n'accuse personne et ne consomme rien : la reprise repart au
+meme point, avec les memes tours devant elle, une fois l'obstacle leve.
 
 **Jamais d'abandon silencieux, jamais de livraison en l'etat.** Un cycle qui n'a pas converge
 ne produit pas une MR « a completer » : il produit une escalade.
@@ -144,7 +165,8 @@ l'ancien artefact sans rien dire.
   encore » — pas « on ne sait pas ». **Le statut est un resultat, jamais un jugement** : en
   10.3 tous les tests doivent etre `failed`, et c'est le bon resultat. N'ecris pas `passed`
   parce que l'etape s'est bien passee.
-- `escalate-to-human` des qu'un budget tombe.
+- `escalate-to-human` des qu'un budget tombe, avec la `cause` qui convient — `convergence`
+  quand les tours ont eu lieu sans suffire, `environment` quand ils n'ont pas pu avoir lieu.
 - Tu n'ecris jamais une ligne de code ni de test. Si tu t'entends penser « je corrige juste
   ce petit truc », c'est un retour en 10.1 ou en 10.4.
 
