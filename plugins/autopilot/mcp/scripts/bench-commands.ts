@@ -31,8 +31,8 @@ import { run, stopReason } from "../lib/exec.ts";
 /** Pires durees observees pendant FT-1042, en secondes, avec leur filtre. */
 const OBSERVED: Record<string, { filter: string; seconds: Partial<Record<CommandKind, number>> }> = {
   // Pas un monorepo : aucun filtre a appliquer.
-  sheet-service: { filter: "", seconds: { ft: 93.4, ut: 19.3, lint: 12.4, typecheck: 10.0 } },
-  web-app: { filter: "--filter=sheet-lab", seconds: { typecheck: 17.2, ut: 13.9, lint: 2.7, ct: 8.7 } },
+  "sheet-service": { filter: "", seconds: { ft: 93.4, ut: 19.3, lint: 12.4, typecheck: 10.0 } },
+  "web-app": { filter: "--filter=sheet-lab", seconds: { typecheck: 17.2, ut: 13.9, lint: 2.7, ct: 8.7 } },
 };
 
 const ALL_KINDS: CommandKind[] = ["lint", "typecheck", "ut", "it", "ft", "ct", "e2e"];

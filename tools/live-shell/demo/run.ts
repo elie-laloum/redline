@@ -977,7 +977,8 @@ export const PRODUCED = {
   enonce: 185,
   maquette: 182,
   scoutLarge: 176,
-  functional: [170, 166, 162],
+  functional: [171.5, 169.5, 167.5, 165.5, 163.5, 161.5],
+  technical: [142.5, 140.5, 138.5, 136.5, 134.5, 132.5],
   scope: 154,
   scoutCiblee: 147,
   plan: 124,
@@ -1123,29 +1124,71 @@ function buildState({
       answer: "Associé et Expert-comptable. Les autres profils voient le panneau en lecture seule.",
       why: "Le critère d'acceptation ne nomme que ces deux profils, et la maquette montre le panneau sans bouton pour les autres — il fallait trancher entre cacher et désactiver.",
     },
+    {
+      producedAt: P.functional[3],
+      at: at(P.functional[3]),
+      question: "Que devient un réglage en cours si on ferme le panneau sans enregistrer ?",
+      answer: "Il est perdu, et rien ne prévient. Fermer le panneau annule, sans confirmation.",
+      why: "Le ticket ne dit rien de l'abandon. Demander une confirmation aurait ajouté une décision que personne n'a prise — on reste sur le comportement des autres modales de la feuille.",
+    },
+    {
+      producedAt: P.functional[4],
+      at: at(P.functional[4]),
+      question: "Un critère peut-il être ramené à 0 %, donc sortir du calcul ?",
+      answer: "Oui. 0 est une valeur valide, et le critère cesse alors de peser sur le score.",
+      why: "Le pas de 5 part de 0 dans le critère d'acceptation ; interdire 0 aurait été une règle de plus, écrite nulle part.",
+    },
+    {
+      producedAt: P.functional[5],
+      at: at(P.functional[5]),
+      question: "Changer les pondérations recalcule-t-il le score des feuilles déjà archivées ?",
+      answer: "Non. Seules les feuilles actives sont recalculées ; une feuille archivée garde le score qu'elle avait.",
+      why: "Une feuille archivée est une photo à une date — la recalculer réécrirait un score déjà opposé au client.",
+    },
   ]);
 
   const technical = strip([
     {
-      producedAt: 141,
-      at: at(141),
+      producedAt: P.technical[0],
+      at: at(P.technical[0]),
       question: "Les pondérations vivent-elles sur la feuille ou sur le dossier ?",
       answer: "Sur la feuille. Une colonne `weights` en JSONB sur `lab_worksheet`, pas de table dédiée.",
       why: "L'isolation entre feuilles est un critère d'acceptation ; une table partagée la rendrait accidentelle plutôt que structurelle.",
     },
     {
-      producedAt: 137,
-      at: at(137),
+      producedAt: P.technical[1],
+      at: at(P.technical[1]),
       question: "Où se calcule le score global aujourd'hui ?",
       answer: "Dans web-app-core. Le back calcule et renvoie le score ; le front ne fait que l'afficher.",
       why: "Recalculer côté front aurait dupliqué la règle ALTAIR dans deux dépôts, avec deux vérités possibles pour un même score.",
     },
     {
-      producedAt: 133,
-      at: at(133),
+      producedAt: P.technical[2],
+      at: at(P.technical[2]),
       question: "Comment web-app récupère-t-il le contrat livré par web-app-core ?",
       answer: "Par le paquet versionné. web-app-core est publié en amont, puis web-app bump sa dépendance.",
       why: "C'est ce que dit la note integrations/web-app-core-vers-web-app.md, et c'est ce qui impose l'ordre des niveaux dans le plan.",
+    },
+    {
+      producedAt: P.technical[3],
+      at: at(P.technical[3]),
+      question: "Que vaut la nouvelle colonne pour les feuilles déjà en base ?",
+      answer: "La migration écrit 30 / 30 / 25 / 15 sur toutes les lignes existantes. Pas de NULL, pas de repli sur les constantes.",
+      why: "Laisser NULL aurait gardé deux sources pour un même poids — la colonne et les constantes — donc deux scores possibles pendant toute la transition.",
+    },
+    {
+      producedAt: P.technical[4],
+      at: at(P.technical[4]),
+      question: "Le total à 100 % est-il revérifié côté serveur, ou le front suffit-il ?",
+      answer: "Revérifié côté serveur : un enregistrement dont le total ne vaut pas 100 % est refusé.",
+      why: "Le bouton désactivé est un confort, pas une garantie — l'API est atteignable sans passer par la modale.",
+    },
+    {
+      producedAt: P.technical[5],
+      at: at(P.technical[5]),
+      question: "Comment les tests de composant simulent-ils le profil de l'utilisateur ?",
+      answer: "Par le contexte de session, comme le reste de la feuille. Pas de mock du hook de droits.",
+      why: "Mocker le hook aurait testé le mock : c'est le câblage entre la session et le panneau qui porte le risque.",
     },
   ]);
 
@@ -1286,7 +1329,7 @@ function buildState({
   ]);
 
   /** Chaque reponse et chaque decision est une main humaine posee sur le run. */
-  const interventions = [...P.functional, 141, 137, 133, P.approved].filter(done).length;
+  const interventions = [...P.functional, ...P.technical, P.approved].filter(done).length;
   const loopTurns = [110, 95, 83, 62].filter(done).length + (done(95) ? 1 : 0);
 
   return {
