@@ -10,7 +10,7 @@ related_targets: ["tools/live-shell/src/components/action-bar.tsx","tools/live-s
 **Portée** : `tools/live-shell`, la page unique d'un run d'autopilot.
 **Mode visiteur** : Operate. Le visiteur vient savoir où ça en est et décider s'il intervient.
 
-**Audience** : l'utilisateur aujourd'hui, l'équipe demain. Les libellés doivent se lire sans commentaire
+**Audience** : une personne aujourd'hui, l'équipe demain. Les libellés doivent se lire sans commentaire
 oral — jargon de workflow interdit à l'état brut.
 
 **La tâche** : ouvrir un onglet à froid après une heure, et en dix secondes savoir trois choses

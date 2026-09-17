@@ -68,17 +68,19 @@ autopilot/
 ├── autopilot.example.yaml      budgets, timeouts, naming, slack allowlist, jira transitions
 ├── repositories.example.yaml   the registry: level, commands, ci jobs, dependencies
 ├── .env.example                the tokens
-├── plugins/autopilot/          the 15 agents, the skill, the voice rules, the tool server
+├── plugins/autopilot/          the 15 agents, the skill, the tool server
+│   ├── rules/voice.template.md the voice profile to fill in
 │   └── evals/                  one eval suite per agent
 ├── tools/live-shell/           the live-mode app, tanstack start in ssr
 └── tests/                      unit/, workflow/, fixtures/
 ```
 
-The three `*.example.*` files are templates. Copy each one to its real name — `autopilot.yaml`,
-`repositories.yaml`, `.env` — and fill it in. The real files are gitignored: they describe your
-infrastructure and your tokens, so they are never published. When one is missing, the loader
-falls back to its template, which is what lets a fresh clone run its test suite and
-`pnpm config:check` before anything has been configured.
+The `*.example.*` and `*.template.*` files are exactly that — templates. Copy each one to its
+real name — `autopilot.yaml`, `repositories.yaml`, `.env`, `rules/voice.md` — and fill it in.
+The real files are gitignored: they describe your infrastructure, your tokens and your own
+writing voice, so they are never published. When one is missing the loader falls back to its
+template, which is what lets a fresh clone run its test suite and `pnpm config:check` before
+anything has been configured.
 
 **`~/.autopilot` holds the knowledge and the state** — it does not clone, it accumulates.
 
@@ -113,6 +115,8 @@ pnpm install
 cp .env.example .env                                # then fill in the tokens
 cp autopilot.example.yaml autopilot.yaml            # budgets, naming, allowlist
 cp repositories.example.yaml repositories.yaml      # your repositories
+cp plugins/autopilot/rules/voice.template.md \
+   plugins/autopilot/rules/voice.md                 # your writing voice — see below
 pnpm config:check
 ```
 
@@ -145,6 +149,55 @@ the registry is caught by the test suite rather than by a run.
 Naming, branch and MR templates, Jira transitions and the Slack allowlist live in
 `autopilot.yaml`. Committer identity is `git.committer` there; leave it commented out and
 commits are signed with the machine's own git identity.
+
+## Your writing voice
+
+Step 13 publishes under **your own name** — a Slack channel, a Jira comment, a reply in an MR
+thread. A message that reads as machine-written is worse than no message at all, so the
+`finalizer` is required to call `writer-voice-tone` before writing anything public, and that
+tool serves `plugins/autopilot/rules/voice.md`.
+
+That file is a profile of how *you* write, derived from what you have actually written. It is
+gitignored for the same reason the registry is: it carries your name. Only
+`voice.template.md` is published, and while no `voice.md` exists the tool serves the template
+with `calibrated: false` — the agent is told the voice is not calibrated and stays factual
+instead of imitating a style it does not know.
+
+To produce yours, gather a real corpus — export your own MR comments, Slack messages and
+commit messages, a few hundred lines is plenty — and give Claude this prompt alongside it:
+
+> You are building a writing-voice profile that another AI agent will follow to write
+> messages published under my name — Slack, Jira comments, GitLab MR thread replies.
+>
+> The corpus below contains only texts I wrote myself. Work from observation, never from
+> assumption: every rule you state must be backed by a pattern that actually recurs in the
+> corpus, and you must quote real examples for each one. Where the corpus is too thin to
+> conclude, say so explicitly rather than filling the gap — mark those sections as
+> extrapolated.
+>
+> Follow the structure of `voice.template.md` exactly, section by section. Pay particular
+> attention to:
+>
+> - the **invariants** — what holds in every context, especially punctuation and spacing
+>   habits, which are the most visible signature and the first thing an agent gets wrong;
+> - **restrictive** rules over permissive ones. An agent's reflex is to structure text with
+>   labels, headings and bullet lists, and that is what gives away automation fastest. State
+>   plainly what I never do.
+> - the **lexicon** — the words I use and the words I never use. Two people following the
+>   same rules are told apart by this.
+> - a final **self-check list** of eight to ten closed questions derived from the rules above,
+>   where a single "no" means rewrite.
+>
+> Keep the `@autopilot` prohibition from the template verbatim: it is a system constraint, not
+> a style preference.
+>
+> Report the corpus volume you actually analysed, per source, in the table at the top.
+>
+> Here is the corpus:
+> [paste]
+
+Then read it back and correct it by hand. A profile you have not reread is a profile that
+will publish something you would not have written.
 
 ## Verify
 

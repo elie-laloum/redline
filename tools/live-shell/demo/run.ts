@@ -25,6 +25,8 @@
  * Le reste du fichier est la bande elle-meme, inchangee.
  */
 
+import { chosen, FUNCTIONAL, type GrillBatch, TECHNICAL } from "./grills.ts";
+
 /** Un moment du run, en minutes avant l'instant de reference. */
 export interface Beat {
   /** Minutes avant maintenant. Strictement decroissant dans la liste. */
@@ -41,6 +43,46 @@ export interface Beat {
 }
 
 const check = (kind: string, passed: boolean, durationMs: number) => ({ check: { kind, passed, durationMs } });
+
+/**
+ * Un lot devient deux beats : celui qui l'ouvre, celui qui le ferme.
+ *
+ * Entre les deux, le run est arrete — c'est tout ce que le journal a besoin de
+ * dire. Les reponses voyagent dans le payload du second, une par cle, exactement
+ * comme `ask-user` les rend.
+ */
+function grillBeats(batches: readonly GrillBatch[], step: string, agent: string): Beat[] {
+  return batches.flatMap((batch): Beat[] => [
+    {
+      ago: batch.asked,
+      kind: "question",
+      status: "waiting",
+      step,
+      agent,
+      title: `${batch.questions.length} questions sur ${batch.about}`,
+      payload: {
+        questions: batch.questions.map(({ key, header, question, options }) => ({
+          key,
+          header,
+          question,
+          options: [...options],
+        })),
+      },
+    },
+    {
+      ago: batch.answered,
+      kind: "answer",
+      status: "ok",
+      step,
+      agent,
+      title: `Lot rendu (live) — ${batch.questions.length} réponses sur ${batch.about}`,
+      payload: {
+        transport: "live",
+        answers: Object.fromEntries(batch.questions.map((entry) => [entry.key, chosen(entry)])),
+      },
+    },
+  ]);
+}
 
 export const beats: Beat[] = [
   // 1 — lecture du ticket
@@ -82,175 +124,14 @@ export const beats: Beat[] = [
 
   // 4 — questions fonctionnelles
   { ago: 174, kind: "step", status: "start", step: "4", title: "Questions fonctionnelles" },
+  ...grillBeats(FUNCTIONAL, "4", "functional-grill"),
   {
-    ago: 173,
-    kind: "question",
-    status: "waiting",
-    step: "4",
-    agent: "functional-grill",
-    title: "Déplacer un slider ajuste-t-il les trois autres ?",
-    payload: {
-      questions: [
-        {
-          key: "a",
-          header: "Sliders",
-          question: "Déplacer un slider ajuste-t-il automatiquement les trois autres pour tenir 100 % ?",
-          options: ["Non, ils sont indépendants", "Oui, les autres se rééquilibrent"],
-        },
-      ],
-    },
-  },
-  {
-    ago: 171.5,
-    kind: "answer",
-    status: "ok",
-    step: "4",
-    agent: "functional-grill",
-    title: "Réponse reçue (live) — les 4 sliders sont indépendants",
-    payload: { transport: "live", answers: { a: "Non, ils sont indépendants" } },
-  },
-  {
-    ago: 171,
-    kind: "question",
-    status: "waiting",
-    step: "4",
-    agent: "functional-grill",
-    title: "Quand le score global de la feuille est-il recalculé ?",
-    payload: {
-      questions: [
-        {
-          key: "a",
-          header: "Score",
-          question: "Quand le score global affiché en haut de la feuille est-il recalculé ?",
-          options: ["À l'enregistrement", "Pendant le réglage, en temps réel"],
-        },
-      ],
-    },
-  },
-  {
-    ago: 169.5,
-    kind: "answer",
-    status: "ok",
-    step: "4",
-    agent: "functional-grill",
-    title: "Réponse reçue (live) — à l'enregistrement uniquement",
-    payload: { transport: "live", answers: { a: "À l'enregistrement" } },
-  },
-  {
-    ago: 169,
-    kind: "question",
-    status: "waiting",
-    step: "4",
-    agent: "functional-grill",
-    title: "Qui a le droit de modifier les pondérations ?",
-    payload: {
-      questions: [
-        {
-          key: "a",
-          header: "Droits",
-          question: "Quels profils peuvent modifier les pondérations d'une feuille ?",
-          options: ["Associé et Expert-comptable", "Tout profil ayant accès à la feuille"],
-        },
-      ],
-    },
-  },
-  {
-    ago: 167.5,
-    kind: "answer",
-    status: "ok",
-    step: "4",
-    agent: "functional-grill",
-    title: "Réponse reçue (live) — Associé et Expert-comptable",
-    payload: { transport: "live", answers: { a: "Associé et Expert-comptable" } },
-  },
-  {
-    ago: 167,
-    kind: "question",
-    status: "waiting",
-    step: "4",
-    agent: "functional-grill",
-    title: "Que devient un réglage abandonné en cours de route ?",
-    payload: {
-      questions: [
-        {
-          key: "a",
-          header: "Abandon",
-          question: "Que devient un réglage en cours si on ferme le panneau sans enregistrer ?",
-          options: ["Il est perdu, sans confirmation", "Une confirmation est demandée"],
-        },
-      ],
-    },
-  },
-  {
-    ago: 165.5,
-    kind: "answer",
-    status: "ok",
-    step: "4",
-    agent: "functional-grill",
-    title: "Réponse reçue (live) — perdu, sans confirmation",
-    payload: { transport: "live", answers: { a: "Il est perdu, sans confirmation" } },
-  },
-  {
-    ago: 165,
-    kind: "question",
-    status: "waiting",
-    step: "4",
-    agent: "functional-grill",
-    title: "Un critère peut-il peser 0 % ?",
-    payload: {
-      questions: [
-        {
-          key: "a",
-          header: "Zéro",
-          question: "Un critère peut-il être ramené à 0 %, donc sortir du calcul ?",
-          options: ["Oui, 0 est une valeur valide", "Non, le minimum est 5 %"],
-        },
-      ],
-    },
-  },
-  {
-    ago: 163.5,
-    kind: "answer",
-    status: "ok",
-    step: "4",
-    agent: "functional-grill",
-    title: "Réponse reçue (live) — 0 est une valeur valide",
-    payload: { transport: "live", answers: { a: "Oui, 0 est une valeur valide" } },
-  },
-  {
-    ago: 163,
-    kind: "question",
-    status: "waiting",
-    step: "4",
-    agent: "functional-grill",
-    title: "Les feuilles archivées sont-elles recalculées ?",
-    payload: {
-      questions: [
-        {
-          key: "a",
-          header: "Archives",
-          question: "Changer les pondérations recalcule-t-il le score des feuilles déjà archivées ?",
-          options: ["Non, seules les feuilles actives", "Oui, tout l'historique est recalculé"],
-        },
-      ],
-    },
-  },
-  {
-    ago: 161.5,
-    kind: "answer",
-    status: "ok",
-    step: "4",
-    agent: "functional-grill",
-    title: "Réponse reçue (live) — seules les feuilles actives",
-    payload: { transport: "live", answers: { a: "Non, seules les feuilles actives" } },
-  },
-  {
-    ago: 161,
+    ago: 160.5,
     kind: "agent",
     status: "ok",
     step: "4",
     agent: "functional-grill",
-    title: "Compréhension fonctionnelle complète — 6 arbitrages écrits",
+    title: "Compréhension fonctionnelle complète — 16 arbitrages écrits",
   },
 
   // 5 — perimetre
@@ -295,175 +176,14 @@ export const beats: Beat[] = [
 
   // 7 — questions techniques
   { ago: 145, kind: "step", status: "start", step: "7", title: "Questions techniques" },
+  ...grillBeats(TECHNICAL, "7", "technical-grill"),
   {
-    ago: 144,
-    kind: "question",
-    status: "waiting",
-    step: "7",
-    agent: "technical-grill",
-    title: "Les pondérations vivent-elles sur la feuille ou sur le dossier ?",
-    payload: {
-      questions: [
-        {
-          key: "a",
-          header: "Stockage",
-          question: "Où vivent les pondérations : sur la feuille ou sur le dossier ?",
-          options: ["Colonne weights JSONB sur lab_worksheet", "Table dédiée lab_weights"],
-        },
-      ],
-    },
-  },
-  {
-    ago: 142.5,
-    kind: "answer",
-    status: "ok",
-    step: "7",
-    agent: "technical-grill",
-    title: "Réponse reçue (live) — colonne weights JSONB sur lab_worksheet",
-    payload: { transport: "live", answers: { a: "Colonne weights JSONB sur lab_worksheet" } },
-  },
-  {
-    ago: 142,
-    kind: "question",
-    status: "waiting",
-    step: "7",
-    agent: "technical-grill",
-    title: "Où se calcule le score global aujourd'hui ?",
-    payload: {
-      questions: [
-        {
-          key: "a",
-          header: "Calcul",
-          question: "Où se calcule le score global aujourd'hui ?",
-          options: ["Le back calcule et renvoie le score", "Le front recompose le score"],
-        },
-      ],
-    },
-  },
-  {
-    ago: 140.5,
-    kind: "answer",
-    status: "ok",
-    step: "7",
-    agent: "technical-grill",
-    title: "Réponse reçue (live) — le back calcule et renvoie le score",
-    payload: { transport: "live", answers: { a: "Le back calcule et renvoie le score" } },
-  },
-  {
-    ago: 140,
-    kind: "question",
-    status: "waiting",
-    step: "7",
-    agent: "technical-grill",
-    title: "Comment web-app consomme-t-il la nouvelle colonne ?",
-    payload: {
-      questions: [
-        {
-          key: "a",
-          header: "Intégration",
-          question: "Comment web-app récupère-t-il le contrat livré par web-app-core ?",
-          options: ["Par le paquet versionné", "En lisant le dépôt en direct"],
-        },
-      ],
-    },
-  },
-  {
-    ago: 138.5,
-    kind: "answer",
-    status: "ok",
-    step: "7",
-    agent: "technical-grill",
-    title: "Réponse reçue (live) — par le paquet versionné",
-    payload: { transport: "live", answers: { a: "Par le paquet versionné" } },
-  },
-  {
-    ago: 138,
-    kind: "question",
-    status: "waiting",
-    step: "7",
-    agent: "technical-grill",
-    title: "Que vaut la colonne pour les feuilles déjà en base ?",
-    payload: {
-      questions: [
-        {
-          key: "a",
-          header: "Existant",
-          question: "Que vaut la nouvelle colonne pour les feuilles déjà en base ?",
-          options: ["La migration écrit 30/30/25/15 partout", "NULL, et le calcul retombe sur les constantes"],
-        },
-      ],
-    },
-  },
-  {
-    ago: 136.5,
-    kind: "answer",
-    status: "ok",
-    step: "7",
-    agent: "technical-grill",
-    title: "Réponse reçue (live) — la migration écrit 30/30/25/15 partout",
-    payload: { transport: "live", answers: { a: "La migration écrit 30/30/25/15 partout" } },
-  },
-  {
-    ago: 136,
-    kind: "question",
-    status: "waiting",
-    step: "7",
-    agent: "technical-grill",
-    title: "Le total à 100 % est-il vérifié côté serveur ?",
-    payload: {
-      questions: [
-        {
-          key: "a",
-          header: "Garde-fou",
-          question: "Le total à 100 % est-il revérifié côté serveur, ou le front suffit-il ?",
-          options: ["Oui, refusé à l'enregistrement", "Non, le front garantit déjà la règle"],
-        },
-      ],
-    },
-  },
-  {
-    ago: 134.5,
-    kind: "answer",
-    status: "ok",
-    step: "7",
-    agent: "technical-grill",
-    title: "Réponse reçue (live) — refusé côté serveur hors 100 %",
-    payload: { transport: "live", answers: { a: "Oui, refusé à l'enregistrement" } },
-  },
-  {
-    ago: 134,
-    kind: "question",
-    status: "waiting",
-    step: "7",
-    agent: "technical-grill",
-    title: "Comment les tests de composant simulent-ils les droits ?",
-    payload: {
-      questions: [
-        {
-          key: "a",
-          header: "Tests",
-          question: "Comment les tests de composant simulent-ils le profil de l'utilisateur ?",
-          options: ["Par le contexte de session, comme le reste de la feuille", "Par un mock du hook de droits"],
-        },
-      ],
-    },
-  },
-  {
-    ago: 132.5,
-    kind: "answer",
-    status: "ok",
-    step: "7",
-    agent: "technical-grill",
-    title: "Réponse reçue (live) — par le contexte de session",
-    payload: { transport: "live", answers: { a: "Par le contexte de session, comme le reste de la feuille" } },
-  },
-  {
-    ago: 132,
+    ago: 130.5,
     kind: "agent",
     status: "ok",
     step: "7",
     agent: "technical-grill",
-    title: "Compréhension technique complète — 6 arbitrages écrits",
+    title: "Compréhension technique complète — 33 arbitrages écrits",
   },
 
   // 8 — plan
@@ -977,8 +697,6 @@ export const PRODUCED = {
   enonce: 185,
   maquette: 182,
   scoutLarge: 176,
-  functional: [171.5, 169.5, 167.5, 165.5, 163.5, 161.5],
-  technical: [142.5, 140.5, 138.5, 136.5, 134.5, 132.5],
   scope: 154,
   scoutCiblee: 147,
   plan: 124,
@@ -1102,95 +820,27 @@ function buildState({
 }): Record<string, unknown> {
   const P = PRODUCED;
 
-  const functional = strip([
-    {
-      producedAt: P.functional[0],
-      at: at(P.functional[0]),
-      question: "Déplacer un slider ajuste-t-il automatiquement les trois autres critères pour maintenir le total à 100 % ?",
-      answer: "Non. Les 4 sliders sont totalement indépendants ; c'est à l'utilisateur de ramener lui-même le total à 100 %.",
-      why: "Confirmé par le scénario 1, où le total monte librement à 110 % avant d'être rattrapé à la main sur un autre critère.",
-    },
-    {
-      producedAt: P.functional[1],
-      at: at(P.functional[1]),
-      question: "Quand le score global affiché en haut de la feuille est-il recalculé ?",
-      answer: "À l'enregistrement uniquement. Tant que la modale n'est pas validée, le score de la feuille ne bouge pas.",
-      why: "Lève la contradiction entre le scénario 1 et le TNR 1 : « temps réel » y signifie sans rechargement de page après l'enregistrement, pas pendant le déplacement des sliders.",
-    },
-    {
-      producedAt: P.functional[2],
-      at: at(P.functional[2]),
-      question: "Quels profils peuvent modifier les pondérations d'une feuille ?",
-      answer: "Associé et Expert-comptable. Les autres profils voient le panneau en lecture seule.",
-      why: "Le critère d'acceptation ne nomme que ces deux profils, et la maquette montre le panneau sans bouton pour les autres — il fallait trancher entre cacher et désactiver.",
-    },
-    {
-      producedAt: P.functional[3],
-      at: at(P.functional[3]),
-      question: "Que devient un réglage en cours si on ferme le panneau sans enregistrer ?",
-      answer: "Il est perdu, et rien ne prévient. Fermer le panneau annule, sans confirmation.",
-      why: "Le ticket ne dit rien de l'abandon. Demander une confirmation aurait ajouté une décision que personne n'a prise — on reste sur le comportement des autres modales de la feuille.",
-    },
-    {
-      producedAt: P.functional[4],
-      at: at(P.functional[4]),
-      question: "Un critère peut-il être ramené à 0 %, donc sortir du calcul ?",
-      answer: "Oui. 0 est une valeur valide, et le critère cesse alors de peser sur le score.",
-      why: "Le pas de 5 part de 0 dans le critère d'acceptation ; interdire 0 aurait été une règle de plus, écrite nulle part.",
-    },
-    {
-      producedAt: P.functional[5],
-      at: at(P.functional[5]),
-      question: "Changer les pondérations recalcule-t-il le score des feuilles déjà archivées ?",
-      answer: "Non. Seules les feuilles actives sont recalculées ; une feuille archivée garde le score qu'elle avait.",
-      why: "Une feuille archivée est une photo à une date — la recalculer réécrirait un score déjà opposé au client.",
-    },
-  ]);
+  /**
+   * Un arbitrage par question rendue, date du moment ou son lot est revenu.
+   *
+   * Les questions d'un meme lot partagent donc leur horodatage, et c'est exact :
+   * elles ont ete tranchees ensemble, en un seul arret du run.
+   */
+  const arbitrages = (batches: readonly GrillBatch[]) =>
+    strip(
+      batches.flatMap((batch) =>
+        batch.questions.map((entry) => ({
+          producedAt: batch.answered,
+          at: at(batch.answered),
+          question: entry.question,
+          answer: entry.settled,
+          why: entry.why,
+        })),
+      ),
+    );
 
-  const technical = strip([
-    {
-      producedAt: P.technical[0],
-      at: at(P.technical[0]),
-      question: "Les pondérations vivent-elles sur la feuille ou sur le dossier ?",
-      answer: "Sur la feuille. Une colonne `weights` en JSONB sur `lab_worksheet`, pas de table dédiée.",
-      why: "L'isolation entre feuilles est un critère d'acceptation ; une table partagée la rendrait accidentelle plutôt que structurelle.",
-    },
-    {
-      producedAt: P.technical[1],
-      at: at(P.technical[1]),
-      question: "Où se calcule le score global aujourd'hui ?",
-      answer: "Dans web-app-core. Le back calcule et renvoie le score ; le front ne fait que l'afficher.",
-      why: "Recalculer côté front aurait dupliqué la règle ALTAIR dans deux dépôts, avec deux vérités possibles pour un même score.",
-    },
-    {
-      producedAt: P.technical[2],
-      at: at(P.technical[2]),
-      question: "Comment web-app récupère-t-il le contrat livré par web-app-core ?",
-      answer: "Par le paquet versionné. web-app-core est publié en amont, puis web-app bump sa dépendance.",
-      why: "C'est ce que dit la note integrations/web-app-core-vers-web-app.md, et c'est ce qui impose l'ordre des niveaux dans le plan.",
-    },
-    {
-      producedAt: P.technical[3],
-      at: at(P.technical[3]),
-      question: "Que vaut la nouvelle colonne pour les feuilles déjà en base ?",
-      answer: "La migration écrit 30 / 30 / 25 / 15 sur toutes les lignes existantes. Pas de NULL, pas de repli sur les constantes.",
-      why: "Laisser NULL aurait gardé deux sources pour un même poids — la colonne et les constantes — donc deux scores possibles pendant toute la transition.",
-    },
-    {
-      producedAt: P.technical[4],
-      at: at(P.technical[4]),
-      question: "Le total à 100 % est-il revérifié côté serveur, ou le front suffit-il ?",
-      answer: "Revérifié côté serveur : un enregistrement dont le total ne vaut pas 100 % est refusé.",
-      why: "Le bouton désactivé est un confort, pas une garantie — l'API est atteignable sans passer par la modale.",
-    },
-    {
-      producedAt: P.technical[5],
-      at: at(P.technical[5]),
-      question: "Comment les tests de composant simulent-ils le profil de l'utilisateur ?",
-      answer: "Par le contexte de session, comme le reste de la feuille. Pas de mock du hook de droits.",
-      why: "Mocker le hook aurait testé le mock : c'est le câblage entre la session et le panneau qui porte le risque.",
-    },
-  ]);
+  const functional = arbitrages(FUNCTIONAL);
+  const technical = arbitrages(TECHNICAL);
 
   /**
    * Une checklist se remplit ligne par ligne, et chaque ligne a son moment.
@@ -1329,7 +979,10 @@ function buildState({
   ]);
 
   /** Chaque reponse et chaque decision est une main humaine posee sur le run. */
-  const interventions = [...P.functional, ...P.technical, P.approved].filter(done).length;
+  // Une intervention humaine par **lot** rendu — un lot est un arrêt du run,
+  // pas six — plus le gate du plan.
+  const interventions =
+    [...FUNCTIONAL, ...TECHNICAL].filter((batch) => done(batch.answered)).length + (done(P.approved) ? 1 : 0);
   const loopTurns = [110, 95, 83, 62].filter(done).length + (done(95) ? 1 : 0);
 
   return {

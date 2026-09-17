@@ -8,6 +8,10 @@
 autopilot.yaml
 repositories.yaml
 
+# profil de voix : il se calibre sur un corpus personnel et porte le nom de
+# quelqu'un. Le modèle à côté dit comment le produire.
+plugins/autopilot/rules/voice.md
+
 node_modules/
 dist/
 .turbo/

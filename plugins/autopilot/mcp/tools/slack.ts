@@ -59,7 +59,7 @@ export const slackTools: AnyTool[] = [
       if (refused.length > 0) {
         fail(
           `Hors allowlist : ${refused.join(", ")}.`,
-          `Le jeton est un xoxp-, ces invitations partiraient sous mon identite. Allowlist ${allowlist.squad} : ${
+          `Le jeton est un xoxp-, ces invitations partiraient sous ton identite. Allowlist ${allowlist.squad} : ${
             allowlist.emails.join(", ") || "vide"
           }.`,
         );
@@ -93,7 +93,7 @@ export const slackTools: AnyTool[] = [
   defineTool({
     name: "post-slack-message",
     description:
-      "Poste un message dans un canal, sous mon identite. Le texte doit avoir ete ecrit avec writer-voice-tone : un message qui sent l'automatisation est pire qu'un message absent.",
+      "Poste un message dans un canal, sous l'identite de l'utilisateur. Le texte doit avoir ete ecrit avec writer-voice-tone : un message qui sent l'automatisation est pire qu'un message absent.",
     inputSchema: obj({ channelId: str("Identifiant du canal."), text: str("Texte du message.") }, ["channelId", "text"]),
     handler: async ({ channelId, text }: { channelId: string; text: string }) => {
       if (/@autopilot/i.test(text)) {

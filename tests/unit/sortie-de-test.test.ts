@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import { findRepo, targetingFor } from "../../plugins/autopilot/mcp/lib/config.ts";
+import { findRepo, loadConfig, targetingFor } from "../../plugins/autopilot/mcp/lib/config.ts";
 import { focusOn, run } from "../../plugins/autopilot/mcp/lib/exec.ts";
 import { renderTargeting } from "../../plugins/autopilot/mcp/tools/quality.ts";
 import { toolByName } from "../../plugins/autopilot/mcp/registry.ts";
@@ -257,24 +257,30 @@ describe("le budget d'une boucle", () => {
     return tool.handler({ ticketId: "FT-9001", patch }, noopContext);
   };
 
+  // Les plafonds se lisent dans la configuration reelle, jamais en dur : un
+  // arbitrage sur un budget ne doit pas casser le test du mecanisme.
+  const budgets = () => loadConfig().budgets;
+
   it("laisse monter le compteur jusqu'a son plafond", async () => {
-    for (let turn = 1; turn <= 3; turn += 1) {
+    const plafond = budgets().redChecker;
+    for (let turn = 1; turn <= plafond; turn += 1) {
       await write({ scope: [{ name: "repo-fixture", loops: { redChecker: { __increment: 1 } } }] });
     }
     const state = (await write({})) as { state: { scope: { name: string; loops: { redChecker: number } }[] } };
-    assert.equal(state.state.scope[0]?.loops.redChecker, 3);
+    assert.equal(state.state.scope[0]?.loops.redChecker, plafond);
   });
 
   it("refuse le tour de trop, avant de l'ecrire", async () => {
+    const plafond = budgets().redChecker;
     await assert.rejects(
       () => write({ scope: [{ name: "repo-fixture", loops: { redChecker: { __increment: 1 } } }] }),
-      /budget de 3/,
+      new RegExp(`passerait a ${plafond + 1} .*budget de ${plafond}`),
     );
 
     // Le refus arrive avant l'ecriture : le compteur reste juste, et la reprise
     // ne repart pas d'un etat qui accuse un tour qui n'a pas eu lieu.
     const state = (await write({})) as { state: { scope: { loops: { redChecker: number } }[] } };
-    assert.equal(state.state.scope[0]?.loops.redChecker, 3);
+    assert.equal(state.state.scope[0]?.loops.redChecker, plafond);
   });
 
   it("dit quoi faire a la place, plutot que de constater", async () => {
@@ -293,9 +299,10 @@ describe("le budget d'une boucle", () => {
   });
 
   it("compte pareil une valeur absolue et un increment", async () => {
+    const trop = budgets().testAdversary + 1;
     await assert.rejects(
-      () => write({ scope: [{ name: "autre-repo", loops: { testAdversary: 9 } }] }),
-      /budget de 3/,
+      () => write({ scope: [{ name: "autre-repo", loops: { testAdversary: trop } }] }),
+      new RegExp(`passerait a ${trop} .*budget de ${budgets().testAdversary}`),
     );
   });
 

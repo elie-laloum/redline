@@ -8,7 +8,7 @@ web
 
 ## Users
 
-**Aujourd'hui, une seule personne : l'utilisateur**, qui lance le run depuis son terminal et garde le
+**Aujourd'hui, une seule personne**, qui lance le run depuis son terminal et garde le
 live shell dans un onglet parmi d'autres. Il ne le regarde pas en continu — il l'ouvre
 **quand il se demande où ça en est**, et le referme.
 
