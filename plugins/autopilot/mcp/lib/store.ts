@@ -72,7 +72,9 @@ function mergeArrays(base: Json[], patch: Json[]): Json[] {
   }
 
   const identity = identityKeyOf(patch) ?? identityKeyOf(base);
-  if (!identity) return patch;
+  // Meme sans identite, une entree traverse le merge : c'est la seule chose qui
+  // resout les enveloppes qu'elle porte.
+  if (!identity) return patch.map((item) => mergePatch(null, item));
 
   const out: Json[] = base.map((item) => item);
   for (const item of patch) {
@@ -82,7 +84,11 @@ function mergeArrays(base: Json[], patch: Json[]): Json[] {
     }
     const id = item[identity];
     const index = out.findIndex((candidate) => isPlainObject(candidate) && candidate[identity] === id);
-    if (index === -1) out.push(item);
+    // Une entree neuve passe par le merge comme les autres, contre une base
+    // vide. Poussee telle quelle, elle garderait ses enveloppes en l'etat : le
+    // premier tour d'une boucle sur un repo neuf ecrivait `{__increment: 1}` la
+    // ou le compteur attend `1`, et ce compteur-la n'est plus jamais juste.
+    if (index === -1) out.push(mergePatch(null, item));
     else out[index] = mergePatch(out[index] ?? null, item);
   }
   return out;
