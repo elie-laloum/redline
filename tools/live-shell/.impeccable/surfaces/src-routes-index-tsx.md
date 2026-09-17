@@ -1,13 +1,13 @@
 ---
 version: 1
-slug: "tools-live-shell-src-routes-index-tsx"
-primary_target: "tools/live-shell/src/routes/index.tsx"
-related_targets: ["tools/live-shell/src/components/action-bar.tsx","tools/live-shell/src/components/question-panel.tsx","tools/live-shell/src/components/ui.tsx"]
+slug: "src-routes-index-tsx"
+primary_target: "src/routes/index.tsx"
+related_targets: ["src/components/action-bar.tsx","src/components/question-panel.tsx","src/components/ui.tsx"]
 ---
 
 # Live-mode — la fenêtre sur un run
 
-**Portée** : `tools/live-shell`, la page unique d'un run d'autopilot.
+**Portée** : `.`, la page unique d'un run d'autopilot.
 **Mode visiteur** : Operate. Le visiteur vient savoir où ça en est et décider s'il intervient.
 
 **Audience** : une personne aujourd'hui, l'équipe demain. Les libellés doivent se lire sans commentaire

@@ -35,5 +35,8 @@ plugins/autopilot/evals/results/
 # depots de fixture materialises a la main (pnpm fixtures)
 tests/.fixtures/
 
-# impeccable : captures de revue, jetables
-.impeccable/review/
+# impeccable : artefacts de run, jetables — la revue, le cache du hook et le
+# journal des questions posees pendant une passe de design.
+tools/live-shell/.impeccable/review/
+tools/live-shell/.impeccable/hook.cache.json
+tools/live-shell/.impeccable/questions/

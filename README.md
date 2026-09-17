@@ -15,7 +15,7 @@ On a ticket that already has a state file, the command **resumes** instead of st
 > may be useful to others — not a product. It assumes Jira, GitLab and Slack, and it was
 > shaped against a specific codebase. Nothing here auto-detects your setup: repositories,
 > commands and CI jobs are declared by hand in a registry file. Expect to adapt it, not to
-> install it. The agent prompts and the docs under `DESIGN.md` and `PRODUCT.md` are in French.
+> install it. The agent prompts and the live-shell design notes are in French.
 
 ## The three ideas that carry the rest
 
@@ -72,6 +72,9 @@ autopilot/
 │   ├── rules/voice.template.md the voice profile to fill in
 │   └── evals/                  one eval suite per agent
 ├── tools/live-shell/           the live-mode app, tanstack start in ssr
+│   ├── DESIGN.md               its design system, derived from what shipped
+│   └── .impeccable/            the design pass that produced it
+├── PRODUCT.md                  what the live shell is for, and for whom
 └── tests/                      unit/, workflow/, fixtures/
 ```
 
