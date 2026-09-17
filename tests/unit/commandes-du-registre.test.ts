@@ -95,13 +95,20 @@ describe("le registre", () => {
   });
 
   it("declare au moins un type de test partout ou un checker sera invoque", () => {
-    // Un repo sans aucun type declare n'est pas une erreur — db-schema est
-    // dans ce cas. Mais ca doit rester un choix visible, pas un oubli : le
-    // message dit lesquels, pour qu'un ajout se remarque.
-    const sansTests = loadRegistry()
-      .repositories.filter((r) => !["ut", "it", "ft", "ct", "e2e"].some((k) => r.commands[k as CommandKind]))
+    // Un repo sans aucun type declare n'est pas une erreur. Mais ca doit rester
+    // un choix visible, pas un oubli : le registre le dit avec `withoutTests`,
+    // et les deux listes doivent coincider. Une commande perdue en silence
+    // ajoute un repo a gauche et pas a droite, donc ce test tombe.
+    const repos = loadRegistry().repositories;
+    const sansCommande = repos
+      .filter((r) => !["ut", "it", "ft", "ct", "e2e"].some((k) => r.commands[k as CommandKind]))
       .map((r) => r.name);
-    assert.deepEqual(sansTests, ["db-schema", "ui-theme"], "la liste des repos sans test a change");
+    const declares = repos.filter((r) => r.withoutTests).map((r) => r.name);
+    assert.deepEqual(
+      sansCommande,
+      declares,
+      "un repo n'a plus aucune commande de test sans le declarer par `withoutTests: true`",
+    );
   });
 });
 

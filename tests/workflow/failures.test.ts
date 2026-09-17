@@ -273,8 +273,8 @@ describe("scenario 10 — allowlist slack", () => {
   it("n'invite personne d'autre que moi quand la squad est inconnue", async () => {
     const sandbox = await createSandbox({
       ticket: { key: "ZZ-1", summary: "Une squad jamais vue" },
-      slackAllowlist: { FT: ["a@example.fr"] },
-      slackUsers: { "a@example.fr": "U1" },
+      slackAllowlist: { FT: ["a@example.com"] },
+      slackUsers: { "a@example.com": "U1" },
     });
     try {
       const channel = await sandbox.call<any>("create-slack-channel", { ticketId: "ZZ-1", title: "Une squad jamais vue" });
@@ -295,14 +295,14 @@ describe("scenario 10 — allowlist slack", () => {
   it("invite l'allowlist de la squad declaree, et rien de plus", async () => {
     const sandbox = await createSandbox({
       ticket: { key: "FT-1", summary: "Une squad connue" },
-      slackAllowlist: { FT: ["a@example.fr", "b@example.fr"] },
-      slackUsers: { "a@example.fr": "U1", "b@example.fr": "U2", "intrus@ailleurs.fr": "U9" },
+      slackAllowlist: { FT: ["a@example.com", "b@example.com"] },
+      slackUsers: { "a@example.com": "U1", "b@example.com": "U2", "intrus@ailleurs.fr": "U9" },
     });
     try {
       const channel = await sandbox.call<any>("create-slack-channel", { ticketId: "FT-1", title: "Une squad connue" });
       const result = await sandbox.call<any>("invite-slack-users", { ticketId: "FT-1", channelId: channel.id });
 
-      assert.deepEqual(result.invited.sort(), ["a@example.fr", "b@example.fr"]);
+      assert.deepEqual(result.invited.sort(), ["a@example.com", "b@example.com"]);
       assert.deepEqual(sandbox.slack.invited, [{ channel: channel.id, users: ["U1", "U2"] }]);
     } finally {
       await sandbox.cleanup();
@@ -312,8 +312,8 @@ describe("scenario 10 — allowlist slack", () => {
   it("refuse une adresse hors allowlist, meme passee explicitement", async () => {
     const sandbox = await createSandbox({
       ticket: { key: "FT-2", summary: "Tentative de contournement" },
-      slackAllowlist: { FT: ["a@example.fr"] },
-      slackUsers: { "a@example.fr": "U1", "intrus@ailleurs.fr": "U9" },
+      slackAllowlist: { FT: ["a@example.com"] },
+      slackUsers: { "a@example.com": "U1", "intrus@ailleurs.fr": "U9" },
     });
     try {
       const channel = await sandbox.call<any>("create-slack-channel", { ticketId: "FT-2", title: "Tentative" });

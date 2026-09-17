@@ -1,0 +1,188 @@
+# Registre des repos — modele a copier.
+#
+#   cp repositories.example.yaml repositories.yaml
+#
+# `repositories.yaml` est gitignore : il decrit ton infrastructure, il n'a pas a
+# etre publie. Ce modele est le registre de demonstration, et c'est lui que la
+# suite de tests utilise quand le vrai fichier est absent.
+#
+# C'est la SEULE source de verite sur « comment on fait tourner quoi ». Aucune
+# commande n'est deduite d'un runner detecte : ajouter un runner ne demande
+# aucun code, juste une ligne ici.
+#
+# `null` dans `commands` veut dire « ce type de verification n'existe pas ici ».
+# Ne jamais y mettre une commande plausible mais non verifiee : un test qu'on
+# croit lancer et qui ne tourne pas est pire que pas de test du tout.
+#
+# `reports` dit ou une commande ecrit son diagnostic quand elle ne l'ecrit pas
+# sur sa sortie. Sans cette ligne, un `biome ci --reporter=gitlab > fichier.json`
+# rend un `exit 1` muet, et le diagnostic se cherche a la main.
+#
+# `containers` dit ce que la machine doit avoir debout avant le premier test.
+# Meme regle que pour les commandes : on ne declare que ce qui est verifie.
+# Un repo qui n'en a pas besoin n'a pas la cle.
+#
+# `level` porte l'ordre de traitement : un repo amont a un level strictement
+# inferieur a ceux qui dependent de lui. Le chargement le verifie.
+
+schemaVersion: 1
+
+repositories:
+  # ---------------------------------------------------------------- data ----
+  - name: db-schema
+    level: 1
+    path: ~/Projects/example/db-schema
+    gitlabProject: acme/platform/db-schema
+    baseBranch: main
+    layer: data
+    packageManager: npm
+    monorepoTool: null
+    packageName: null
+    dependsOn: []
+    commands:
+      lint: null
+      typecheck: null
+      ut: null
+      it: null
+      ft: null
+      ct: null
+      e2e: null
+    # Un repo peut n'avoir aucun type de test. Ca doit rester un choix declare :
+    # sans cette cle, la suite le signale comme une commande perdue en silence.
+    withoutTests: true
+    ciJobsToWatch: []
+    description: >-
+      Versionnement du schema de base de donnees. Ni test ni pipeline CI : seule
+      la coherence du versionnement se verifie a la main.
+    keywords: [schema, migration, version base]
+
+  # ------------------------------------------------------------- backend ----
+  - name: api-service
+    level: 2
+    path: ~/Projects/example/api-service
+    gitlabProject: acme/platform/api-service
+    baseBranch: main
+    layer: backend
+    packageManager: npm
+    monorepoTool: null
+    packageName: null
+    dependsOn: [db-schema]
+    commands:
+      lint: npm run lint
+      typecheck: npm run build
+      ut: npm run test:unit
+      it: null
+      ft: npm run test:functional
+      ct: null
+      e2e: null
+    # `.env` est gitignore, donc absent d'un worktree neuf. Un service qui ne
+    # boote pas sans ses variables rend des tests fonctionnels rouges pour une
+    # raison qui n'a rien a voir avec le code.
+    localFiles: [.env]
+    # Les suites montent redis et postgres. Sans daemon debout elles ne rendent
+    # pas un echec : elles restent muettes jusqu'au plafond, et l'echec ressemble
+    # alors a un test lent.
+    containers:
+      required: true
+      images: [redis:7-alpine, postgres:16-alpine]
+    # Comment ce repo accepte qu'on cible des fichiers. `{paths}` et `{glob}`
+    # sont remplaces a l'execution. Une cle absente vaut « ajoute les chemins en
+    # fin de commande » ; un `null` explicite dit que ce type ne se cible pas, et
+    # c'est ce qui evite qu'un agent conclue d'un refus d'argument que le repo
+    # entier n'est pas ciblable.
+    targeting:
+      ut: "-- -g {glob}"
+      ft: null
+    ciJobsToWatch: [build, test_ut, test_ft]
+    description: >-
+      Service backend central. Expose les endpoints metier consommes par le
+      front. A modifier des qu'un ticket demande une donnee nouvelle, un calcul
+      serveur, un changement de droits ou une evolution du contrat d'API.
+    keywords: [backend, service, endpoint, route, droits, permission, calcul serveur]
+
+  # --------------------------------------------------------------- front ----
+  - name: ui-theme
+    level: 1
+    path: ~/Projects/example/ui-theme
+    gitlabProject: acme/platform/ui-theme
+    baseBranch: main
+    layer: front
+    packageManager: pnpm
+    monorepoTool: null
+    packageName: "@acme/ui-theme"
+    dependsOn: []
+    commands:
+      lint: pnpm biome:lint
+      typecheck: pnpm typecheck
+      ut: null
+      it: null
+      ft: null
+      ct: null
+      e2e: null
+    withoutTests: true
+    ciJobsToWatch: []
+    description: >-
+      Theme partage : palette, typographie, espacements, locales. Aucun test
+      unitaire ici, seuls typecheck et lint sont verifiables.
+    keywords: [theme, palette, couleur, typographie, dark mode, espacement]
+
+  - name: design-system
+    level: 2
+    path: ~/Projects/example/design-system
+    gitlabProject: acme/platform/design-system
+    baseBranch: main
+    layer: front
+    packageManager: yarn
+    monorepoTool: null
+    packageName: "@acme/design-system"
+    dependsOn: [ui-theme]
+    commands:
+      lint: yarn lint
+      typecheck: yarn build
+      ut: yarn test
+      it: null
+      ft: null
+      ct: yarn playwright:component:run
+      e2e: null
+    ciJobsToWatch: [lint, unit-testing, component-testing, build]
+    description: >-
+      Librairie de composants partages, consommee par le monorepo web et publiee
+      sur le registre de paquets via un tag git. A modifier des qu'un ticket
+      demande un composant nouveau ou un changement de comportement d'un
+      composant generique.
+    keywords: [design system, composant partage, storybook, bouton, champ, modale]
+
+  - name: web-app
+    level: 3
+    path: ~/Projects/example/web-app
+    gitlabProject: acme/platform/web-app
+    baseBranch: main
+    layer: front
+    packageManager: pnpm
+    monorepoTool: turbo
+    packageName: null
+    dependsOn: [design-system, ui-theme]
+    commands:
+      lint: pnpm turbo run biome:lint --continue
+      typecheck: pnpm turbo run typecheck --continue
+      ut: pnpm turbo run test:unit --continue
+      it: null
+      ft: null
+      ct: pnpm turbo run test-ct --continue
+      e2e: null
+    # Un lint qui redirige son rapport dans un fichier rend un `exit 1` muet.
+    # Sans cette ligne, un lint rouge n'apprend rien a personne.
+    reports:
+      lint: "{apps,packages}/*/code-quality.json"
+    ciJobsToWatch: [lint, typecheck, unit-testing, component-testing, build]
+    description: >-
+      Monorepo des micro-frontends et de l'hote web. C'est ici que vit la
+      quasi-totalite du code d'interface metier.
+    keywords: [ecran, page, composant, formulaire, tableau, modale, navigation, i18n, micro-frontend]
+
+# Les repos de banc d'essai ne sont eligibles que pour les projets Jira listes
+# ici, et un vrai ticket ne peut pas tomber dessus par accident. La reciproque
+# vaut aussi : un ticket de ces projets ne touchera aucun repo de production.
+evalOnly:
+  repos: []
+  jiraProjects: []

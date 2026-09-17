@@ -1,16 +1,10 @@
 import assert from "node:assert/strict";
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import {
-  containerNeedsOf,
-  findRepo,
-  reportPathFor,
-  resetConfigCache,
-} from "../../plugins/autopilot/mcp/lib/config.ts";
+import { containerNeedsOf, findRepo, reportPathFor } from "../../plugins/autopilot/mcp/lib/config.ts";
 import { toolByName } from "../../plugins/autopilot/mcp/registry.ts";
-import { PROJECT_ROOT, sandboxHome, useProjectConfig } from "../helpers.ts";
+import { sandboxHome, sandboxProject, useProjectConfig } from "../helpers.ts";
 
 /**
  * Un lint rouge dont la sortie est vide.
@@ -32,26 +26,6 @@ const noopContext = {
   heartbeat: () => {},
   askHuman: async () => ({ action: "decline" as const, content: null }),
 };
-
-/** Un projet autopilot jetable : sa propre config, son propre registre. */
-function sandboxProject(registry: string): { root: string; cleanup: () => void } {
-  const root = mkdtempSync(join(tmpdir(), "autopilot-projet-"));
-  const previousRoot = process.env.AUTOPILOT_PROJECT_ROOT;
-  writeFileSync(join(root, "repositories.yaml"), registry, "utf8");
-  // La config n'est pas l'objet du test : on reprend celle du projet.
-  copyFileSync(join(PROJECT_ROOT, "autopilot.yaml"), join(root, "autopilot.yaml"));
-  process.env.AUTOPILOT_PROJECT_ROOT = root;
-  resetConfigCache();
-  return {
-    root,
-    cleanup: () => {
-      if (previousRoot === undefined) delete process.env.AUTOPILOT_PROJECT_ROOT;
-      else process.env.AUTOPILOT_PROJECT_ROOT = previousRoot;
-      rmSync(root, { recursive: true, force: true });
-      resetConfigCache();
-    },
-  };
-}
 
 const REGISTRY = `schemaVersion: 1
 
@@ -102,6 +76,31 @@ repositories:
     description: Fixture dont le lint parle sur sa sortie, comme eslint.
     keywords: [fixture]
 
+  - name: docker-fixture
+    level: 1
+    path: ~/rien
+    gitlabProject: fixture/docker
+    baseBranch: main
+    layer: backend
+    packageManager: npm
+    monorepoTool: null
+    packageName: null
+    dependsOn: []
+    commands:
+      lint: null
+      typecheck: null
+      ut: "true"
+      it: null
+      ft: null
+      ct: null
+      e2e: null
+    containers:
+      required: true
+      images: [redis:7-alpine, postgres:16-alpine]
+    ciJobsToWatch: []
+    description: Fixture dont la suite a besoin d'une machine debout.
+    keywords: [fixture]
+
 evalOnly:
   repos: []
   jiraProjects: []
@@ -113,7 +112,7 @@ describe("le rapport d'une commande qui n'ecrit pas sur sa sortie", () => {
 
   before(() => {
     home = sandboxHome();
-    project = sandboxProject(REGISTRY);
+    project = sandboxProject({ registry: REGISTRY });
   });
   after(() => {
     project.cleanup();
@@ -189,27 +188,35 @@ describe("le rapport d'une commande qui n'ecrit pas sur sa sortie", () => {
 });
 
 describe("les besoins de conteneurs", () => {
-  before(useProjectConfig);
+  let project: ReturnType<typeof sandboxProject>;
+
+  before(() => {
+    project = sandboxProject({ registry: REGISTRY });
+  });
+  after(() => {
+    project.cleanup();
+    useProjectConfig();
+  });
 
   it("sont declares, jamais deduits d'un docker-compose trouve au hasard", () => {
-    const worksheet = containerNeedsOf(findRepo("sheet-service"));
-    assert.equal(worksheet.required, true);
-    assert.deepEqual([...worksheet.images], ["redis:7-alpine", "postgres:16-alpine"]);
+    const avecMachine = containerNeedsOf(findRepo("docker-fixture"));
+    assert.equal(avecMachine.required, true);
+    assert.deepEqual([...avecMachine.images], ["redis:7-alpine", "postgres:16-alpine"]);
 
-    // Un front n'a rien a monter : la cle est absente, et c'est le cas courant.
-    const web-app = containerNeedsOf(findRepo("web-app"));
-    assert.equal(web-app.required, false);
-    assert.equal(web-app.images.length, 0);
+    // Un repo qui n'a rien a monter n'a pas la cle, et c'est le cas courant.
+    const sansMachine = containerNeedsOf(findRepo("front-fixture"));
+    assert.equal(sansMachine.required, false);
+    assert.equal(sansMachine.images.length, 0);
   });
 
   it("laissent passer sans rien verifier un repo qui n'en declare aucun", async () => {
-    const sandbox = sandboxHome();
+    const sandbox = sandboxHome(project.root);
     try {
-      mkdirSync(join(sandbox.home, "worktrees", "TJ-4", "web-app"), { recursive: true });
+      mkdirSync(join(sandbox.home, "worktrees", "TJ-4", "front-fixture"), { recursive: true });
 
       const preflight = toolByName("preflight-repo");
       assert.ok(preflight);
-      const output = (await preflight.handler({ ticketId: "TJ-4", repo: "web-app" }, noopContext)) as {
+      const output = (await preflight.handler({ ticketId: "TJ-4", repo: "front-fixture" }, noopContext)) as {
         ready: boolean;
         containers: { required: boolean };
       };

@@ -3,6 +3,11 @@
 .env.*
 !.env.example
 
+# configuration locale : elle décrit une infrastructure, elle ne se publie pas.
+# Les modèles versionnés à côté servent de repli — le projet tourne sans elle.
+autopilot.yaml
+repositories.yaml
+
 node_modules/
 dist/
 .turbo/

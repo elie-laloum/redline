@@ -1,7 +1,8 @@
-import { existsSync, mkdirSync, rmSync } from "node:fs";
-import { dirname } from "node:path";
-import { findRepo, loadConfig, repoRoot } from "../lib/config.ts";
+import { copyFileSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { findRepo, loadConfig, type RepoEntry, repoRoot } from "../lib/config.ts";
 import { fail } from "../lib/errors.ts";
+import { expandTilde } from "../lib/paths.ts";
 import { run } from "../lib/exec.ts";
 import {
   changedFiles,
@@ -29,6 +30,17 @@ const TEST_FILE =
 
 export function isTestFile(path: string): boolean {
   return TEST_FILE.test(path);
+}
+
+/**
+ * L'identite qui signe les commits du worktree. `git.committer` d'autopilot.yaml
+ * quand il est renseigne, sinon rien — et c'est alors la configuration git de la
+ * machine qui s'applique, comme pour un commit ecrit a la main.
+ */
+function committerArgs(): string[] {
+  const committer = loadConfig().git?.committer;
+  if (!committer?.name || !committer?.email) return [];
+  return ["-c", `user.name=${committer.name}`, "-c", `user.email=${committer.email}`];
 }
 
 export const gitTools: AnyTool[] = [
@@ -86,6 +98,9 @@ export const gitTools: AnyTool[] = [
       const cwd = worktreePath(ticketId, repo.name);
       if (!existsSync(cwd)) fail(`Worktree absent : ${cwd}.`, "Appelle create-worktree d'abord.");
 
+      // La config locale AVANT l'installation : un `postinstall` peut la lire.
+      const carried = carryLocalFiles(repo, cwd);
+
       const command = installCommand(repo);
       const result = await run(command, { cwd, timeoutMs: loadConfig().timeouts.repoSetupSeconds * 1000 });
       if (result.exitCode !== 0) {
@@ -94,7 +109,13 @@ export const gitTools: AnyTool[] = [
           (result.stderr || result.stdout).slice(-1500),
         );
       }
-      return { repo: repo.name, command, durationMs: result.durationMs, ready: true };
+      return {
+        repo: repo.name,
+        command,
+        durationMs: result.durationMs,
+        ready: true,
+        localFiles: carried,
+      };
     },
   }),
 
@@ -243,15 +264,7 @@ export const gitTools: AnyTool[] = [
         })
         .filter((entry) => entry.path !== "");
 
-      await git(cwd, [
-        "-c",
-        "user.name=l'utilisateur",
-        "-c",
-        "user.email=pro@elielaloum.com",
-        "commit",
-        "-m",
-        input.message,
-      ]);
+      await git(cwd, [...committerArgs(), "commit", "-m", input.message]);
       const sha = await headSha(cwd);
       return { committed: true, commitSha: sha, files, repo: repo.name };
     },
@@ -344,4 +357,40 @@ function checkZone(role: string, files: readonly string[]): string[] {
 
 async function currentBranchOf(cwd: string): Promise<string> {
   return git(cwd, ["rev-parse", "--abbrev-ref", "HEAD"]);
+}
+
+/**
+ * Porter la configuration locale de la source vers le worktree.
+ *
+ * `.env` est gitignore, donc `git worktree add` ne l'emmene pas. Le worktree
+ * demarre sans les secrets, le serveur ne boote pas, et l'echec remonte
+ * deguise en test rouge — ou en escalade dont personne ne devine la cause.
+ *
+ * Trois garde-fous : on ne copie que ce que le registre declare, jamais
+ * par-dessus un fichier deja present dans le worktree, et jamais hors du depot
+ * (un `../` dans le registre serait une exfiltration de fichier, pas une
+ * configuration).
+ */
+export function carryLocalFiles(repo: RepoEntry, cwd: string): { copied: string[]; missing: string[] } {
+  const declared = repo.localFiles ?? [];
+  const copied: string[] = [];
+  const missing: string[] = [];
+  const source = resolve(expandTilde(repo.path));
+
+  for (const entry of declared) {
+    const from = resolve(source, entry);
+    const to = resolve(cwd, entry);
+    if (!from.startsWith(`${source}/`) || !to.startsWith(`${resolve(cwd)}/`)) {
+      fail(`\`localFiles\` sort du depot : ${entry}.`, "Un chemin de configuration reste sous la racine du depot.");
+    }
+    if (existsSync(to)) continue;
+    if (!existsSync(from)) {
+      missing.push(entry);
+      continue;
+    }
+    mkdirSync(dirname(to), { recursive: true });
+    copyFileSync(from, to);
+    copied.push(entry);
+  }
+  return { copied, missing };
 }

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { before, describe, it } from "node:test";
+import { after, before, describe, it } from "node:test";
 import {
   commandFor,
   findRepo,
@@ -11,9 +11,114 @@ import {
   squadOf,
 } from "../../plugins/autopilot/mcp/lib/config.ts";
 import { filterFlags } from "../../plugins/autopilot/mcp/lib/git.ts";
-import { useProjectConfig } from "../helpers.ts";
+import { sandboxProject, useProjectConfig } from "../helpers.ts";
 
 before(useProjectConfig);
+
+/**
+ * Les comportements se verifient sur un registre de fixture, jamais sur celui de
+ * la machine : `repositories.yaml` est gitignore et varie d'un poste a l'autre.
+ * Ce qui se verifie sur le registre reel, ce sont ses invariants — plus bas.
+ */
+const REGISTRE = `schemaVersion: 1
+
+repositories:
+  - name: lib-theme
+    level: 1
+    path: ~/fixture/lib-theme
+    gitlabProject: fixture/lib-theme
+    baseBranch: main
+    layer: front
+    packageManager: pnpm
+    monorepoTool: null
+    packageName: "@fixture/theme"
+    dependsOn: []
+    commands: { lint: pnpm lint, typecheck: pnpm typecheck, ut: null, it: null, ft: null, ct: null, e2e: null }
+    withoutTests: true
+    ciJobsToWatch: []
+    description: Theme sans suite de test.
+    keywords: [theme]
+
+  - name: lib-ds
+    level: 2
+    path: ~/fixture/lib-ds
+    gitlabProject: fixture/lib-ds
+    baseBranch: main
+    layer: front
+    packageManager: yarn
+    monorepoTool: null
+    packageName: "@fixture/ds"
+    dependsOn: [lib-theme]
+    commands: { lint: yarn lint, typecheck: yarn build, ut: yarn test, it: null, ft: null, ct: null, e2e: null }
+    ciJobsToWatch: [build]
+    description: Librairie de composants, pas un monorepo.
+    keywords: [composant]
+
+  - name: api-a
+    level: 2
+    path: ~/fixture/api-a
+    gitlabProject: fixture/api-a
+    baseBranch: main
+    layer: backend
+    packageManager: npm
+    monorepoTool: null
+    packageName: null
+    dependsOn: []
+    commands: { lint: npm run lint, typecheck: npm run build, ut: npm run test:unit, it: null, ft: null, ct: null, e2e: null }
+    ciJobsToWatch: [build]
+    description: Service backend, meme level que api-b.
+    keywords: [backend]
+
+  - name: api-b
+    level: 2
+    path: ~/fixture/api-b
+    gitlabProject: fixture/api-b
+    baseBranch: main
+    layer: backend
+    packageManager: npm
+    monorepoTool: null
+    packageName: null
+    dependsOn: []
+    commands: { lint: npm run lint, typecheck: npm run build, ut: npm run test:unit, it: null, ft: null, ct: null, e2e: null }
+    ciJobsToWatch: [build]
+    description: Service backend, meme level que api-a.
+    keywords: [backend]
+
+  - name: app-web
+    level: 3
+    path: ~/fixture/app-web
+    gitlabProject: fixture/app-web
+    baseBranch: main
+    layer: front
+    packageManager: pnpm
+    monorepoTool: turbo
+    packageName: null
+    dependsOn: [lib-ds, lib-theme]
+    commands: { lint: pnpm turbo run lint, typecheck: pnpm turbo run typecheck, ut: pnpm turbo run test:unit, it: null, ft: null, ct: null, e2e: null }
+    ciJobsToWatch: [build]
+    description: Monorepo turbo.
+    keywords: [ecran]
+
+  - name: banc-front
+    level: 1
+    path: ~/fixture/banc-front
+    gitlabProject: fixture/banc-front
+    baseBranch: main
+    layer: eval
+    packageManager: pnpm
+    monorepoTool: null
+    packageName: null
+    dependsOn: []
+    commands: { lint: pnpm lint, typecheck: pnpm typecheck, ut: pnpm test, it: null, ft: null, ct: null, e2e: null }
+    ciJobsToWatch: []
+    description: Banc d'essai.
+    keywords: [eval]
+
+evalOnly:
+  repos: [banc-front]
+  jiraProjects: [TJ]
+`;
+
 
 describe("le registre reel", () => {
   it("se charge et declare un level pour chaque repo", () => {
@@ -39,55 +144,79 @@ describe("le registre reel", () => {
   });
 });
 
-describe("orderByLevel", () => {
-  it("ordonne amont vers aval", () => {
-    const ordered = orderByLevel([findRepo("web-app"), findRepo("ui-theme"), findRepo("design-system")]);
-    assert.deepEqual(
-      ordered.map((repo) => repo.name),
-      ["ui-theme", "design-system", "web-app"],
-    );
+describe("le comportement du registre", () => {
+  let projet: ReturnType<typeof sandboxProject>;
+
+  before(() => {
+    projet = sandboxProject({ registry: REGISTRE });
+  });
+  after(() => {
+    projet.cleanup();
+    useProjectConfig();
   });
 
-  it("est stable a level egal", () => {
-    const ordered = orderByLevel([findRepo("sheet-service"), findRepo("api-service")]);
-    assert.deepEqual(
-      ordered.map((repo) => repo.name),
-      ["api-service", "sheet-service"],
-    );
-  });
-});
+  describe("orderByLevel", () => {
+    it("ordonne amont vers aval", () => {
+      const ordered = orderByLevel([findRepo("app-web"), findRepo("lib-theme"), findRepo("lib-ds")]);
+      assert.deepEqual(
+        ordered.map((repo) => repo.name),
+        ["lib-theme", "lib-ds", "app-web"],
+      );
+    });
 
-describe("selection de commande par type", () => {
-  it("rend la commande declaree", () => {
-    // Pas la commande elle-meme : elle change avec le repo amont, et un test qui
-    // la recopie transforme une mise a jour de registre en echec de suite.
-    // Ce qui compte est qu'elle vienne de la, telle quelle.
-    const web-app = findRepo("web-app");
-    assert.equal(commandFor(web-app, "ut"), web-app.commands.ut);
-    assert.ok(commandFor(web-app, "ut")?.trim(), "web-app doit declarer une commande ut");
-  });
-
-  it("rend null quand le type n'existe pas dans le repo, au lieu d'en inventer une", () => {
-    assert.equal(commandFor(findRepo("ui-theme"), "ut"), null);
-    assert.equal(commandFor(findRepo("web-app"), "e2e"), null);
+    it("est stable a level egal", () => {
+      const ordered = orderByLevel([findRepo("api-b"), findRepo("api-a")]);
+      assert.deepEqual(
+        ordered.map((repo) => repo.name),
+        ["api-a", "api-b"],
+      );
+    });
   });
 
-  it("echoue clairement sur un repo inconnu", () => {
-    assert.throws(() => findRepo("nope"), /Repo inconnu du registre/);
-  });
-});
+  describe("selection de commande par type", () => {
+    it("rend la commande declaree", () => {
+      // Pas la commande elle-meme : elle change avec le repo, et un test qui la
+      // recopie transforme une mise a jour de registre en echec de suite. Ce qui
+      // compte est qu'elle vienne de la, telle quelle.
+      const app = findRepo("app-web");
+      assert.equal(commandFor(app, "ut"), app.commands.ut);
+      assert.ok(commandFor(app, "ut")?.trim(), "app-web doit declarer une commande ut");
+    });
 
-describe("filtres monorepo", () => {
-  it("rend des --filter pour turbo", () => {
-    assert.equal(filterFlags(findRepo("web-app"), ["@app/web", "@app/lab"]), "--filter=@app/web --filter=@app/lab");
+    it("rend null quand le type n'existe pas dans le repo, au lieu d'en inventer une", () => {
+      assert.equal(commandFor(findRepo("lib-theme"), "ut"), null);
+      assert.equal(commandFor(findRepo("app-web"), "e2e"), null);
+    });
+
+    it("echoue clairement sur un repo inconnu", () => {
+      assert.throws(() => findRepo("nope"), /Repo inconnu du registre/);
+    });
   });
 
-  it("ne rend rien pour un repo qui n'est pas un monorepo", () => {
-    assert.equal(filterFlags(findRepo("design-system"), ["quoi-que-ce-soit"]), "");
+  describe("filtres monorepo", () => {
+    it("rend des --filter pour turbo", () => {
+      assert.equal(filterFlags(findRepo("app-web"), ["@app/web", "@app/lab"]), "--filter=@app/web --filter=@app/lab");
+    });
+
+    it("ne rend rien pour un repo qui n'est pas un monorepo", () => {
+      assert.equal(filterFlags(findRepo("lib-ds"), ["quoi-que-ce-soit"]), "");
+    });
+
+    it("ne rend rien quand aucun paquet n'a bouge", () => {
+      assert.equal(filterFlags(findRepo("app-web"), []), "");
+    });
   });
 
-  it("ne rend rien quand aucun paquet n'a bouge", () => {
-    assert.equal(filterFlags(findRepo("web-app"), []), "");
+  describe("cloisonnement des repos de banc d'essai", () => {
+    it("garde les repos d'eval hors d'un vrai ticket", () => {
+      assert.equal(isRepoEligible(findRepo("banc-front"), "FT-1025"), false);
+      assert.equal(isRepoEligible(findRepo("app-web"), "FT-1025"), true);
+    });
+
+    it("garde les vrais repos hors d'un ticket de test", () => {
+      assert.equal(isRepoEligible(findRepo("app-web"), "TJ-731"), false);
+      assert.equal(isRepoEligible(findRepo("banc-front"), "TJ-731"), true);
+    });
   });
 });
 
@@ -118,17 +247,5 @@ describe("resolution par squad", () => {
     assert.equal(resolveBySquad(transitions, "FT").apresMr, "VALIDATION");
     assert.equal(resolveBySquad(transitions, "TJ").apresMr, "En cours");
     assert.equal(resolveBySquad(transitions, "INCONNUE").apresMr, "VALIDATION");
-  });
-});
-
-describe("cloisonnement des repos de banc d'essai", () => {
-  it("garde les repos d'eval hors d'un vrai ticket", () => {
-    assert.equal(isRepoEligible(findRepo("autopilot-eval-frontend"), "FT-1025"), false);
-    assert.equal(isRepoEligible(findRepo("web-app"), "FT-1025"), true);
-  });
-
-  it("garde les vrais repos hors d'un ticket de test", () => {
-    assert.equal(isRepoEligible(findRepo("web-app"), "TJ-731"), false);
-    assert.equal(isRepoEligible(findRepo("autopilot-eval-frontend"), "TJ-731"), true);
   });
 });

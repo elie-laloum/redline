@@ -1,0 +1,113 @@
+# Reglages du systeme — modele a copier.
+#
+#   cp autopilot.example.yaml autopilot.yaml
+#
+# `autopilot.yaml` est gitignore : il porte ton allowlist et tes statuts Jira.
+# Ce modele sert de repli quand le vrai fichier est absent, et c'est lui que la
+# suite de tests utilise.
+#
+# Tout ce qui se regle sans toucher au code vit ici. Si un nombre apparait en
+# dur dans un agent ou un tool, il a sa place dans ce fichier.
+
+schemaVersion: 1
+
+budgets:                             # nombre de tours avant escalade
+  testAdversary: 3                   # 10.2 -> 10.1
+  redChecker: 3                      # 10.3 -> 10.1
+  testDispute: 3                     # 10.4 -> 10.1 (zone non couverte / test conteste)
+  greenChecker: 3                    # 10.5 -> 10.4
+  codeAdversary: 3                   # 10.6 -> 10.4
+  disputeBeforeEscalation: 2         # meme test conteste 2 fois = escalade
+  # Lignes de checklist code qu'un developer traite avant de rendre la main.
+  # Au dela il rend un lot, l'orchestrateur le rappelle. Un agent qui tient
+  # tout le chantier d'un repo en une passe finit avec un contexte ou chaque
+  # requete coute plus cher que le tour qu'il economise : mesure sur un run
+  # reel, huit points de checklist en une passe de 95 minutes dont 73 d'attente
+  # pure.
+  developerBatchLines: 4
+
+timeouts:
+  ciPipelineSeconds: 1800            # watch-gitlab-pipeline, puis escalade
+  # ask-user n'a plus d'echeance : un lot pose a 13h attend encore a 16h tant
+  # que l'onglet est ouvert. Il ne se replie au terminal que si la page ne
+  # repond plus — c'est le pouls qui decide, pas le chronometre.
+  repoSetupSeconds: 900              # setup-repo
+  commandSeconds: 1800               # plafond dur : run-test-*, run-lint, run-typecheck
+  # Silence tolere, plafond mis a part. Une commande vivante mais muette depuis
+  # ce delai est abandonnee. C'est ce qui distingue un test lent — qui ecrit —
+  # d'une attente d'infrastructure, qui n'ecrit rien : une suite a deja occupe
+  # les 1800 secondes pleines sans une ligne, faute de daemon docker, puis a
+  # rendu en 21 secondes une fois le daemon debout.
+  commandSilenceSeconds: 240
+  containerStartSeconds: 180         # preflight-repo : demarrage de la machine
+  imagePullSeconds: 600              # preflight-repo : pull d'une image
+
+memory:
+  maxNoteLines: 100                  # au dela, le memory-planner scinde
+  docScout:
+    maxFilesRead: 15
+    maxOutputLines: 200
+
+naming:                              # placeholders : {type} {ticket} {slug} {titre} {n}
+  types: [feature, bugfix, hotfix, documentation, chore, refactor, test, style, task]
+  branch: "{type}/{ticket}-{slug}"
+  mergeRequest: "{type}/{ticket}: {titre}"
+  slackChannel: "{ticket}-{slug}"    # force en minuscules, 80 caracteres max
+  devVersionSuffix: "-{n}"           # n incremente a chaque republication
+  slugMaxLength: 40
+  # Type de branche deduit du type d'issue Jira quand le planner n'en impose pas.
+  typeFromJiraIssueType:
+    Story: feature
+    Task: task
+    Tâche: task
+    Bug: bugfix
+    Bogue: bugfix
+    Sous-tâche: task
+    default: task
+
+git:
+  # Identite portee par les commits ecrits dans les worktrees. Laisse le bloc
+  # commente pour signer avec l'identite git de la machine, ce qui est le cas
+  # normal quand une seule personne fait tourner l'outil.
+  # committer:
+  #   name: Ada Lovelace
+  #   email: ada@example.com
+
+gitlab:
+  mrDraft: true                      # prefixe "Draft: " sur toute MR creee
+  mrDescriptionLanguage: fr
+  commitLanguage: en
+  commitConvention: conventional
+
+jira:
+  baseUrl: https://your-org.atlassian.net
+  assignToSelf: true
+  transitions:
+    default:
+      apresMr: VALIDATION            # seul statut utilise en v2
+    bySquad:
+      TJ:
+        apresMr: En cours            # projet de test, n'a pas de statut VALIDATION
+
+  # Reserve au workflow 2, non lu en v2. Conserve ici pour ne pas le reperdre.
+  workflow2:
+    apresMrNonConverge: En cours
+    statuts:
+      termine: [READY TO DEPLOY, Résolu]
+      traiter: [VALIDATION, TEST QA, BLOCKED QA, En cours, Test]
+      pause: [READY TO DEV, Backlog, À faire, Idéation]
+
+slack:
+  channelVisibility: private
+  invitees:                          # allowlist stricte
+    default: []                      # vide = personne d'autre que moi
+    bySquad:
+      # Une squad = le prefixe d'une cle Jira. `FT-1025` resout `FT`. Une squad
+      # absente retombe sur `default` sans faire echouer le run.
+      FT:
+        - first.dev@example.com
+        - second.dev@example.com
+
+liveMode:
+  portRange: [12000, 13000]
+  openBrowser: true

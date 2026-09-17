@@ -1,4 +1,4 @@
-import { optionalSecret, secret } from "./env.ts";
+import { secret } from "./env.ts";
 import { fail } from "./errors.ts";
 import { request } from "./http.ts";
 
@@ -15,9 +15,13 @@ export interface JiraTicket {
   readonly attachments: readonly { filename: string; url: string }[];
 }
 
+/** L'URL du site Jira vient de l'environnement : aucune instance n'est cablee ici. */
+function siteUrl(): string {
+  return secret("JIRA_SITE_URL").replace(/\/+$/, "");
+}
+
 function base(): string {
-  const site = optionalSecret("JIRA_SITE_URL") ?? "https://your-org.atlassian.net";
-  return `${site.replace(/\/+$/, "")}/rest/api/3`;
+  return `${siteUrl()}/rest/api/3`;
 }
 
 /** Jira Cloud s'authentifie en Basic (e-mail + jeton), pas en Bearer. */
@@ -36,7 +40,7 @@ export async function getTicket(key: string): Promise<JiraTicket> {
   }
 
   const description = flattenDocument(data.fields?.description);
-  const site = (optionalSecret("JIRA_SITE_URL") ?? "https://your-org.atlassian.net").replace(/\/+$/, "");
+  const site = siteUrl();
 
   return {
     key: data.key,

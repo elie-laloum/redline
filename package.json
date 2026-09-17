@@ -2,6 +2,12 @@
   "name": "autopilot",
   "version": "2.0.0",
   "private": true,
+  "license": "MIT",
+  "author": "Elie Laloum <pro@elielaloum.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.com/e.laloum/autopilot.git"
+  },
   "type": "module",
   "description": "Developpement autonome depuis un ticket Jira : cadrage, TDD adversarial repo par repo, capitalisation memoire, publication.",
   "scripts": {
@@ -13,6 +19,7 @@
     "live:dev": "pnpm --dir tools/live-shell dev",
     "live:build": "pnpm --dir tools/live-shell build",
     "config:check": "node plugins/autopilot/mcp/scripts/check-config.ts",
+    "clear": "node plugins/autopilot/mcp/scripts/clear-run.ts",
     "fixtures": "node tests/fixtures/materialize.ts",
     "bench": "node plugins/autopilot/mcp/scripts/bench-commands.ts"
   },

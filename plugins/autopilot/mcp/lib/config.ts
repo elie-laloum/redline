@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fail } from "./errors.ts";
 import { expandTilde, projectRoot } from "./paths.ts";
@@ -28,6 +28,37 @@ export interface ContainerNeeds {
  */
 export type ReportPaths = Partial<Record<CommandKind, string>>;
 
+/**
+ * Comment ce repo se laisse cibler sur un fichier, commande par commande.
+ *
+ * Tous les runners ne prennent pas une liste de fichiers en arguments libres.
+ * `mtr`, celui de nos services Node, fait un `parseArgs` sans `allowPositionals` :
+ * lui passer un chemin rend `ERR_PARSE_ARGS_UNEXPECTED_POSITIONAL` avant meme
+ * d'avoir lance un test. Il accepte pourtant un ciblage — par `-g` — et un
+ * second `-g` ecrase celui que le script npm porte deja.
+ *
+ * Sur FT-1042, le red-checker a lu le refus des positionnels et conclu « ce
+ * repo n'est pas ciblable ». Il l'etait ; personne n'avait dit comment. C'est
+ * ce que cette cle declare, pour que le tool compose la commande au lieu
+ * d'empiler des chemins en esperant.
+ *
+ * Le gabarit porte un emplacement, `{paths}` ou `{glob}` :
+ *
+ * - `{paths}` -> les chemins, echappes, separes par une espace
+ * - `{glob}`  -> un motif unique, accolades si plusieurs chemins
+ *
+ * Trois etats, et la difference compte :
+ *
+ * - cle absente -> `{paths}`, les chemins ajoutes en fin de commande. C'est ce
+ *   qu'acceptent vitest, jest et `node --test`.
+ * - gabarit     -> on remplit l'emplacement.
+ * - `null`      -> ce type ne se cible pas ici. Le tool refuse `paths` au lieu
+ *   de fabriquer une commande fausse : sur `api-service`, la suite unitaire
+ *   passe par le binaire `glob`, dont un motif supplementaire ELARGIT la suite.
+ *   Un ciblage silencieusement inverse est pire qu'un ciblage refuse.
+ */
+export type TargetingTemplates = Partial<Record<CommandKind, string | null>>;
+
 export interface RepoEntry {
   readonly name: string;
   readonly level: number;
@@ -40,7 +71,28 @@ export interface RepoEntry {
   readonly packageName: string | null;
   readonly dependsOn: readonly string[];
   readonly commands: Readonly<Record<CommandKind, string | null>>;
+  /**
+   * Un repo qui n'a deliberement aucun type de test le declare. Sans cette cle,
+   * rien ne distingue « ce repo n'a pas de suite » de « les commandes ont
+   * disparu du registre sans que personne ne s'en apercoive ».
+   */
+  readonly withoutTests?: boolean;
+  /**
+   * Les fichiers de configuration locale a porter dans le worktree.
+   *
+   * `.env` et ses voisins sont gitignores : `git worktree add` ne les emmene
+   * donc pas, et un worktree neuf demarre sans secrets. Sur `sheet-service`
+   * la consequence est nette — la CLAUDE.md du depot le dit noir sur blanc :
+   * sans les quatre valeurs obligatoires, le serveur ne boote pas, donc aucun
+   * test fonctionnel ne tourne. Le red-checker prend alors une panne
+   * d'environnement pour un test rouge, ou escalade sans savoir pourquoi.
+   *
+   * Chemins relatifs a la racine du depot. Copies depuis la source vers le
+   * worktree, jamais l'inverse, et jamais par-dessus un fichier existant.
+   */
+  readonly localFiles?: readonly string[];
   readonly reports?: ReportPaths;
+  readonly targeting?: TargetingTemplates;
   readonly containers?: ContainerNeeds;
   readonly ciJobsToWatch: readonly string[];
   readonly description: string;
@@ -93,6 +145,14 @@ export interface AutopilotConfig {
     readonly slugMaxLength: number;
     readonly typeFromJiraIssueType: Readonly<Record<string, string>>;
   };
+  /**
+   * Identite portee par les commits que l'autopilot ecrit dans les worktrees.
+   * Absente, c'est l'identite git de la machine qui s'applique — le cas normal
+   * quand une seule personne fait tourner l'outil.
+   */
+  readonly git?: {
+    readonly committer?: { readonly name: string; readonly email: string };
+  };
   readonly gitlab: {
     readonly mrDraft: boolean;
     readonly mrDescriptionLanguage: string;
@@ -127,8 +187,7 @@ let registryCache: Registry | null = null;
 
 export function loadConfig(): AutopilotConfig {
   if (configCache) return configCache;
-  const path = join(projectRoot(), "autopilot.yaml");
-  const raw = readOrFail(path, "autopilot.yaml");
+  const raw = readOrFail("autopilot.yaml");
   const parsed = parseYaml<AutopilotConfig>(raw);
   if (parsed?.schemaVersion !== 1) {
     fail(`autopilot.yaml : schemaVersion ${String(parsed?.schemaVersion)} inconnue, attendu 1.`);
@@ -139,8 +198,7 @@ export function loadConfig(): AutopilotConfig {
 
 export function loadRegistry(): Registry {
   if (registryCache) return registryCache;
-  const path = join(projectRoot(), "repositories.yaml");
-  const raw = readOrFail(path, "repositories.yaml");
+  const raw = readOrFail("repositories.yaml");
   const parsed = parseYaml<Registry>(raw);
   if (parsed?.schemaVersion !== 1) {
     fail(`repositories.yaml : schemaVersion ${String(parsed?.schemaVersion)} inconnue, attendu 1.`);
@@ -219,17 +277,50 @@ export function reportPathFor(repo: RepoEntry, kind: CommandKind): string | null
   return repo.reports?.[kind] ?? null;
 }
 
+/**
+ * Le gabarit de ciblage du repo. `null` dit que ce type ne se cible pas, et se
+ * distingue de la cle absente, qui vaut l'ajout en fin de commande.
+ */
+export function targetingFor(repo: RepoEntry, kind: CommandKind): string | null {
+  const declared = repo.targeting;
+  if (!declared || !(kind in declared)) return "{paths}";
+  return declared[kind] ?? null;
+}
+
 /** Un repo sans bloc `containers` ne demande rien : c'est le cas courant. */
 export function containerNeedsOf(repo: RepoEntry): ContainerNeeds {
   return { required: repo.containers?.required ?? false, images: repo.containers?.images ?? [] };
 }
 
-function readOrFail(path: string, label: string): string {
-  try {
-    return readFileSync(path, "utf8");
-  } catch {
-    return fail(`${label} introuvable a ${path}.`, "Le tool tourne-t-il depuis le projet autopilot ?");
+/**
+ * Le fichier reel s'il existe, le modele versionne sinon.
+ *
+ * `autopilot.yaml` et `repositories.yaml` decrivent une infrastructure : ils
+ * sont gitignores, donc absents d'un clone neuf. Sans ce repli, rien ne
+ * tournerait avant qu'on les ait ecrits — ni la suite de tests, ni
+ * `config:check`. Avec lui, le depot se clone et se verifie tel quel, et le
+ * jour ou le vrai fichier apparait il prend la main sans rien a changer.
+ */
+function readOrFail(name: string): string {
+  const root = projectRoot();
+  for (const candidate of [join(root, name), join(root, name.replace(/\.yaml$/, ".example.yaml"))]) {
+    try {
+      return readFileSync(candidate, "utf8");
+    } catch {
+      // Fichier suivant.
+    }
   }
+  return fail(
+    `${name} introuvable dans ${root}, et son modele non plus.`,
+    `Copie le modele : cp ${name.replace(/\.yaml$/, ".example.yaml")} ${name}`,
+  );
+}
+
+/** Le chemin effectivement lu, modele compris. Utile aux tests et aux scripts. */
+export function configPathOf(name: "autopilot.yaml" | "repositories.yaml"): string {
+  const root = projectRoot();
+  const real = join(root, name);
+  return existsSync(real) ? real : join(root, name.replace(/\.yaml$/, ".example.yaml"));
 }
 
 /**

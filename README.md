@@ -1,159 +1,209 @@
-# autopilot v2
+# autopilot
 
-Implemente un ticket Jira de bout en bout : cadrage et gate humain, TDD adversarial repo par
-repo dans l'ordre des dependances, capitalisation memoire, puis publication en un seul bloc.
+An autonomous development workflow for [Claude Code](https://claude.com/claude-code). It takes
+a Jira ticket and carries it to merge requests: scoping, one human gate, adversarial TDD
+repository by repository in dependency order, memory capitalization, then publication in a
+single block.
 
 ```
-/autopilot-start <url-ou-cle-jira> [--notes "…"] [--figma <url>…] [--live]
+/autopilot-start <jira-url-or-key> [--notes "…"] [--figma <url>…] [--live]
 ```
 
-Sur un ticket qui a deja un fichier d'etat, la commande **reprend** au lieu de repartir de
-zero.
+On a ticket that already has a state file, the command **resumes** instead of starting over.
 
-## Les trois idees qui portent le reste
+> **Read this first.** This is one developer's working system, opened up because the design
+> may be useful to others — not a product. It assumes Jira, GitLab and Slack, and it was
+> shaped against a specific codebase. Nothing here auto-detects your setup: repositories,
+> commands and CI jobs are declared by hand in a registry file. Expect to adapt it, not to
+> install it. The agent prompts and the docs under `DESIGN.md` and `PRODUCT.md` are in French.
 
-**Toute action faite a chaque run de facon constante est un tool, pas une instruction
-d'agent.** Un tool est deterministe, testable, et ne consomme pas de contexte. C'est pour ca
-qu'il y en a 56 et que la majorite de la surface se teste sans LLM.
+## The three ideas that carry the rest
 
-**Un agent ne peut ecrire que dans une seule zone.** Le `test-writer` ecrit les tests, le
-`developer` le code et jamais un test, les deux adversaires rien, le `memory-writer` est seul
-dans `memory/`, le `finalizer` seul sur un remote. Un agent qui aurait besoin de deux zones
-serait mal decoupe.
+**Any action performed on every run, the same way, is a tool — not an agent instruction.** A
+tool is deterministic, testable, and costs no context. That is why there are 59 of them, and
+why most of the surface area can be tested without an LLM in the loop.
 
-**Contredire la memoire est une sortie autorisee.** Les scouts et le `developer` disposent de
-`contradict-memory` quand ce qu'ils lisent ne correspond pas au code reel. C'est le mecanisme
-qui empeche la base de pourrir.
+**An agent may only write to one zone.** The `test-writer` writes tests, the `developer`
+writes code and never a test, the two adversaries write nothing, the `memory-writer` is alone
+in `memory/`, the `finalizer` is alone on a remote. An agent that needed two zones would be
+badly cut.
 
-## La boucle
+**Contradicting the memory is a permitted outcome.** The scouts and the `developer` are given
+a `contradict-memory` tool for when what they read does not match the actual code. That is the
+mechanism that keeps the knowledge base from rotting.
 
-Trois phases. Le **cadrage** (1→9) tourne une fois et n'ecrit rien en dehors de l'etat du
-ticket. L'**implementation** (10) est rejouee pour chaque repo, par `level` croissant, un repo
-termine avant d'ouvrir le suivant. La **capitalisation et la publication** (11→13) tournent
-une fois a la fin.
+## The loop
 
-| # | Acteur | Produit |
+Three phases. **Scoping** (1→9) runs once and writes nothing outside the ticket state.
+**Implementation** (10) is replayed for each repository, by ascending `level`, one repository
+finished before the next is opened. **Capitalization and publication** (11→13) run once at the
+end.
+
+| # | Actor | Produces |
 |---|---|---|
-| 1-2 | tools | le ticket, les maquettes (optionnelles) |
-| 3 | `doc-scout` | memoire pertinente, passe large |
-| 4 | `functional-grill` | arbitrages fonctionnels, tours non bornes |
-| 5 | `scope-scout` | repos impactes, avec preuves |
-| 6 | `doc-scout` | memoire ciblee sur les repos retenus |
-| 7 | `technical-grill` | arbitrages techniques |
-| 8 | `planner` | le plan et les deux checklists de sortie |
-| 9 | **gate humain** | **le seul du workflow** |
-| 10.1→10.7 | `test-writer` → `test-adversary` → `red-checker` → `developer` → `green-checker` → `code-adversary` → publication amont | par repo |
-| 11-12 | `memory-planner`, `memory-writer` | le plan memoire, un commit unique |
-| 13 | `finalizer` | N MR cross-referencees, un canal, une transition |
+| 1-2 | tools | the ticket, the mockups (optional) |
+| 3 | `doc-scout` | relevant memory, broad pass |
+| 4 | `functional-grill` | functional rulings, unbounded turns |
+| 5 | `scope-scout` | impacted repositories, with evidence |
+| 6 | `doc-scout` | memory narrowed to the selected repositories |
+| 7 | `technical-grill` | technical rulings |
+| 8 | `planner` | the plan and the two exit checklists |
+| 9 | **human gate** | **the only one in the workflow** |
+| 10.1→10.7 | `test-writer` → `test-adversary` → `red-checker` → `developer` → `green-checker` → `code-adversary` → upstream publication | per repository |
+| 11-12 | `memory-planner`, `memory-writer` | the memory plan, a single commit |
+| 13 | `finalizer` | N cross-referenced MRs, one channel, one transition |
 
-Une fois le point 9 approuve, tout le reste s'execute sans nouvelle validation, y compris les
-actions publiques et irreversibles du point 13. Les seules interruptions ensuite sont les
-escalades.
+Once step 9 is approved, everything after it runs without further validation — including the
+public, irreversible actions of step 13. The only interruptions left are escalations.
 
-**10.3 existe pour une seule raison** : c'est le seul garde-fou contre le test qui passe pour
-de mauvaises raisons. Ces tests-la sont verts a la fin, donc invisibles pour toujours.
+**Step 10.3 exists for exactly one reason**: it is the only guard against a test that passes
+for the wrong reason. Those tests are green at the end, and therefore invisible forever.
 
-## Ou vivent les choses
+## Where things live
 
-**Le projet porte le code et la configuration** — il se clone, il se relit, il se revoit.
+**The project holds the code and the configuration** — it clones, it reads, it reviews.
 
 ```
 autopilot/
-├── autopilot.yaml        budgets, timeouts, nommage, allowlist slack, transitions jira
-├── repositories.yaml     le registre : level, commandes, jobs de ci, dependances
-├── .env                  les PAT — gitignore depuis le premier commit
-├── plugins/autopilot/    les 15 agents, la skill, les regles de voix, le serveur de tools
-│   └── evals/            une suite d'eval par agent
-├── tools/live-shell/     l'app du mode live, tanstack start en ssr
-└── tests/                unit/, workflow/, fixtures/
+├── autopilot.example.yaml      budgets, timeouts, naming, slack allowlist, jira transitions
+├── repositories.example.yaml   the registry: level, commands, ci jobs, dependencies
+├── .env.example                the tokens
+├── plugins/autopilot/          the 15 agents, the skill, the voice rules, the tool server
+│   └── evals/                  one eval suite per agent
+├── tools/live-shell/           the live-mode app, tanstack start in ssr
+└── tests/                      unit/, workflow/, fixtures/
 ```
 
-**`~/.autopilot` porte la connaissance et l'etat** — il ne se clone pas, il s'accumule.
+The three `*.example.*` files are templates. Copy each one to its real name — `autopilot.yaml`,
+`repositories.yaml`, `.env` — and fill it in. The real files are gitignored: they describe your
+infrastructure and your tokens, so they are never published. When one is missing, the loader
+falls back to its template, which is what lets a fresh clone run its test suite and
+`pnpm config:check` before anything has been configured.
+
+**`~/.autopilot` holds the knowledge and the state** — it does not clone, it accumulates.
 
 ```
 ~/.autopilot/
-├── memory/                       la base de connaissance, versionnee
-├── tickets/<ticket-id>.yaml      l'etat de suivi, versionne
-├── events/<ticket-id>.jsonl      le flux du live mode, jetable
-├── locks/<ticket-id>             le lock de run, jetable
-└── worktrees/<ticket-id>/<repo>/ les worktrees, jetables
+├── memory/                       the knowledge base, versioned
+├── tickets/<ticket-id>.yaml      the tracking state, versioned
+├── events/<ticket-id>.jsonl      the live-mode stream, disposable
+├── locks/<ticket-id>             the run lock, disposable
+└── worktrees/<ticket-id>/<repo>/ the worktrees, disposable
 ```
 
-C'est un depot git, mais **tout y est gitignore sauf `memory/` et `tickets/`** : est versionne
-ce qui a de la valeur apres le run.
+It is a git repository, but **everything in it is gitignored except `memory/` and `tickets/`**:
+what gets versioned is what still has value after the run.
 
-## Installer
+## Requirements
+
+- **Node 22.18+** — the tool server runs TypeScript natively, with no build step.
+- **Claude Code**, which loads this repository as a local plugin marketplace.
+- **Jira Cloud**, **GitLab**, **Slack** — with a personal access token for each.
+- **Figma** is optional. Without a token the `get-figma-*` tools report "no mockup" and the run
+  continues; many tickets have none.
+
+The Slack token is a **user** token (`xoxp-`), not a bot token: every action appears under your
+own name. With a bot token the channel would be created by an app, and the point of the whole
+thing — a colleague seeing that *you* opened the channel — falls away.
+
+## Install
 
 ```
 pnpm install
-cp .env.example .env     # puis remplir les jetons
+cp .env.example .env                                # then fill in the tokens
+cp autopilot.example.yaml autopilot.yaml            # budgets, naming, allowlist
+cp repositories.example.yaml repositories.yaml      # your repositories
 pnpm config:check
 ```
 
-Le plugin se declare comme marketplace locale pointant sur ce dossier. Le serveur de tools
-tourne en TypeScript natif, sans etape de build — Node 22.18 ou plus.
+`pnpm config:check` is the one command to run after any configuration change: it reads the
+config, the registry and the environment, and reports what would break a run far from its
+cause — an unreadable setting, an incoherent registry, a missing token.
 
-## Verifier
+## Adapting it to your own stack
 
-| Commande | Ce qu'elle repond |
+Almost all of the adaptation happens in `repositories.yaml`, and none of it in code.
+
+**Declare each repository** with its `level`, its local path, its GitLab project, its base
+branch and its dependencies. `level` carries the processing order: an upstream repository has a
+strictly lower level than anything depending on it, and the loader refuses a registry where a
+dependency flows the wrong way.
+
+**Declare each command** — `lint`, `typecheck`, `ut`, `it`, `ft`, `ct`, `e2e`. `null` means
+"this kind of check does not exist here", and it is a prohibition, not a gap: an agent that
+finds `null` escalates instead of inventing a command. Never put a plausible but unverified
+command in the registry — a test you believe you are running and that never runs is worse than
+no test at all.
+
+A few keys exist because their absence cost real hours: `reports` says where a command writes
+its diagnostics when it does not write them to stdout, `containers` says what must be up before
+the first test, `localFiles` says which gitignored config files to carry into a fresh worktree,
+`targeting` says how a runner accepts being pointed at specific files, and `withoutTests: true`
+marks a repository that deliberately has no suite — so that commands silently disappearing from
+the registry is caught by the test suite rather than by a run.
+
+Naming, branch and MR templates, Jira transitions and the Slack allowlist live in
+`autopilot.yaml`. Committer identity is `git.committer` there; leave it commented out and
+commits are signed with the machine's own git identity.
+
+## Verify
+
+| Command | What it answers |
 |---|---|
-| `pnpm test` | est-ce que cette **fonction** est correcte ? 115 tests |
-| `pnpm test:workflow` | est-ce que **l'enchainement** tient de bout en bout ? 12 scenarios en sandbox |
-| `pnpm eval` | est-ce que cet **agent** juge bien ? une suite par agent |
+| `pnpm test` | is this **function** correct? 160 tests |
+| `pnpm test:workflow` | does the **chain** hold end to end? 12 scenarios in a sandbox |
+| `pnpm eval` | does this **agent** judge well? one suite per agent |
 | `pnpm typecheck` | — |
 
-Il n'y a **pas** de `--dry-run` dans autopilot : la sandbox de `tests/workflow/` le remplace,
-et elle le remplace mieux. Un flag se contourne et ne verifie rien ; une sandbox verifie ce
-qui s'est reellement passe. Git n'y est d'ailleurs pas mocke — les faux repos sont de vrais
-depots avec un remote bare.
+There is **no** `--dry-run` in autopilot: the `tests/workflow/` sandbox replaces it, and
+replaces it better. A flag can be bypassed and verifies nothing; a sandbox verifies what
+actually happened. Git is not mocked in it either — the fake repositories are real
+repositories, with a real bare remote.
 
-## Mesurer
+## Measure
 
-Trois compteurs, dans `metrics` du fichier de suivi :
+Three counters, in the `metrics` block of the tracking file:
 
-- **`mrFeedbackCount`** — l'indicateur principal, il mesure l'effet de l'incrementation de la
-  memoire. Renseigne **a la main** tant que le workflow 2 n'existe pas.
-- **`humanInterventions`** — gate, escalades, reponses a `ask-user`.
-- **`loopTurnsTotal`** — la somme des compteurs de boucle.
+- **`mrFeedbackCount`** — the primary indicator: it measures the effect of incrementing the
+  memory. Filled in **by hand** for as long as workflow 2 does not exist.
+- **`humanInterventions`** — the gate, escalations, answers to `ask-user`.
+- **`loopTurnsTotal`** — the sum of the loop counters.
 
-La v2 a le droit d'etre plus lente que la v1 si elle est plus rigoureuse.
+v2 is allowed to be slower than v1 if it is more rigorous.
 
-## Hors scope, assume
+## Out of scope, deliberately
 
-Le **workflow 2** — collecte des retours Slack, Jira, threads de MR et CI, traitement sur la
-meme branche, archivage — n'existe pas en v2. D'ici la, les retours de MR se traitent a la
-main. Les champs `workflow2` du fichier de suivi et le bloc `jira.workflow2` d'`autopilot.yaml`
-sont deja la : le jour ou on le branche, aucun ticket deja traite n'aura besoin d'etre migre.
+**Workflow 2** — collecting feedback from Slack, Jira, MR threads and CI, handling it on the
+same branch, then archiving — does not exist. Until it does, MR feedback is handled by hand.
+The `workflow2` fields of the tracking file and the `jira.workflow2` block of `autopilot.yaml`
+are already there: the day it gets wired in, no already-processed ticket will need migrating.
 
-Pas d'**index semantique** non plus. La recherche memoire est un filtre deterministe sur le
-frontmatter plus un grep : exact, gratuit, debuggable, jamais desynchronise. On ajoutera un
-index quand la recherche deterministe ne suffira plus.
+**No semantic index** either. Memory search is a deterministic filter on the frontmatter plus a
+grep: exact, free, debuggable, never out of sync. An index gets added the day deterministic
+search stops being enough.
 
-## Un ecart assume sur l'emplacement des evals
+## Two deliberate deviations
 
-La note place `evals/` a la racine du projet. `claude plugin eval` ne sait resoudre son
-dossier de cas que **sous le plugin**, et cibler le plugin par son nom le fait tourner sur la
-copie installee en cache, pas sur l'arbre de travail — donc sans voir les prompts d'agent
-qu'on vient de modifier.
+**On where the evals live.** `claude plugin eval` only resolves its case directory **under the
+plugin**, and targeting the plugin by name runs it against the installed copy in the cache
+rather than the working tree — so it would never see the agent prompts you just edited. The
+suites therefore live in `plugins/autopilot/evals/`, declared by `experimental.evals` in the
+manifest. It is the only location where `pnpm eval` evaluates the code in front of you.
 
-Les suites vivent donc dans `plugins/autopilot/evals/`, declarees par
-`experimental.evals` du manifeste. C'est le seul emplacement ou `pnpm eval` evalue le code
-qu'on a sous les yeux.
+**On the fixture repositories.** A git repository **inside** a git repository is a nested
+`.git`, which git will not track without a submodule or a rename restored at startup — that is,
+a generator, only less readable. They are described in `tests/fixtures/repos.ts` and
+materialized at runtime, in a temporary directory per case: four real repositories, with a real
+**bare** remote, different `level`s, an upstream/downstream dependency, a monorepo, and a suite
+that can be made to fail on demand. Each test starts from a fresh repository, inheriting
+nothing from a tag a previous test pushed.
 
-## Un ecart assume sur les depots de fixture
-
-La note place les faux depots dans `tests/fixtures/repos/`. Un depot git **dans** un depot git
-est un `.git` imbrique, que git ne suit pas sans sous-module ni renommage restaure au
-lancement — c'est-a-dire un generateur, en moins lisible.
-
-Ils sont donc decrits dans `tests/fixtures/repos.ts` et materialises a l'execution, dans un
-dossier temporaire par cas : quatre vrais depots, avec un vrai remote **bare**, des `level`
-differents, une dependance amont/aval, un monorepo, et une suite qu'on peut faire echouer a
-la demande. Chaque test repart d'un depot neuf, sans heriter du tag qu'un test precedent a
-pousse.
-
-Pour les ouvrir a la main :
+To open them by hand:
 
 ```
-pnpm fixtures          # les ecrit dans tests/.fixtures/, gitignore
+pnpm fixtures          # writes them to tests/.fixtures/, gitignored
 ```
+
+## License
+
+MIT — see [LICENSE](LICENSE).
