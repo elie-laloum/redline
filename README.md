@@ -1,6 +1,6 @@
 <p align="right"><a href="README.fr.md">Français</a></p>
 
-<p align="center"><img src="assets/hero.svg" alt="Redline — One ticket. A coordinated change across repositories." width="100%"></p>
+<p align="center"><img src="assets/cover.svg" alt="Redline — One ticket. A coordinated change across repositories." width="100%"></p>
 
 <p align="center"><strong>Turn a Jira ticket into coordinated GitLab merge requests.</strong><br>Scope the work. Challenge the tests. Build in dependency order. Keep what you learn.</p>
 
