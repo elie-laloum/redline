@@ -1,6 +1,6 @@
 <p align="right"><a href="README.fr.md">Français</a></p>
 
-<p align="center"><img src="assets/cover-v3.png" alt="Redline — One ticket. A coordinated change across repositories." width="100%"></p>
+<p align="center"><img src="assets/cover-v4.png" alt="Redline — One ticket. A coordinated change across repositories." width="100%"></p>
 
 [![License](https://img.shields.io/badge/license-MIT-586475?style=flat-square)](LICENSE)
 
