@@ -1,4 +1,4 @@
-<p align="center"><strong>English</strong> · <a href="README.fr.md">Français</a></p>
+<p align="right"><a href="README.fr.md">Français</a></p>
 
 <p align="center"><img src="assets/hero.svg" alt="Redline — One ticket. A coordinated change across repositories." width="100%"></p>
 
