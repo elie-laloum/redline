@@ -1,18 +1,8 @@
 <p align="right"><a href="README.fr.md">Français</a></p>
 
-<p align="center"><img src="assets/cover.svg" alt="Redline — One ticket. A coordinated change across repositories." width="100%"></p>
+<p align="center"><img src="assets/cover-v2.png" alt="Redline — One ticket. A coordinated change across repositories." width="100%"></p>
 
-<!-- project badges -->
-<p align="center">
-<a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-ff827a?style=flat-square&amp;labelColor=172033" alt="MIT"></a>
-<a href="#see-it-in-action"><img src="https://img.shields.io/badge/demo-watch-ff827a?style=flat-square&amp;labelColor=172033" alt="Watch the demo"></a>
-</p>
-<p align="center">
-<a href="#start-with-the-code"><img src="https://img.shields.io/badge/-TypeScript-ff827a?style=flat-square&amp;labelColor=172033&amp;logo=typescript&amp;logoColor=white" alt="TypeScript"></a>
-<a href="#start-with-the-code"><img src="https://img.shields.io/badge/-Claude%20Code-ff827a?style=flat-square&amp;labelColor=172033&amp;logo=anthropic&amp;logoColor=white" alt="Claude Code"></a>
-<a href="#start-with-the-code"><img src="https://img.shields.io/badge/-MCP-ff827a?style=flat-square&amp;labelColor=172033" alt="MCP"></a>
-</p>
-<!-- /project badges -->
+[![License](https://img.shields.io/badge/license-MIT-586475?style=flat-square)](LICENSE)
 
 <p align="center"><strong>Turn a Jira ticket into coordinated GitLab merge requests.</strong><br>Scope the work. Challenge the tests. Build in dependency order. Keep what you learn.</p>
 
