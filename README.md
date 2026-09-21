@@ -1,265 +1,106 @@
-# autopilot
+<p align="center"><strong>English</strong> · <a href="README.fr.md">Français</a></p>
 
-An autonomous development workflow for [Claude Code](https://claude.com/claude-code). It takes
-a Jira ticket and carries it to merge requests: scoping, one human gate, adversarial TDD
-repository by repository in dependency order, memory capitalization, then publication in a
-single block.
+<p align="center"><img src="assets/hero.svg" alt="Redline — One ticket. A coordinated change across repositories." width="100%"></p>
 
+<p align="center"><strong>Turn a Jira ticket into coordinated GitLab merge requests.</strong><br>Scope the work. Challenge the tests. Build in dependency order. Keep what you learn.</p>
+
+<p align="center">Claude Code plugin · Adversarial TDD · Versioned memory · <a href="LICENSE">MIT</a></p>
+
+<p align="center"><a href="#start-with-the-code">Quickstart</a> · <a href="#one-ticket-several-repositories">Workflow</a> · <a href="docs/architecture.md">Architecture</a> · <a href="#what-is-verified">Verification</a> · <a href="CONTRIBUTING.md">Contribute</a></p>
+
+**Original repository: [GitLab](https://gitlab.elielaloum.com/elielaloum/redline)** · [Public GitHub mirror](https://github.com/elie-laloum/redline). The GitLab origin is private and requires access. Code changes are integrated in GitLab and synchronized to GitHub.
+
+---
+
+## One ticket, several repositories
+
+A feature rarely ends at one repository. Redline coordinates the path from a Jira ticket to related GitLab merge requests: clarify requirements, identify affected repositories, approve a plan, implement and challenge each change, then record the knowledge for the next run.
+
+**This is an opinionated working system being opened to other developers.** It currently assumes Claude Code, Jira Cloud, GitLab and Slack. You configure repository paths, commands and dependencies explicitly. The agent prompts are currently in French; this public guide is available in English and French.
+
+Redline is the new public name for **Autopilot**. Existing commands, configuration filenames, plugin identifiers and the state directory retain their `autopilot` names. GitHub hosts the project; the implemented publication integration targets **GitLab merge requests**, not GitHub pull requests.
+
+| What matters | How the project approaches it |
+|---|---|
+| Changes spanning repositories | Declared dependency levels determine processing order. |
+| Tests that mean something | A separate adversary challenges tests; a red check precedes implementation. |
+| Focused responsibilities | Test writing, implementation, review and memory updates have separate roles and tool sets. These are not an OS sandbox. |
+| Recoverable work | Ticket state records the phase, step and current repository for resumption. |
+| Useful memory | Knowledge is versioned, and agents can explicitly report contradictions with the code. |
+| Visible progress | An optional live view reads local state and events, with a channel for human questions. |
+
+## The workflow
+
+```mermaid
+flowchart LR
+    A[Jira ticket] --> B[Scope and plan]
+    B --> C[Human approval]
+    C --> D[Tests and test review]
+    D --> E[Confirm failure]
+    E --> F[Implement and verify]
+    F --> G[Code review]
+    G --> H{More repositories?}
+    H -->|Dependency order| D
+    H -->|Done| I[Update memory]
+    I --> J[Publish related MRs]
 ```
+
+**The approval has consequences.** The intended workflow has one plan-approval gate. After approval, it can publish branches, tags and merge requests, post to Slack and Jira, and transition the ticket without another routine approval. Escalations can still interrupt it. Upstream publication may happen while processing repository dependencies, before the final publication step.
+
+The final output is a set of merge requests for review. It is not a promise that the changes have been merged or deployed.
+
+## Start with the code
+
+Use **Ubuntu/WSL or another suitable Unix environment**, Git, **Node 22.18+** and pnpm. The existing implementation includes Unix-oriented process handling; native Windows support is not established.
+
+From the repository root:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm test
+pnpm test:workflow
+```
+
+The workflow test harness creates temporary Git repositories and local substitutes for Jira, GitLab and Slack. These scripted scenarios exercise the tooling and workflow contracts; they are **not live agent evaluations**.
+
+To run a real ticket, follow the [setup guide](docs/setup.md): declare your repositories, configure credentials and your writing voice, validate configuration, and load the plugin into Claude Code.
+
+The skill entry point defined by the project is:
+
+```text
 /autopilot-start <jira-url-or-key> [--notes "…"] [--figma <url>…] [--live]
 ```
 
-On a ticket that already has a state file, the command **resumes** instead of starting over.
+An existing ticket state is resumed. Use Claude Code's skill discovery to check the invocation exposed by your installed version. The public rename does not introduce a new `/redline` command.
 
-> **Read this first.** This is one developer's working system, opened up because the design
-> may be useful to others — not a product. It assumes Jira, GitLab and Slack, and it was
-> shaped against a specific codebase. Nothing here auto-detects your setup: repositories,
-> commands and CI jobs are declared by hand in a registry file. Expect to adapt it, not to
-> install it. The agent prompts and the live-shell design notes are in French.
+## Watch the work
 
-## The three ideas that carry the rest
+The optional live shell exposes the scope, plan, repository progress, questions and events of a run. It is a view onto the workflow; ticket state remains on disk. See its [product notes](tools/live-shell/PRODUCT.md) and [design notes](tools/live-shell/DESIGN.md).
 
-**Any action performed on every run, the same way, is a tool — not an agent instruction.** A
-tool is deterministic, testable, and costs no context. That is why there are 59 of them, and
-why most of the surface area can be tested without an LLM in the loop.
+A seeded demonstration exists in [tools/live-shell/demo](tools/live-shell/demo). It illustrates the UI with scripted data. It must not be presented as a recorded autonomous success. A shareable recording of a real run remains a publication task.
 
-**An agent may only write to one zone.** The `test-writer` writes tests, the `developer`
-writes code and never a test, the two adversaries write nothing, the `memory-writer` is alone
-in `memory/`, the `finalizer` is alone on a remote. An agent that needed two zones would be
-badly cut.
+## What is verified
 
-**Contradicting the memory is a permitted outcome.** The scouts and the `developer` are given
-a `contradict-memory` tool for when what they read does not match the actual code. That is the
-mechanism that keeps the knowledge base from rotting.
-
-## The loop
-
-Three phases. **Scoping** (1→9) runs once and writes nothing outside the ticket state.
-**Implementation** (10) is replayed for each repository, by ascending `level`, one repository
-finished before the next is opened. **Capitalization and publication** (11→13) run once at the
-end.
-
-| # | Actor | Produces |
-|---|---|---|
-| 1-2 | tools | the ticket, the mockups (optional) |
-| 3 | `doc-scout` | relevant memory, broad pass |
-| 4 | `functional-grill` | functional rulings, unbounded turns |
-| 5 | `scope-scout` | impacted repositories, with evidence |
-| 6 | `doc-scout` | memory narrowed to the selected repositories |
-| 7 | `technical-grill` | technical rulings |
-| 8 | `planner` | the plan and the two exit checklists |
-| 9 | **human gate** | **the only one in the workflow** |
-| 10.1→10.7 | `test-writer` → `test-adversary` → `red-checker` → `developer` → `green-checker` → `code-adversary` → upstream publication | per repository |
-| 11-12 | `memory-planner`, `memory-writer` | the memory plan, a single commit |
-| 13 | `finalizer` | N cross-referenced MRs, one channel, one transition |
-
-Once step 9 is approved, everything after it runs without further validation — including the
-public, irreversible actions of step 13. The only interruptions left are escalations.
-
-**Step 10.3 exists for exactly one reason**: it is the only guard against a test that passes
-for the wrong reason. Those tests are green at the end, and therefore invisible forever.
-
-## Where things live
-
-**The project holds the code and the configuration** — it clones, it reads, it reviews.
-
-```
-autopilot/
-├── autopilot.example.yaml      budgets, timeouts, naming, slack allowlist, jira transitions
-├── repositories.example.yaml   the registry: level, commands, ci jobs, dependencies
-├── .env.example                the tokens
-├── plugins/autopilot/          the 15 agents, the skill, the tool server
-│   ├── rules/voice.template.md the voice profile to fill in
-│   └── evals/                  one eval suite per agent
-├── tools/live-shell/           the live-mode app, tanstack start in ssr
-│   ├── DESIGN.md               its design system, derived from what shipped
-│   └── .impeccable/            the design pass that produced it
-├── PRODUCT.md                  what the live shell is for, and for whom
-└── tests/                      unit/, workflow/, fixtures/
-```
-
-The `*.example.*` and `*.template.*` files are exactly that — templates. Copy each one to its
-real name — `autopilot.yaml`, `repositories.yaml`, `.env`, `rules/voice.md` — and fill it in.
-The real files are gitignored: they describe your infrastructure, your tokens and your own
-writing voice, so they are never published. When one is missing the loader falls back to its
-template, which is what lets a fresh clone run its test suite and `pnpm config:check` before
-anything has been configured.
-
-**`~/.autopilot` holds the knowledge and the state** — it does not clone, it accumulates.
-
-```
-~/.autopilot/
-├── memory/                       the knowledge base, versioned
-├── tickets/<ticket-id>.yaml      the tracking state, versioned
-├── events/<ticket-id>.jsonl      the live-mode stream, disposable
-├── locks/<ticket-id>             the run lock, disposable
-└── worktrees/<ticket-id>/<repo>/ the worktrees, disposable
-```
-
-It is a git repository, but **everything in it is gitignored except `memory/` and `tickets/`**:
-what gets versioned is what still has value after the run.
-
-## Requirements
-
-- **Node 22.18+** — the tool server runs TypeScript natively, with no build step.
-- **Claude Code**, which loads this repository as a local plugin marketplace.
-- **Jira Cloud**, **GitLab**, **Slack** — with a personal access token for each.
-- **Figma** is optional. Without a token the `get-figma-*` tools report "no mockup" and the run
-  continues; many tickets have none.
-
-The Slack token is a **user** token (`xoxp-`), not a bot token: every action appears under your
-own name. With a bot token the channel would be created by an app, and the point of the whole
-thing — a colleague seeing that *you* opened the channel — falls away.
-
-## Install
-
-```
-pnpm install
-cp .env.example .env                                # then fill in the tokens
-cp autopilot.example.yaml autopilot.yaml            # budgets, naming, allowlist
-cp repositories.example.yaml repositories.yaml      # your repositories
-cp plugins/autopilot/rules/voice.template.md \
-   plugins/autopilot/rules/voice.md                 # your writing voice — see below
-pnpm config:check
-```
-
-`pnpm config:check` is the one command to run after any configuration change: it reads the
-config, the registry and the environment, and reports what would break a run far from its
-cause — an unreadable setting, an incoherent registry, a missing token.
-
-## Adapting it to your own stack
-
-Almost all of the adaptation happens in `repositories.yaml`, and none of it in code.
-
-**Declare each repository** with its `level`, its local path, its GitLab project, its base
-branch and its dependencies. `level` carries the processing order: an upstream repository has a
-strictly lower level than anything depending on it, and the loader refuses a registry where a
-dependency flows the wrong way.
-
-**Declare each command** — `lint`, `typecheck`, `ut`, `it`, `ft`, `ct`, `e2e`. `null` means
-"this kind of check does not exist here", and it is a prohibition, not a gap: an agent that
-finds `null` escalates instead of inventing a command. Never put a plausible but unverified
-command in the registry — a test you believe you are running and that never runs is worse than
-no test at all.
-
-A few keys exist because their absence cost real hours: `reports` says where a command writes
-its diagnostics when it does not write them to stdout, `containers` says what must be up before
-the first test, `localFiles` says which gitignored config files to carry into a fresh worktree,
-`targeting` says how a runner accepts being pointed at specific files, and `withoutTests: true`
-marks a repository that deliberately has no suite — so that commands silently disappearing from
-the registry is caught by the test suite rather than by a run.
-
-Naming, branch and MR templates, Jira transitions and the Slack allowlist live in
-`autopilot.yaml`. Committer identity is `git.committer` there; leave it commented out and
-commits are signed with the machine's own git identity.
-
-## Your writing voice
-
-Step 13 publishes under **your own name** — a Slack channel, a Jira comment, a reply in an MR
-thread. A message that reads as machine-written is worse than no message at all, so the
-`finalizer` is required to call `writer-voice-tone` before writing anything public, and that
-tool serves `plugins/autopilot/rules/voice.md`.
-
-That file is a profile of how *you* write, derived from what you have actually written. It is
-gitignored for the same reason the registry is: it carries your name. Only
-`voice.template.md` is published, and while no `voice.md` exists the tool serves the template
-with `calibrated: false` — the agent is told the voice is not calibrated and stays factual
-instead of imitating a style it does not know.
-
-To produce yours, gather a real corpus — export your own MR comments, Slack messages and
-commit messages, a few hundred lines is plenty — and give Claude this prompt alongside it:
-
-> You are building a writing-voice profile that another AI agent will follow to write
-> messages published under my name — Slack, Jira comments, GitLab MR thread replies.
->
-> The corpus below contains only texts I wrote myself. Work from observation, never from
-> assumption: every rule you state must be backed by a pattern that actually recurs in the
-> corpus, and you must quote real examples for each one. Where the corpus is too thin to
-> conclude, say so explicitly rather than filling the gap — mark those sections as
-> extrapolated.
->
-> Follow the structure of `voice.template.md` exactly, section by section. Pay particular
-> attention to:
->
-> - the **invariants** — what holds in every context, especially punctuation and spacing
->   habits, which are the most visible signature and the first thing an agent gets wrong;
-> - **restrictive** rules over permissive ones. An agent's reflex is to structure text with
->   labels, headings and bullet lists, and that is what gives away automation fastest. State
->   plainly what I never do.
-> - the **lexicon** — the words I use and the words I never use. Two people following the
->   same rules are told apart by this.
-> - a final **self-check list** of eight to ten closed questions derived from the rules above,
->   where a single "no" means rewrite.
->
-> Keep the `@autopilot` prohibition from the template verbatim: it is a system constraint, not
-> a style preference.
->
-> Report the corpus volume you actually analysed, per source, in the table at the top.
->
-> Here is the corpus:
-> [paste]
-
-Then read it back and correct it by hand. A profile you have not reread is a profile that
-will publish something you would not have written.
-
-## Verify
-
-| Command | What it answers |
+| Command | Purpose |
 |---|---|
-| `pnpm test` | is this **function** correct? 160 tests |
-| `pnpm test:workflow` | does the **chain** hold end to end? 12 scenarios in a sandbox |
-| `pnpm eval` | does this **agent** judge well? one suite per agent |
-| `pnpm typecheck` | — |
+| `pnpm test` | Unit tests for deterministic behavior. |
+| `pnpm test:workflow` | Scripted workflows using real Git repositories and substitute services. |
+| `pnpm typecheck` | Root and live-shell TypeScript checks; install both dependency sets first. |
+| `pnpm eval` | Agent evaluation suites; requires Claude Code and a separately reviewed environment. |
 
-There is **no** `--dry-run` in autopilot: the `tests/workflow/` sandbox replaces it, and
-replaces it better. A flag can be bypassed and verifies nothing; a sandbox verifies what
-actually happened. Git is not mocked in it either — the fake repositories are real
-repositories, with a real bare remote.
+There are **15 agent definitions**, with evaluation material for each. Test counts and evaluation scores are deliberately not advertised here: use the output of your own run. The current evaluation script allows real servers and records mocks; it is not an offline smoke test. Read the [evaluation notes](plugins/autopilot/evals/README.md) before running it.
 
-## Measure
+## Current boundaries
 
-Three counters, in the `metrics` block of the tracking file:
+- Configuration is explicit. There is no automatic discovery of your stack or test commands.
+- Agent instructions and operational messages are still primarily French.
+- Automated follow-up on MR feedback, Slack replies and CI after publication is not implemented.
+- Memory retrieval uses structured metadata and text search, not a semantic index.
+- No end-to-end workflow dry run is provided. The cleanup utility has its own distinct preview option.
+- This presentation update does not establish production readiness or validate a live ticket run.
 
-- **`mrFeedbackCount`** — the primary indicator: it measures the effect of incrementing the
-  memory. Filled in **by hand** for as long as workflow 2 does not exist.
-- **`humanInterventions`** — the gate, escalations, answers to `ask-user`.
-- **`loopTurnsTotal`** — the sum of the loop counters.
+## Build with us
 
-v2 is allowed to be slower than v1 if it is more rigorous.
+Start with [CONTRIBUTING.md](CONTRIBUTING.md). Useful contributions include reproducible workflow fixtures, clearer setup instructions, agent evaluations and an English prompt edition with regression evaluation.
 
-## Out of scope, deliberately
-
-**Workflow 2** — collecting feedback from Slack, Jira, MR threads and CI, handling it on the
-same branch, then archiving — does not exist. Until it does, MR feedback is handled by hand.
-The `workflow2` fields of the tracking file and the `jira.workflow2` block of `autopilot.yaml`
-are already there: the day it gets wired in, no already-processed ticket will need migrating.
-
-**No semantic index** either. Memory search is a deterministic filter on the frontmatter plus a
-grep: exact, free, debuggable, never out of sync. An index gets added the day deterministic
-search stops being enough.
-
-## Two deliberate deviations
-
-**On where the evals live.** `claude plugin eval` only resolves its case directory **under the
-plugin**, and targeting the plugin by name runs it against the installed copy in the cache
-rather than the working tree — so it would never see the agent prompts you just edited. The
-suites therefore live in `plugins/autopilot/evals/`, declared by `experimental.evals` in the
-manifest. It is the only location where `pnpm eval` evaluates the code in front of you.
-
-**On the fixture repositories.** A git repository **inside** a git repository is a nested
-`.git`, which git will not track without a submodule or a rename restored at startup — that is,
-a generator, only less readable. They are described in `tests/fixtures/repos.ts` and
-materialized at runtime, in a temporary directory per case: four real repositories, with a real
-**bare** remote, different `level`s, an upstream/downstream dependency, a monorepo, and a suite
-that can be made to fail on demand. Each test starts from a fresh repository, inheriting
-nothing from a tag a previous test pushed.
-
-To open them by hand:
-
-```
-pnpm fixtures          # writes them to tests/.fixtures/, gitignored
-```
-
-## License
-
-MIT — see [LICENSE](LICENSE).
+Created by **Elie Laloum**. Released under the [MIT license](LICENSE).
