@@ -12,6 +12,14 @@
 
 ---
 
+## See it in action
+
+<a href="assets/demo.mp4"><img src="assets/demo.gif" alt="Redline — recorded demonstration" width="100%"></a>
+
+<sub>The running interface, captured with the repository’s seeded scenario. Illustrative data; not an autonomous live-ticket run.</sub>
+
+[Watch the MP4](assets/demo.mp4) · [Reproduce this demo](docs/demo.md)
+
 ## One ticket, several repositories
 
 A feature rarely ends at one repository. Redline coordinates the path from a Jira ticket to related GitLab merge requests: clarify requirements, identify affected repositories, approve a plan, implement and challenge each change, then record the knowledge for the next run.
@@ -77,7 +85,7 @@ An existing ticket state is resumed. Use Claude Code's skill discovery to check 
 
 The optional live shell exposes the scope, plan, repository progress, questions and events of a run. It is a view onto the workflow; ticket state remains on disk. See its [product notes](tools/live-shell/PRODUCT.md) and [design notes](tools/live-shell/DESIGN.md).
 
-A seeded demonstration exists in [tools/live-shell/demo](tools/live-shell/demo). It illustrates the UI with scripted data. It must not be presented as a recorded autonomous success. A shareable recording of a real run remains a publication task.
+The animation above captures this interface using the [seeded scenario](tools/live-shell/demo). See [how it was recorded](docs/demo.md).
 
 ## What is verified
 

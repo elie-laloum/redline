@@ -12,6 +12,14 @@
 
 ---
 
+## Voir la démo
+
+<a href="assets/demo.mp4"><img src="assets/demo.gif" alt="Redline — démonstration enregistrée" width="100%"></a>
+
+<sub>Capture de l’interface réelle avec le scénario fourni dans le dépôt. Données simulées ; ce n’est pas une exécution autonome sur un ticket réel.</sub>
+
+[Vidéo MP4](assets/demo.mp4) · [Reproduire la démo](docs/demo.md)
+
 ## Un ticket, plusieurs dépôts
 
 Une fonctionnalité dépasse souvent un seul dépôt. Redline coordonne le parcours du ticket Jira aux merge requests GitLab liées : clarifier le besoin, identifier les dépôts concernés, approuver un plan, implémenter et challenger chaque changement, puis conserver les enseignements pour la prochaine exécution.
@@ -77,7 +85,7 @@ Un ticket disposant déjà d'un état est repris. Vérifier dans la découverte 
 
 La vue live montre le périmètre, le plan, l'avancement des dépôts, les questions et les événements. L'autorité sur l'état reste dans les fichiers locaux. Voir les [notes produit](tools/live-shell/PRODUCT.md) et les [notes de design](tools/live-shell/DESIGN.md).
 
-Une démonstration alimentée par des données scénarisées existe dans [tools/live-shell/demo](tools/live-shell/demo). Elle présente l'interface ; elle ne prouve pas la réussite d'une exécution autonome. L'enregistrement partageable d'une vraie exécution reste à préparer.
+L’animation ci-dessus montre l’interface en fonctionnement avec le [scénario fourni](tools/live-shell/demo). Les étapes pour la reproduire sont dans le [guide de démonstration](docs/demo.md).
 
 ## Les vérifications
 
