@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { afterEach, describe, it } from "bun:test";
 import { parseEscalation } from "../../src/domain/escalation.ts";
-import { allPass, approved, deliver, FAILING_TEST, goodRed, PASSING_TEST, testsReply } from "../kit/delivery.ts";
+import { allPass, approved, codePass, codeReply, deliver, FAILING_TEST, goodRed, IMPLEMENTATION, PASSING_TEST, testsReply } from "../kit/delivery.ts";
 import { ISSUE } from "../kit/framing.ts";
 import { createWorld, type World } from "../kit/world.ts";
 
@@ -26,20 +26,22 @@ describe("la convergence des tests", () => {
         ],
         "test-adversary": [{ reply: allPass(["T1"]) }, { reply: allPass(["T1"]) }],
         "red-checker": [{ reply: goodRed }],
+        developer: [{ writes: { "src/period.js": IMPLEMENTATION }, reply: codeReply() }],
+        "code-adversary": [{ reply: codePass(["C1"]) }],
       },
     });
     const { result, outcome } = await deliver(world, world.ledger("FT-1"), approved(world));
     result.unwrap();
 
     const core = outcome?.[0];
+    const testsCommit = git(core?.directory ?? "", "rev-list", "--reverse", `${core?.base}..HEAD`).split("\n")[0] ?? "";
     assert.equal(core?.branch, "feature/FT-1-filtrer-la-liste-par-periode");
-    assert.equal(git(core?.directory ?? "", "diff", "--name-only", `${core?.base}..HEAD`), "tests/period-default.test.js");
-    assert.equal(git(core?.directory ?? "", "show", "HEAD:src/period.js"), git(core?.directory ?? "", "show", `${core?.base}:src/period.js`));
+    assert.equal(git(core?.directory ?? "", "show", "--name-only", "--format=", testsCommit), "tests/period-default.test.js");
     assert.match(world.agents.prompts["test-writer"]?.[1] ?? "", /src\/period\.js/);
     assert.match(world.agents.prompts["test-writer"]?.[2] ?? "", /passent deja/);
     assert.match(world.agents.prompts["red-checker"]?.[0] ?? "", /2026-09/);
     assert.deepEqual(world.agents.remaining(), {});
-    assert.ok(core?.commits.every((subject) => subject.startsWith("test(period)")));
+    assert.equal(core?.commits[0], "test(period): cover the default period");
   });
 
   it("escalade quand le registre ne permet pas de tester une ligne du plan", async () => {

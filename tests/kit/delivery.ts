@@ -46,3 +46,12 @@ export const IMPLEMENTATION = "export function clamp(period) {\n  return period 
 export const testsReply = (path = "tests/period-default.test.js") => ({ files: [{ path, tests: ["T1"] }], commit: { type: "test", scope: "period", subject: "cover the default period" }, uncoverable: [] });
 export const allPass = (ids: string[]) => ({ lines: ids.map((id) => ({ id, verdict: "passe", evidence: "tests/period-default.test.js:5", comment: "" })), weaknesses: [] });
 export const goodRed = { tests: [{ name: "sans periode, clamp rend le mois en cours", verdict: "bon-rouge", reason: "AssertionError" }], environment: { blocked: false, reason: "" } };
+
+export const codeReply = (appeals: unknown[] = []) => ({ commit: { type: "feat", scope: "period", subject: "default to the current month" }, appeals, contradictions: [] });
+export const codePass = (ids: string[]) => ({ lines: ids.map((id) => ({ id, verdict: "passe", evidence: "src/period.js:2", comment: "" })), remarks: [] });
+export const codeRefuse = (ids: string[]) => ({ lines: ids.map((id) => ({ id, verdict: "manque", evidence: "src/period.js:2", comment: "le mois est fige" })), remarks: [] });
+export const testsPhase = {
+  "test-writer": [{ writes: { "tests/period-default.test.js": FAILING_TEST }, reply: testsReply() }],
+  "test-adversary": [{ reply: allPass(["T1"]) }],
+  "red-checker": [{ reply: goodRed }],
+};

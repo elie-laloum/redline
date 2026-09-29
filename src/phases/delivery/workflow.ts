@@ -1,4 +1,5 @@
 import { defineWorkflow, type Task, type Workflow, type WorkflowResult } from "@elie-laloum/outpost";
+import { batchTasks, codeTask } from "./code.ts";
 import { type DeliveryContext, targetsOf } from "./context.ts";
 import { type DeliveredRepo, summaryTask } from "./summary.ts";
 import { testsTask } from "./tests.ts";
@@ -16,8 +17,10 @@ export function defineDelivery(run: DeliveryContext): Delivery {
   for (const target of targetsOf(run)) {
     const workspace = workspaceTask(run, target, previous ? [previous] : [], async () => []);
     const tests = testsTask(run, target, workspace);
-    const summary = summaryTask(target, workspace, [tests], null);
-    tasks.push(workspace, tests, summary);
+    const lots = batchTasks(run, target, tests);
+    const code = codeTask(run, target, tests, lots);
+    const summary = summaryTask(target, workspace, [code], null);
+    tasks.push(workspace, tests, ...lots, code, summary);
     summaries.push(summary);
     previous = summary;
   }
