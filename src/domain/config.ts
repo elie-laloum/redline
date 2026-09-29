@@ -79,6 +79,7 @@ export const SettingsSchema = v.object({
   }),
   timeouts: v.object({
     ciPipelineSeconds: positive,
+    ciPollSeconds: v.optional(positive, 15),
     repoSetupSeconds: positive,
     commandSeconds: positive,
     commandSilenceSeconds: positive,

@@ -113,6 +113,8 @@ export function blueprints(): Blueprint[] {
         // propage a l'aval — pas que npm sait resoudre.
         "deps.json": JSON.stringify({ "@fixture/core": "1.0.0" }, null, 2),
         "src/list.js": "export function list() {\n  return [];\n}\n",
+        "scripts/bump.mjs":
+          "import { readFileSync, writeFileSync } from 'node:fs';\nconst [name, version] = process.argv.slice(2);\nconst deps = JSON.parse(readFileSync('deps.json', 'utf8'));\ndeps[name] = version;\nwriteFileSync('deps.json', JSON.stringify(deps, null, 2) + '\\n');\n",
         "tests/list.test.js":
           "import assert from 'node:assert/strict';\nimport { test } from 'node:test';\nimport { list } from '../src/list.js';\n\ntest('list rend une liste', () => {\n  assert.ok(Array.isArray(list()));\n});\n",
       },

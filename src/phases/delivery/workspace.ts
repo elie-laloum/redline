@@ -6,7 +6,9 @@ import { run as execute, stopReason } from "../../adapters/exec.ts";
 import { git, gitAllowFailure } from "../../adapters/git.ts";
 import { installCommand } from "../../domain/monorepo.ts";
 import { Escalation } from "../../workflow/escalation.ts";
+import { applyUpgrades } from "./bump.ts";
 import { type DeliveryContext, type RepoTarget, withTarget } from "./context.ts";
+import type { Release } from "./summary.ts";
 
 export interface Prepared {
   readonly repo: string;
@@ -16,19 +18,23 @@ export interface Prepared {
   readonly bumps: readonly string[];
 }
 
-export type BumpStep = (directory: string) => Promise<readonly string[]>;
+export interface Upstream {
+  readonly package: string;
+  readonly release: Task<Release>;
+}
 
-export function workspaceTask(run: DeliveryContext, target: RepoTarget, after: readonly Task[], bump: BumpStep): Task<Prepared> {
+export function workspaceTask(run: DeliveryContext, target: RepoTarget, after: readonly Task[], upstream: readonly Upstream[]): Task<Prepared> {
   const key = `${target.repo.name}.workspace`;
   return defineTask({
     key,
-    after,
-    async perform() {
+    after: [...after, ...upstream.map((entry) => entry.release)],
+    async perform(context) {
       const fetched = await gitAllowFailure(target.path, ["fetch", "-q", "origin", target.repo.baseBranch]);
       if (!fetched.ok) throw new Escalation("environment", key, `git fetch origin ${target.repo.baseBranch} a echoue : ${fetched.stderr}`);
       return withTarget(run, target, async (workspace) => {
         const base = await git(workspace.directory, ["merge-base", "HEAD", `origin/${target.repo.baseBranch}`]);
-        const bumps = await bump(workspace.directory);
+        const upgrades = upstream.map((entry) => ({ package: entry.package, version: context.value(entry.release).version }));
+        const bumps = await applyUpgrades(run, target, workspace.directory, upgrades);
         await install(run, target, workspace.directory, bumps.length > 0);
         await preflight(run, target, workspace.directory);
         return { repo: target.repo.name, directory: workspace.directory, branch: workspace.branch, base, bumps };

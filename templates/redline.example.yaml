@@ -18,6 +18,7 @@ budgets:                             # tours de boucle avant escalade
 
 timeouts:
   ciPipelineSeconds: 1800
+  ciPollSeconds: 15
   repoSetupSeconds: 900
   commandSeconds: 1800               # plafond d'une commande du registre
   commandSilenceSeconds: 240         # silence tolere : au-dela, attente d'infrastructure

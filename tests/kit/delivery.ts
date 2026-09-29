@@ -55,3 +55,40 @@ export const testsPhase = {
   "test-adversary": [{ reply: allPass(["T1"]) }],
   "red-checker": [{ reply: goodRed }],
 };
+
+const listHeader = "import assert from 'node:assert/strict';\nimport { test } from 'node:test';\nimport { list } from '../src/list.js';\n\n";
+export const FAILING_LIST_TEST = `${listHeader}test('la liste filtre par periode', () => {\n  assert.deepEqual(list('2026-09'), ['2026-09']);\n});\n`;
+export const LIST_IMPLEMENTATION = "export function list(period) {\n  return period ? [period] : [];\n}\n";
+
+export function twoRepoPlan(): Plan {
+  const base = plan() as Plan;
+  const core = base.repos[0] as Plan["repos"][number];
+  return {
+    ...base,
+    repos: [
+      core,
+      {
+        repo: "fixture-app",
+        type: "feature",
+        changes: ["La liste filtre par periode."],
+        why: "Consomme la periode de fixture-core.",
+        tests: [{ id: "T2", criterion: "La liste rend la periode demandee.", kind: "ut", covers: ["AC1"] }],
+        code: [{ id: "C2", criterion: "La liste sans periode reste vide." }],
+      },
+    ],
+  };
+}
+
+export const appPhase = {
+  "test-writer": [{ writes: { "tests/list-period.test.js": FAILING_LIST_TEST }, reply: { files: [{ path: "tests/list-period.test.js", tests: ["T2"] }], commit: { type: "test", scope: "list", subject: "cover the period filter" }, uncoverable: [] } }],
+  "test-adversary": [{ reply: allPass(["T2"]) }],
+  "red-checker": [{ reply: { tests: [{ name: "la liste filtre par periode", verdict: "bon-rouge", reason: "AssertionError" }], environment: { blocked: false, reason: "" } } }],
+  developer: [{ writes: { "src/list.js": LIST_IMPLEMENTATION }, reply: { commit: { type: "feat", scope: "list", subject: "filter by period" }, appeals: [], contradictions: [] } }],
+  "code-adversary": [{ reply: codePass(["C2"]) }],
+};
+
+export function merge(...scripts: Record<string, unknown[]>[]): Record<string, unknown[]> {
+  const merged: Record<string, unknown[]> = {};
+  for (const script of scripts) for (const [role, turns] of Object.entries(script)) merged[role] = [...(merged[role] ?? []), ...turns];
+  return merged;
+}
