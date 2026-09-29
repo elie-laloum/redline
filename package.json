@@ -19,16 +19,11 @@
     "test:workflow": "bun test --timeout 600000 tests/workflow",
     "test:all": "bun run test && bun run test:workflow",
     "typecheck": "tsc --noEmit",
-    "eval": "claude plugin eval ./plugins/autopilot --ablation with-without --mocks record --allow-real-servers --allow-tools 'mcp__plugin_autopilot_autopilot__*' --runs 3",
-    "config:check": "bun plugins/autopilot/mcp/scripts/check-config.ts",
-    "clear": "bun plugins/autopilot/mcp/scripts/clear-run.ts",
-    "fixtures": "bun tests/fixtures/materialize.ts",
-    "bench": "bun plugins/autopilot/mcp/scripts/bench-commands.ts"
+    "fixtures": "bun tests/fixtures/materialize.ts"
   },
   "dependencies": {
     "@clack/prompts": "^1.8.1",
     "@elie-laloum/outpost": "9.0.0",
-    "@modelcontextprotocol/sdk": "^1.21.0",
     "commander": "^15.0.0",
     "valibot": "^1.5.0",
     "yaml": "^2.9.1"

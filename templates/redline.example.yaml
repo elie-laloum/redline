@@ -1,0 +1,96 @@
+# Reglages de redline. Copie dans ~/.redline/redline.yaml pour les surcharger ;
+# ce modele sert de repli et c'est lui que la suite de tests lit.
+
+schemaVersion: 1
+
+budgets:                             # tours de boucle avant escalade
+  testAdversary: 3
+  redChecker: 3
+  testDispute: 3
+  greenChecker: 3
+  codeAdversary: 3
+  disputeBeforeEscalation: 2         # meme test conteste 2 fois = escalade
+  developerBatchLines: 4             # lignes de checklist code par lot du developer
+  grillRounds: 5                     # lots de questions par grill
+  planRepairs: 2                     # plans refuses par la validation avant escalade
+  memoryRepairs: 2
+  proseRepairs: 2
+
+timeouts:
+  ciPipelineSeconds: 1800
+  repoSetupSeconds: 900
+  commandSeconds: 1800               # plafond d'une commande du registre
+  commandSilenceSeconds: 240         # silence tolere : au-dela, attente d'infrastructure
+  containerStartSeconds: 180
+  imagePullSeconds: 600
+  agentSeconds: 3600                 # plafond d'un tour d'agent
+  agentIdleSeconds: 600
+
+memory:
+  maxNoteLines: 100
+  selection:                         # notes injectees dans les briefs
+    maxNotes: 15
+    maxLines: 400
+
+naming:                              # placeholders : {type} {ticket} {slug} {titre} {n}
+  types: [feature, bugfix, hotfix, documentation, chore, refactor, test, style, task]
+  branch: "{type}/{ticket}-{slug}"
+  mergeRequest: "{type}/{ticket}: {titre}"
+  slackChannel: "{ticket}-{slug}"
+  devVersionSuffix: "-{n}"
+  slugMaxLength: 40
+  typeFromJiraIssueType:
+    Story: feature
+    Task: task
+    Tâche: task
+    Bug: bugfix
+    Bogue: bugfix
+    Sous-tâche: task
+    default: task
+
+git: {}
+#  committer:
+#    name: Ada Lovelace
+#    email: ada@example.com
+
+gitlab:
+  mrDraft: true
+
+jira:
+  transitions:
+    default:
+      afterMergeRequest: VALIDATION
+    bySquad:
+      TJ:
+        afterMergeRequest: En cours
+
+slack:
+  channelVisibility: private
+  invitees:                          # allowlist stricte, par prefixe de cle Jira
+    default: []
+    bySquad:
+      FT:
+        - first.dev@example.com
+        - second.dev@example.com
+
+agents:
+  default:
+    model: sonnet
+  byRole:
+    functional-grill: { model: opus }
+    technical-grill: { model: opus }
+    planner: { model: opus, reasoning: high }
+    test-writer: { model: opus }
+    appeal-arbiter: { model: opus }
+    test-adversary: { model: opus }
+    developer: { model: opus }
+    code-adversary: { model: opus, reasoning: high }
+    memory-planner: { model: opus }
+    finalizer: { model: opus }
+
+sandbox:
+  image: outpost-catalog:claude
+  agentChecks: false                 # true : le developer peut lancer lint et typecheck dans le conteneur
+
+scope:
+  concurrency: 3                     # scouts en parallele

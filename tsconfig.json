@@ -13,6 +13,6 @@
     "skipLibCheck": true,
     "types": ["bun"]
   },
-  "include": ["plugins/autopilot/mcp/**/*.ts", "src/**/*.ts", "tests/**/*.ts"],
+  "include": ["src/**/*.ts", "tests/**/*.ts"],
   "exclude": ["node_modules"]
 }

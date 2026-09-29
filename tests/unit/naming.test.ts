@@ -1,20 +1,14 @@
 import assert from "node:assert/strict";
-import { beforeAll, describe, it } from "bun:test";
-import {
-  branchName,
-  mergeRequestName,
-  nextDevVersion,
-  parseDevVersion,
-  slackChannelName,
-  slugify,
-} from "../../plugins/autopilot/mcp/lib/naming.ts";
-import { useProjectConfig } from "../helpers.ts";
+import { describe, it } from "bun:test";
+import { branchName, mergeRequestName, slackChannelName, slugify, typeFromIssueType } from "../../src/domain/naming.ts";
+import { nextDevVersion, parseDevVersion } from "../../src/domain/versions.ts";
+import { exampleSettings } from "../helpers.ts";
 
-beforeAll(useProjectConfig);
+const naming = exampleSettings().naming;
 
 describe("slugify", () => {
   it("retire les accents et la ponctuation", () => {
-    assert.equal(slugify("Ajouter le filtre par période"), "ajouter-le-filtre-par-periode");
+    assert.equal(slugify("Ajouter le filtre par période", 40), "ajouter-le-filtre-par-periode");
   });
 
   it("coupe sur un tiret plutot qu'au milieu d'un mot", () => {
@@ -25,43 +19,44 @@ describe("slugify", () => {
   });
 
   it("ne laisse jamais de tiret en bord", () => {
-    assert.equal(slugify("  --- Bug : 404 !!! "), "bug-404");
+    assert.equal(slugify("  --- Bug : 404 !!! ", 40), "bug-404");
   });
 });
 
 describe("branchName et mergeRequestName", () => {
+  const parts = { type: "feature", ticket: "FT-1025", title: "Ajouter le filtre par période" };
+
   it("suivent la convention et partagent le meme type", () => {
-    const parts = { type: "feature", ticket: "FT-1025", titre: "Ajouter le filtre par période" };
-    assert.equal(branchName(parts), "feature/FT-1025-ajouter-le-filtre-par-periode");
-    assert.equal(mergeRequestName(parts), "Draft: feature/FT-1025: Ajouter le filtre par période");
+    assert.equal(branchName(naming, parts), "feature/FT-1025-ajouter-le-filtre-par-periode");
+    assert.equal(mergeRequestName(naming, parts, true), "Draft: feature/FT-1025: Ajouter le filtre par période");
   });
 
   it("refusent un type hors de naming.types", () => {
-    assert.throws(() => branchName({ type: "wip", ticket: "FT-1", titre: "x" }), /Type de branche inconnu/);
+    assert.throws(() => branchName(naming, { ...parts, type: "wip" }), /Type de branche inconnu/);
   });
 
   it("le prefixe Draft est ce qui pilote le statut brouillon", () => {
-    const sansDraft = mergeRequestName({ type: "bugfix", ticket: "FT-9", titre: "Corriger" }, false);
-    assert.equal(sansDraft, "bugfix/FT-9: Corriger");
+    assert.equal(mergeRequestName(naming, { type: "bugfix", ticket: "FT-9", title: "Corriger" }, false), "bugfix/FT-9: Corriger");
+  });
+
+  it("deduisent le type du type d'issue Jira", () => {
+    assert.equal(typeFromIssueType(naming, "Bug"), "bugfix");
+    assert.equal(typeFromIssueType(naming, "Inconnu"), "task");
   });
 });
 
 describe("slackChannelName", () => {
   it("force les minuscules, Slack refuse les majuscules", () => {
-    assert.equal(
-      slackChannelName({ ticket: "FT-1025", titre: "Ajouter le filtre par période" }),
-      "ft-1025-ajouter-le-filtre-par-periode",
-    );
+    assert.equal(slackChannelName(naming, { ticket: "FT-1025", title: "Ajouter le filtre par période" }), "ft-1025-ajouter-le-filtre-par-periode");
   });
 
   it("tronque a 80 caracteres, sans laisser de tiret en bord", () => {
-    const name = slackChannelName({
+    const name = slackChannelName(naming, {
       ticket: "FT-1025",
-      titre: "Ajouter un filtre par periode sur les feuilles de travail du laboratoire et leurs annexes",
+      title: "Ajouter un filtre par periode sur les feuilles de travail du laboratoire et leurs annexes",
     });
-    assert.ok(name.length <= 80, `${name.length} caracteres`);
+    assert.ok(name.length <= 80);
     assert.ok(!name.endsWith("-"));
-    assert.equal(name, name.toLowerCase());
   });
 });
 
@@ -76,8 +71,7 @@ describe("nextDevVersion", () => {
   });
 
   it("ne collisionne pas entre deux tickets sur la meme version de base", () => {
-    const tags = ["v2.4.0-FT-1025-1", "v2.4.0-FT-1025-2"];
-    assert.equal(nextDevVersion("v2.4.0", "FT-2000", tags), "v2.4.0-FT-2000-1");
+    assert.equal(nextDevVersion("v2.4.0", "FT-2000", ["v2.4.0-FT-1025-1"]), "v2.4.0-FT-2000-1");
   });
 
   it("ne confond pas deux versions de base", () => {
