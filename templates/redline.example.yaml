@@ -90,7 +90,7 @@ agents:
     finalizer: { model: opus }
 
 sandbox:
-  image: outpost-catalog:claude
+  image: redline-agent:claude-2.1.280    # bun redline image build
   agentChecks: false                 # true : le developer peut lancer lint et typecheck dans le conteneur
 
 scope:

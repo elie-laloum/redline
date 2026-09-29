@@ -3,6 +3,7 @@ import { Command } from "commander";
 import packageJson from "../../package.json" with { type: "json" };
 import { check } from "./commands/check.ts";
 import { clearCommand } from "./commands/clear.ts";
+import { imageBuildCommand, imageDoctorCommand } from "./commands/image.ts";
 import { migrateHomeCommand } from "./commands/migrate-home.ts";
 import { resumeCommand, startCommand } from "./commands/run.ts";
 import { statusCommand } from "./commands/status.ts";
@@ -53,5 +54,9 @@ program
   .description("Reprend la memoire d'une installation autopilot")
   .option("--from <dossier>", "ancien dossier", "~/.autopilot")
   .action((options: { from?: string }) => guarded(() => migrateHomeCommand(options)));
+
+const image = program.command("image").description("Image Docker des agents");
+image.command("build").description("Construit l'image declaree dans sandbox.image").action(() => guarded(imageBuildCommand));
+image.command("doctor").description("Verifie que l'image et Claude repondent dans un conteneur").action(() => guarded(imageDoctorCommand));
 
 await program.parseAsync();
