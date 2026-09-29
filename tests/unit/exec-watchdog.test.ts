@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { before, describe, it } from "node:test";
+import { beforeAll, describe, it } from "bun:test";
 import { run, stopReason } from "../../plugins/autopilot/mcp/lib/exec.ts";
 import { PROJECT_ROOT, useProjectConfig } from "../helpers.ts";
 
-before(useProjectConfig);
+beforeAll(useProjectConfig);
 
 /**
  * Deux horloges, et la difference entre les deux vaut une demi-heure.
@@ -134,8 +134,8 @@ describe("le chien de garde abat le groupe de processus", () => {
 
     // `SIGTERM` puis `SIGKILL` deux secondes plus tard : on laisse passer le delai.
     await new Promise((resolve) => setTimeout(resolve, 3_000));
-    const { execSync } = await import("node:child_process");
-    const alive = execSync(`pgrep -f ${marker} | wc -l`).toString().trim();
-    assert.equal(alive, "0", "un processus de test a survecu a l'abandon de sa commande");
+    const { spawnSync } = await import("node:child_process");
+    const alive = spawnSync("pgrep", ["-f", marker], { encoding: "utf8" }).stdout.trim();
+    assert.equal(alive, "", "un processus de test a survecu a l'abandon de sa commande");
   });
 });

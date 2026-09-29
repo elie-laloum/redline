@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { after, before, describe, it } from "node:test";
+import { afterAll, beforeAll, describe, it } from "bun:test";
 import {
   type Frontmatter,
   SCOPE_DIRECTORIES,
@@ -18,7 +18,7 @@ import { sandboxHome } from "../helpers.ts";
 const sandbox = sandboxHome();
 const root = join(sandbox.home, "memory");
 
-before(() => {
+beforeAll(() => {
   ensureMemoryLayout(root);
   write("repos/web-app/conventions-tests.md", { type: "convention", scope: "repo", last_verified: "2026-09-13", repos: ["web-app"] }, "Le repo tourne sous rstest.\nPas de vitest.");
   write("repos/design-system/publication.md", { type: "piege", scope: "repo", last_verified: "2026-09-10", repos: ["design-system"] }, "La publication passe par un tag git.");
@@ -26,7 +26,7 @@ before(() => {
   write("changes/FT-1025.md", { type: "knowledge", scope: "change", last_verified: "2026-09-15", source: { ticket: "FT-1025" } }, "Historique du ticket.");
 });
 
-after(() => sandbox.cleanup());
+afterAll(() => sandbox.cleanup());
 
 function write(path: string, frontmatter: Record<string, unknown>, body: string): void {
   const absolute = join(root, path);

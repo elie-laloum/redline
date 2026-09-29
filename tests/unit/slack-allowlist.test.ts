@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
-import { before, describe, it } from "node:test";
+import { beforeAll, describe, it } from "bun:test";
 import { loadConfig, resolveBySquad } from "../../plugins/autopilot/mcp/lib/config.ts";
 import { inviteesFor } from "../../plugins/autopilot/mcp/lib/slack.ts";
 import { useProjectConfig } from "../helpers.ts";
 
-before(useProjectConfig);
+beforeAll(useProjectConfig);
 
 /**
  * Le jeton est un `xoxp-` : canal, invitations et messages sont emis sous

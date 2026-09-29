@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { describe, it } from "node:test";
+import { describe, it } from "bun:test";
 import type { Frontmatter } from "../../plugins/autopilot/mcp/lib/memory.ts";
 import { createSandbox } from "./harness.ts";
 

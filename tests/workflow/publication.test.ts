@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, it } from "node:test";
+import { describe, it } from "bun:test";
 import { nextDevVersion } from "../../plugins/autopilot/mcp/lib/naming.ts";
 import { openRepo } from "./cycle.ts";
 import { createSandbox, type Sandbox } from "./harness.ts";

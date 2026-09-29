@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { after, before, describe, it } from "node:test";
+import { afterAll, beforeAll, describe, it } from "bun:test";
 import {
   commandFor,
   findRepo,
@@ -13,7 +13,7 @@ import {
 import { filterFlags } from "../../plugins/autopilot/mcp/lib/git.ts";
 import { sandboxProject, useProjectConfig } from "../helpers.ts";
 
-before(useProjectConfig);
+beforeAll(useProjectConfig);
 
 /**
  * Les comportements se verifient sur un registre de fixture, jamais sur celui de
@@ -147,10 +147,10 @@ describe("le registre reel", () => {
 describe("le comportement du registre", () => {
   let projet: ReturnType<typeof sandboxProject>;
 
-  before(() => {
+  beforeAll(() => {
     projet = sandboxProject({ registry: REGISTRE });
   });
-  after(() => {
+  afterAll(() => {
     projet.cleanup();
     useProjectConfig();
   });

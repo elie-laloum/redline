@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { after, before, describe, it } from "node:test";
+import { afterAll, beforeAll, describe, it } from "bun:test";
 import { ticketStatePath } from "../../plugins/autopilot/mcp/lib/paths.ts";
 import { type Json, emptyTicketState, mergePatch, patchTicketState, readTicketState } from "../../plugins/autopilot/mcp/lib/store.ts";
 import { parseYaml } from "../../plugins/autopilot/mcp/lib/yaml.ts";
@@ -102,8 +102,8 @@ describe("mergePatch", () => {
 
 describe("patchTicketState", () => {
   const sandbox = sandboxHome();
-  after(() => sandbox.cleanup());
-  before(() => sandbox);
+  afterAll(() => sandbox.cleanup());
+  beforeAll(() => sandbox);
 
   it("cree le squelette complet au premier ecrit, workflow2 compris", () => {
     const state = patchTicketState("FT-1025", { run: { step: "1" } }) as Record<string, Json>;

@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { before, describe, it } from "node:test";
+import { beforeAll, describe, it } from "bun:test";
 import { type CommandKind, loadRegistry } from "../../plugins/autopilot/mcp/lib/config.ts";
 import { TOOLS_BY_AGENT } from "../../plugins/autopilot/mcp/registry.ts";
 import { PROJECT_ROOT, useProjectConfig } from "../helpers.ts";
 
-before(useProjectConfig);
+beforeAll(useProjectConfig);
 
 /**
  * Une commande de test ne se compose pas, elle se lit dans le registre.

@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
-import { before, describe, it } from "node:test";
+import { beforeAll, describe, it } from "bun:test";
 import type { JiraTicket } from "../../plugins/autopilot/mcp/lib/jira.ts";
 import { collectUrls, extractAcceptanceCriteria, flattenDocument } from "../../plugins/autopilot/mcp/lib/jira.ts";
 import type { Json } from "../../plugins/autopilot/mcp/lib/store.ts";
 import { fuseTicket, normalizeKey, readCursor } from "../../plugins/autopilot/mcp/lib/ticket.ts";
 import { useProjectConfig } from "../helpers.ts";
 
-before(useProjectConfig);
+beforeAll(useProjectConfig);
 
 const JIRA: JiraTicket = {
   key: "FT-1025",

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { before, describe, it } from "node:test";
+import { beforeAll, describe, it } from "bun:test";
 import {
   branchName,
   mergeRequestName,
@@ -10,7 +10,7 @@ import {
 } from "../../plugins/autopilot/mcp/lib/naming.ts";
 import { useProjectConfig } from "../helpers.ts";
 
-before(useProjectConfig);
+beforeAll(useProjectConfig);
 
 describe("slugify", () => {
   it("retire les accents et la ponctuation", () => {

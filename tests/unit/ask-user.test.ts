@@ -1,17 +1,17 @@
 import assert from "node:assert/strict";
-import { after, before, describe, it } from "node:test";
+import { afterAll, beforeAll, describe, it } from "bun:test";
 import { appendEvent, closeEventLogs, nextSeq, readEvents, resetSeqCache } from "../../plugins/autopilot/mcp/lib/events.ts";
 import type { ToolContext } from "../../plugins/autopilot/mcp/lib/tool.ts";
 import { toolByName } from "../../plugins/autopilot/mcp/registry.ts";
 import { sandboxHome } from "../helpers.ts";
 
 const sandbox = sandboxHome();
-after(() => {
+afterAll(() => {
   closeEventLogs();
   resetSeqCache();
   sandbox.cleanup();
 });
-before(() => resetSeqCache());
+beforeAll(() => resetSeqCache());
 
 const askUser = toolByName("ask-user");
 
@@ -144,7 +144,7 @@ describe("le lot se depose et se releve, sans requete tenue ouverte", () => {
   let shell: import("node:http").Server;
   let base = "";
 
-  before(async () => {
+  beforeAll(async () => {
     const { createServer } = await import("node:http");
     const slots = new Map<string, { answers: Record<string, string> | null }>();
 
@@ -187,7 +187,7 @@ describe("le lot se depose et se releve, sans requete tenue ouverte", () => {
     base = typeof address === "object" && address ? `http://127.0.0.1:${address.port}` : "";
   });
 
-  after(() => shell.close());
+  afterAll(() => shell.close());
 
   it("depose le lot en une requete qui rend la main tout de suite", async () => {
     const started = Date.now();

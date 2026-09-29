@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { after, before, describe, it } from "node:test";
+import { afterAll, beforeAll, describe, it } from "bun:test";
 import { containerNeedsOf, findRepo, reportPathFor } from "../../plugins/autopilot/mcp/lib/config.ts";
 import { toolByName } from "../../plugins/autopilot/mcp/registry.ts";
 import { sandboxHome, sandboxProject, useProjectConfig } from "../helpers.ts";
@@ -110,11 +110,11 @@ describe("le rapport d'une commande qui n'ecrit pas sur sa sortie", () => {
   let project: ReturnType<typeof sandboxProject>;
   let home: ReturnType<typeof sandboxHome>;
 
-  before(() => {
+  beforeAll(() => {
     home = sandboxHome();
     project = sandboxProject({ registry: REGISTRY });
   });
-  after(() => {
+  afterAll(() => {
     project.cleanup();
     home.cleanup();
     useProjectConfig();
@@ -190,10 +190,10 @@ describe("le rapport d'une commande qui n'ecrit pas sur sa sortie", () => {
 describe("les besoins de conteneurs", () => {
   let project: ReturnType<typeof sandboxProject>;
 
-  before(() => {
+  beforeAll(() => {
     project = sandboxProject({ registry: REGISTRY });
   });
-  after(() => {
+  afterAll(() => {
     project.cleanup();
     useProjectConfig();
   });

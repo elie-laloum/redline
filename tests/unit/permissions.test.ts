@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { describe, it } from "node:test";
+import { describe, it } from "bun:test";
 import { isTestFile } from "../../plugins/autopilot/mcp/tools/git.ts";
 import { ALL_TOOLS, TOOLS_BY_AGENT } from "../../plugins/autopilot/mcp/registry.ts";
 import { PROJECT_ROOT } from "../helpers.ts";

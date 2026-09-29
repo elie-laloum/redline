@@ -3,13 +3,13 @@ import { spawn } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import { after, describe, it } from "node:test";
+import { afterAll, describe, it } from "bun:test";
 import { lockPath } from "../../plugins/autopilot/mcp/lib/paths.ts";
 import { toolByName } from "../../plugins/autopilot/mcp/registry.ts";
 import { sandboxHome } from "../helpers.ts";
 
 const sandbox = sandboxHome();
-after(() => sandbox.cleanup());
+afterAll(() => sandbox.cleanup());
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const alive = (pid: number): boolean => {

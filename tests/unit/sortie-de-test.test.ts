@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { after, before, describe, it } from "node:test";
+import { afterAll, beforeAll, describe, it } from "bun:test";
 import { findRepo, loadConfig, targetingFor } from "../../plugins/autopilot/mcp/lib/config.ts";
 import { focusOn, run } from "../../plugins/autopilot/mcp/lib/exec.ts";
 import { renderTargeting } from "../../plugins/autopilot/mcp/tools/quality.ts";
@@ -35,11 +35,11 @@ const NOISY = `node -e 'for (let i = 1; i <= 500; i++) console.log(i === 250 ? "
 describe("la sortie d'une commande dont le verdict est au milieu", () => {
   let home: ReturnType<typeof sandboxHome>;
 
-  before(() => {
+  beforeAll(() => {
     useProjectConfig();
     home = sandboxHome();
   });
-  after(() => home.cleanup());
+  afterAll(() => home.cleanup());
 
   it("coupe toujours par le milieu, donc perd le verdict quand il y est", async () => {
     const result = await run(NOISY, { cwd: PROJECT_ROOT, logTo: "test-coupe" });
@@ -92,7 +92,7 @@ describe("la sortie d'une commande dont le verdict est au milieu", () => {
 });
 
 describe("le ciblage d'un fichier de test", () => {
-  before(useProjectConfig);
+  beforeAll(useProjectConfig);
 
   it("remplit le gabarit du repo au lieu d'empiler des positionnels", () => {
     assert.equal(
@@ -245,11 +245,11 @@ evalOnly:
 describe("le budget d'une boucle", () => {
   let home: ReturnType<typeof sandboxHome>;
 
-  before(() => {
+  beforeAll(() => {
     useProjectConfig();
     home = sandboxHome();
   });
-  after(() => home.cleanup());
+  afterAll(() => home.cleanup());
 
   const write = async (patch: unknown) => {
     const tool = toolByName("write-store-ticket");
@@ -321,11 +321,11 @@ describe("le budget d'une boucle", () => {
 describe("l'escalade dit ce qui a bloque", () => {
   let home: ReturnType<typeof sandboxHome>;
 
-  before(() => {
+  beforeAll(() => {
     useProjectConfig();
     home = sandboxHome();
   });
-  after(() => home.cleanup());
+  afterAll(() => home.cleanup());
 
   it("distingue une boucle qui n'a pas converge d'un harnais qui n'a pas rendu de verdict", async () => {
     const escalate = toolByName("escalate-to-human");
