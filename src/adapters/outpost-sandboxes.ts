@@ -4,7 +4,7 @@ import { createDockerSandboxProvider } from "@elie-laloum/outpost/providers/dock
 import { createLocalSandboxProvider } from "@elie-laloum/outpost/providers/local";
 import type { Registry, Settings } from "../domain/config.ts";
 import type { ReaderSandbox, RepoWorkspace, Sandboxes } from "../ports/sandboxes.ts";
-import { git, gitAllowFailure } from "./git.ts";
+import { git, workingChanges } from "./git.ts";
 
 export interface SandboxOptions {
   readonly settings: Settings;
@@ -71,8 +71,7 @@ export function createOutpostSandboxes(options: SandboxOptions): Sandboxes {
         directory,
         repoPath,
         async close() {
-          const status = await gitAllowFailure(directory, ["status", "--porcelain", "--untracked-files=all"]);
-          const dirty = status.stdout.split("\n").map((line) => line.slice(3).trim()).filter(Boolean);
+          const dirty = await workingChanges(directory).catch(() => []);
           if (dirty.length > 0) {
             await git(directory, ["reset", "--hard", "-q"]);
             await git(directory, ["clean", "-fdq"]);

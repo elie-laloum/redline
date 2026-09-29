@@ -33,15 +33,15 @@ export async function listTags(cwd: string): Promise<string[]> {
   return (await git(cwd, ["tag", "--list"])).split("\n").map((line) => line.trim()).filter(Boolean);
 }
 
+export async function workingChanges(cwd: string): Promise<string[]> {
+  const tracked = await git(cwd, ["diff", "--name-only", "HEAD"]);
+  const untracked = await git(cwd, ["ls-files", "--others", "--exclude-standard"]);
+  return [...new Set([...tracked.split("\n"), ...untracked.split("\n")].filter(Boolean))].sort();
+}
+
 export async function changedFilesSince(cwd: string, base: string): Promise<string[]> {
   const committed = await git(cwd, ["diff", "--name-only", `${base}...HEAD`]);
-  const working = await git(cwd, ["status", "--porcelain", "--untracked-files=all"]);
-  const files = new Set(committed.split("\n").filter(Boolean));
-  for (const line of working.split("\n")) {
-    const path = line.slice(3).trim();
-    if (path) files.add(path.includes(" -> ") ? (path.split(" -> ")[1] ?? path) : path);
-  }
-  return [...files].sort();
+  return [...new Set([...committed.split("\n").filter(Boolean), ...(await workingChanges(cwd))])].sort();
 }
 
 export function committerArgs(committer: { name: string; email: string } | undefined): string[] {
