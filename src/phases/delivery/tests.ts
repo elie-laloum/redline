@@ -17,7 +17,7 @@ import { type Converged, converge, type Gate, type Verdict } from "../../workflo
 import { Escalation } from "../../workflow/escalation.ts";
 import { cached, session } from "../run.ts";
 import { commitWork } from "./commit.ts";
-import { arbitragesOf, type DeliveryContext, type RepoTarget, seedOf, withTarget } from "./context.ts";
+import { arbitragesOf, type DeliveryContext, monorepoFilter, type RepoTarget, seedOf, withTarget } from "./context.ts";
 import type { Prepared } from "./workspace.ts";
 
 export interface TestsCandidate {
@@ -118,8 +118,9 @@ function redGate(run: DeliveryContext, target: RepoTarget, key: string, budget: 
       withTarget(run, target, async (opened): Promise<Verdict> => {
         const paths = candidate.files.map((file) => file.path).filter((path) => existsSync(join(opened.directory, path)));
         const checks = run.app.checks(run.ledger.key);
+        const filter = await monorepoFilter(target, opened.directory);
         const results: CheckResult[] = [];
-        for (const kind of kinds) results.push(await checks.run(target.repo, kind, opened.directory, { paths, label: `${key}-${kind}`, ...(run.signal ? { signal: run.signal } : {}) }));
+        for (const kind of kinds) results.push(await checks.run(target.repo, kind, opened.directory, { paths, filter, label: `${key}-${kind}`, ...(run.signal ? { signal: run.signal } : {}) }));
         const stalled = results.find((result) => result.stoppedBy === "silence" || result.stoppedBy === "timeout");
         if (stalled) return { kind: "environment", text: renderCheck(stalled) };
         const failed = results.filter((result) => !result.passed);

@@ -1,4 +1,7 @@
 import { arbitrages } from "../../agents/render.ts";
+import { changedFilesSince, git } from "../../adapters/git.ts";
+import { packagesOf } from "../../adapters/packages.ts";
+import { filterFlags } from "../../domain/monorepo.ts";
 import { expandTilde } from "../../app/paths.ts";
 import { findRepo, type RepoEntry } from "../../domain/config.ts";
 import { fail } from "../../domain/failure.ts";
@@ -52,4 +55,10 @@ export function arbitragesOf(run: DeliveryContext): string {
 
 export function seedOf(run: DeliveryContext, key: string): string | null {
   return run.ledger.delivery.seeds[key] ?? null;
+}
+
+export async function monorepoFilter(target: RepoTarget, directory: string): Promise<string> {
+  if (!target.repo.monorepoTool) return "";
+  const base = await git(directory, ["merge-base", "HEAD", `origin/${target.repo.baseBranch}`]);
+  return filterFlags(target.repo.monorepoTool, packagesOf(directory, await changedFilesSince(directory, base)));
 }

@@ -16,7 +16,7 @@ import { isTestFile } from "../../domain/zones.ts";
 import { type Converged, converge, type Gate, type Verdict } from "../../workflow/converge.ts";
 import { cached, session } from "../run.ts";
 import { commitWork } from "./commit.ts";
-import { arbitragesOf, type DeliveryContext, type RepoTarget, seedOf, withTarget } from "./context.ts";
+import { arbitragesOf, type DeliveryContext, monorepoFilter, type RepoTarget, seedOf, withTarget } from "./context.ts";
 import type { TestsCandidate } from "./tests.ts";
 
 export interface CodeCandidate {
@@ -184,9 +184,10 @@ function greenGate(run: DeliveryContext, target: RepoTarget, key: string, budget
     judge: () =>
       withTarget(run, target, async (opened): Promise<Verdict> => {
         const checks = run.app.checks(run.ledger.key);
+        const filter = await monorepoFilter(target, opened.directory);
         const failures: string[] = [];
         for (const kind of kinds) {
-          const result = await checks.run(target.repo, kind, opened.directory, { label: `${key}-${kind}`, ...(run.signal ? { signal: run.signal } : {}) });
+          const result = await checks.run(target.repo, kind, opened.directory, { filter, label: `${key}-${kind}`, ...(run.signal ? { signal: run.signal } : {}) });
           if (result.stoppedBy === "silence" || result.stoppedBy === "timeout") return { kind: "environment", text: renderCheck(result) };
           if (!result.passed) failures.push(renderCheck(result));
         }
