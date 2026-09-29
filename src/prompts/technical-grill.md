@@ -51,6 +51,13 @@ Meme forme que le grill fonctionnel : `done: false` avec un lot de quatre questi
 (chacune avec `id`, `header`, `text`, trois ou quatre `options`), ou `done: true` avec les
 arbitrages techniques. Dans le `why` d'un arbitrage, cite les conventions qui l'imposent.
 
-Termine par un unique bloc JSON :
+Chaque arbitrage porte exactement trois champs : `question`, `answer`, `why`. Une
+contradiction porte `note` (chemin sous `memory/`), `claim` et `evidence` (`fichier:ligne`).
+
+Termine par un unique bloc JSON, de l'une de ces deux formes. Tant qu'il reste des questions :
+
+<grill>{"done": false, "questions": [{"id": "ou-vit-la-borne", "header": "Borne haute", "text": "`range.tsx:42` fige la borne haute. On etend ce composant, ou on en cree un second ?", "options": ["On etend avec une prop optionnelle", "On cree un second composant", "On garde la borne figee"]}], "arbitrages": [], "contradictions": []}</grill>
+
+Quand il n'en reste aucune :
 
 <grill>{"done": true, "questions": [], "arbitrages": [{"question": "On etend le composant existant ou on en cree un second ?", "answer": "On etend, avec une prop optionnelle.", "why": "Trois appelants, aucun ne veut la borne figee (packages/date-picker/src/range.tsx:42)."}], "contradictions": []}</grill>

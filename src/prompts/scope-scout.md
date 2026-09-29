@@ -38,6 +38,9 @@ preuve.
 `evidence` liste les preuves : au moins une si le repo est impacte. `reason` dit en une phrase
 pourquoi le repo est retenu ou ecarte.
 
+Une contradiction porte `note` (chemin sous `memory/`), `claim` (ce que la note affirme) et
+`evidence` (`fichier:ligne` qui la dement).
+
 Termine par un unique bloc JSON :
 
 <scope>{"impacted": true, "area": "filtre de la liste des feuilles", "evidence": ["apps/sheet-lab/src/sheet-list.tsx:118 — le filtre est applique ici, sans notion de periode"], "reason": "La liste filtre cote client et n'a pas de periode.", "contradictions": []}</scope>

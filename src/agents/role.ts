@@ -1,8 +1,9 @@
 import { join } from "node:path";
-import { type AgentObservation, defineAgentTask, defineJsonResponse, type Logging, type PromptVariables, type Sandbox, type TaskContext } from "@elie-laloum/outpost";
+import { type AgentObservation, defineAgentTask, defineJsonResponse, type Logging, type PromptVariables, ResponseError, type Sandbox, type TaskContext } from "@elie-laloum/outpost";
 import type * as v from "valibot";
 import type { RoleName } from "../domain/roles.ts";
 import type { AgentFactory } from "../ports/agents.ts";
+import { Escalation } from "../workflow/escalation.ts";
 
 export const PROMPTS = join(import.meta.dir, "..", "prompts");
 
@@ -45,12 +46,25 @@ export async function ask<I, O>(context: TaskContext, session: AgentSession, rol
       agent: session.agents.agent(role.name),
       label: role.name,
       brief: { file: role.prompt, values: role.values(input) },
-      response: defineJsonResponse({ tag: role.tag, schema: role.schema(input), repairs: 1 }),
+      response: defineJsonResponse({ tag: role.tag, schema: role.schema(input), repairs: REPAIRS }),
       deadlineMs: limits.deadlineMs,
       idleMs: limits.idleMs,
       ...(session.logging !== undefined ? { logging: session.logging } : {}),
       ...(session.observe ? { observe: (event: AgentObservation) => session.observe?.(role.name, event) } : {}),
     }),
   });
-  return (await task.perform(context)).value;
+  try {
+    return (await task.perform(context)).value;
+  } catch (error) {
+    if (error instanceof ResponseError) throw new Escalation("convergence", role.name, `reponse hors contrat apres ${REPAIRS} correction(s) : ${summarize(error)}`);
+    throw error;
+  }
+}
+
+const REPAIRS = 2;
+
+function summarize(error: ResponseError): string {
+  const issues = /"message":"([^"]+)"/g;
+  const messages = [...new Set([...error.message.matchAll(issues)].map((match) => match[1]))];
+  return (messages.length ? messages.join(" ; ") : error.message).slice(0, 400);
 }

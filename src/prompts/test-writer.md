@@ -49,6 +49,8 @@ declare-la dans `uncoverable` avec la raison.
 `files` associe chaque fichier ecrit aux identifiants de checklist qu'il couvre. `commit` decrit
 ton travail en conventional commit, sujet en anglais a l'imperatif.
 
+Une ligne non couvrable porte `id` et `reason`.
+
 Termine par un unique bloc JSON :
 
 <tests>{"files": [{"path": "src/range.test.ts", "tests": ["T1", "T2"]}], "commit": {"type": "test", "scope": "range", "subject": "cover the optional upper bound"}, "uncoverable": []}</tests>

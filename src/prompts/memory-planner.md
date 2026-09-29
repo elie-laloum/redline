@@ -55,6 +55,8 @@ les decisions et leur pourquoi, les pieges, les dependances non evidentes.
 `why`, et pour les deux premieres le `frontmatter` complet (`type`, `scope`, `last_verified` a
 {{TODAY}}, `repos`, `source`) et le `body` entier.
 
+Une suppression ne porte que `action`, `path` et `why`.
+
 Termine par un unique bloc JSON :
 
 <memoire>{"operations": [{"action": "update", "path": "repos/web-app/conventions-tests.md", "why": "la note disait vitest, package.json:31 dit rstest", "frontmatter": {"type": "convention", "scope": "repo", "last_verified": "2026-09-30", "repos": ["web-app"], "source": {"ticket": "FT-1025"}}, "body": "Les tests unitaires tournent sous rstest."}], "decisions": [{"note": "repos/web-app/conventions-tests.md", "decision": "corriger", "why": "la preuve tient, le reste de la note reste vrai"}]}</memoire>

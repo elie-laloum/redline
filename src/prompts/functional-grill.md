@@ -52,6 +52,13 @@ Tant qu'il reste une ambiguite : `done: false`, le lot dans `questions`, `arbitr
 Quand il n'en reste aucune : `done: true`, `questions` vide, et dans `arbitrages` chaque
 decision prise au fil des echanges, formulee pour etre relue par l'equipe dans la merge request.
 
-Termine par un unique bloc JSON :
+Chaque arbitrage porte exactement trois champs : `question`, `answer`, `why`. Une
+contradiction porte `note` (chemin sous `memory/`), `claim` et `evidence` (`fichier:ligne`).
+
+Termine par un unique bloc JSON, de l'une de ces deux formes. Tant qu'il reste des questions :
 
 <grill>{"done": false, "questions": [{"id": "periode-defaut", "header": "Periode par defaut", "text": "A l'ouverture de la liste, quelle periode est selectionnee ?", "options": ["Le mois en cours", "Le dernier mois clos", "Aucune, tout est affiche"]}], "arbitrages": [], "contradictions": []}</grill>
+
+Quand il n'en reste aucune :
+
+<grill>{"done": true, "questions": [], "arbitrages": [{"question": "Quelle periode est selectionnee a l'ouverture ?", "answer": "Le mois en cours.", "why": "Choix de l'humain, coherent avec le filtre des annexes."}], "contradictions": []}</grill>

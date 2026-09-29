@@ -22,12 +22,17 @@ Types de tests declares ici : {{KINDS}}.
 
 ## Ce que tu verifies
 
+Le code de production n'est peut-etre pas encore ecrit : en TDD, les tests echouent avant
+l'implementation, et c'est voulu. Tu ne juges donc pas s'ils passent aujourd'hui, ni le code de
+production : tu juges si chaque test, une fois le code ecrit, prouverait son critere.
+
 Pour chaque ligne : un test precis la prouve-t-il ? `passe` avec la reference `fichier:ligne`
-du test, ou `manque` avec ce qui manque. Un `passe` sans reference n'est pas un verdict.
+du test, ou `manque` avec ce qui manque dans les tests. Un `passe` sans reference n'est pas un
+verdict.
 
 Cherche aussi les tests qui passeront pour de mauvaises raisons : assertion faible, mock qui se
 teste lui-meme, chemin reel jamais appele, attendu calcule par le code teste, cas nominal seul,
-type de test non declare. Chacun va dans `weaknesses`.
+type de test non declare. Chacun va dans `weaknesses`, avec le fichier de test en cause.
 
 Tu ne corriges rien et tu n'ecris nulle part.
 
@@ -35,6 +40,8 @@ Tu ne corriges rien et tu n'ecris nulle part.
 
 Une ligne par identifiant de la checklist, ni plus ni moins.
 
+Une faiblesse porte `file` et `problem`.
+
 Termine par un unique bloc JSON :
 
-<verdict>{"lines": [{"id": "T1", "verdict": "passe", "evidence": "src/range.test.ts:24", "comment": "assertion sur la liste rendue"}, {"id": "T2", "verdict": "manque", "evidence": "src/range.test.ts:51", "comment": "passe une periode invalide, pas une periode vide"}], "weaknesses": []}</verdict>
+<verdict>{"lines": [{"id": "T1", "verdict": "passe", "evidence": "src/range.test.ts:24", "comment": "assertion sur la liste rendue"}, {"id": "T2", "verdict": "manque", "evidence": "src/range.test.ts:51", "comment": "passe une periode invalide, pas une periode vide"}], "weaknesses": [{"file": "src/range.test.ts", "problem": "ligne 12 : l'attendu est calcule par la fonction testee"}]}</verdict>

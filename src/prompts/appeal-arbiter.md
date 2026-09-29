@@ -30,6 +30,10 @@ developpeur peut suivre : « non » ne suffit pas.
 
 `commit` decrit le changement de test quand tu acceptes, et vaut `null` quand tu refuses.
 
-Termine par un unique bloc JSON :
+Termine par un unique bloc JSON. Un refus :
 
 <arbitrage>{"decision": "refuse", "reason": "Le plan dit qu'une periode invalide leve une erreur (T4) : l'assertion est juste, c'est l'implementation qui doit lever.", "commit": null}</arbitrage>
+
+Un recours accepte, apres avoir ecrit le test :
+
+<arbitrage>{"decision": "accepte", "reason": "Le chevauchement de deux exercices releve du ticket (AC3) et n'etait pas couvert.", "commit": {"type": "test", "scope": "range", "subject": "cover a period spanning two fiscal years"}}</arbitrage>

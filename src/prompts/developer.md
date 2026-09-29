@@ -54,6 +54,10 @@ rappele. Si une note de la memoire contredit le code, signale-la dans `contradic
 `commit` decrit ton travail en conventional commit, sujet en anglais a l'imperatif ; `null` si
 tu n'as rien change.
 
+Un recours porte `kind` (`zone-non-couverte` ou `test-conteste`), `test` (identifiant ou nom du
+test, `null` pour une zone) et `reason`. Une contradiction porte `note` (chemin sous `memory/`), `claim` (ce que la note affirme) et
+`evidence` (`fichier:ligne` qui la dement).
+
 Termine par un unique bloc JSON :
 
-<livraison>{"commit": {"type": "feat", "scope": "range", "subject": "accept an optional upper bound"}, "appeals": [], "contradictions": []}</livraison>
+<livraison>{"commit": {"type": "feat", "scope": "range", "subject": "accept an optional upper bound"}, "appeals": [{"kind": "test-conteste", "test": "T4", "reason": "le test attend une liste vide, le plan dit qu'une periode invalide leve une erreur"}], "contradictions": []}</livraison>
