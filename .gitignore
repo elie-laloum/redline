@@ -15,9 +15,6 @@ plugins/autopilot/rules/voice.md
 node_modules/
 dist/
 .turbo/
-.tanstack/
-.output/
-.vite/
 *.log
 .DS_Store
 
@@ -25,18 +22,8 @@ dist/
 tests/.tmp/
 tests/fixtures/repos/**/node_modules/
 
-# live-shell
-tools/live-shell/dist/
-tools/live-shell/.nitro/
-
 # resultats de `claude plugin eval`
 plugins/autopilot/evals/results/
 
 # depots de fixture materialises a la main (pnpm fixtures)
 tests/.fixtures/
-
-# impeccable : artefacts de run, jetables — la revue, le cache du hook et le
-# journal des questions posees pendant une passe de design.
-tools/live-shell/.impeccable/review/
-tools/live-shell/.impeccable/hook.cache.json
-tools/live-shell/.impeccable/questions/

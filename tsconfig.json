@@ -15,5 +15,5 @@
     "types": ["node"]
   },
   "include": ["plugins/autopilot/mcp/**/*.ts", "tests/**/*.ts"],
-  "exclude": ["tools/live-shell", "node_modules"]
+  "exclude": ["node_modules"]
 }
