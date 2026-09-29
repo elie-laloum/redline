@@ -34,7 +34,7 @@ export function defineDelivery(run: DeliveryContext): Delivery {
     const publishes = target.repo.packageName !== null && downstreamInScope(registry, target.repo.name, scope).length > 0;
     const release = publishes ? releaseTask(run, target, [code]) : null;
     if (release) releases.set(target.repo.name, release);
-    const summary = summaryTask(target, workspace, [code], release);
+    const summary = summaryTask(target, workspace, code, release);
     tasks.push(workspace, tests, ...lots, code, ...(release ? [release] : []), summary);
     summaries.push(summary);
     previous = summary;

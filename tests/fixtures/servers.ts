@@ -61,7 +61,7 @@ async function serve(handler: Handler): Promise<FakeService & { server: Server }
 
 export interface FakeJira extends FakeService {
   readonly issues: Map<string, { key: string; summary: string; status: string; issueType: string; description: string }>;
-  readonly comments: { key: string; body: string }[];
+  readonly comments: { key: string; body: string; document: unknown }[];
   readonly transitions: { key: string; to: string }[];
   /** Statuts accessibles depuis l'etat courant. Scriptable par scenario. */
   available: string[];
@@ -82,7 +82,7 @@ export async function fakeJira(
       },
     ]),
   );
-  const comments: { key: string; body: string }[] = [];
+  const comments: { key: string; body: string; document: unknown }[] = [];
   const transitions: { key: string; to: string }[] = [];
   const state = { available: ["VALIDATION", "En cours"] };
 
@@ -121,9 +121,12 @@ export async function fakeJira(
 
     const commentMatch = /^\/rest\/api\/3\/issue\/([^/]+)\/comment$/.exec(path);
     if (commentMatch && method === "POST") {
-      const text = JSON.stringify(body?.body ?? "");
-      comments.push({ key: decodeURIComponent(commentMatch[1] ?? ""), body: text });
+      comments.push({ key: decodeURIComponent(commentMatch[1] ?? ""), body: JSON.stringify(body?.body ?? ""), document: body?.body ?? null });
       return { body: { id: String(comments.length) } };
+    }
+    if (commentMatch && method === "GET") {
+      const key = decodeURIComponent(commentMatch[1] ?? "");
+      return { body: { comments: comments.filter((comment) => comment.key === key).map((comment) => ({ body: comment.document })) } };
     }
 
     return undefined;
@@ -173,6 +176,10 @@ export async function fakeSlack(knownUsers: Record<string, string> = {}): Promis
       case "/chat.postMessage":
         messages.push({ channel: String(body?.channel), text: String(body?.text ?? "") });
         return { body: { ok: true, ts: `${Date.now()}.000` } };
+      case "/conversations.history":
+        return { body: { ok: true, messages: messages.filter((message) => message.channel === query.get("channel")).map((message) => ({ text: message.text })) } };
+      case "/bookmarks.list":
+        return { body: { ok: true, bookmarks: bookmarks.filter((bookmark) => bookmark.channel === query.get("channel_id")).map((bookmark) => ({ link: bookmark.link })) } };
       case "/bookmarks.add":
         bookmarks.push({ channel: String(body?.channel_id), title: String(body?.title), link: String(body?.link) });
         return { body: { ok: true } };

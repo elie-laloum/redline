@@ -31,6 +31,7 @@ export interface WorldOptions {
   readonly script: Script;
   readonly issues?: Parameters<typeof fakeJira>[0];
   readonly settings?: (template: string) => string;
+  readonly slackUsers?: Record<string, string>;
 }
 
 const KEYWORDS: Record<string, string> = {
@@ -76,7 +77,7 @@ export async function createWorld(options: WorldOptions): Promise<World> {
   writeFileSync(paths.settings, options.settings ? options.settings(template) : template);
   await ensureHome(paths);
 
-  const [jira, slack, gitlab] = await Promise.all([fakeJira(options.issues ?? []), fakeSlack(), fakeGitLab()]);
+  const [jira, slack, gitlab] = await Promise.all([fakeJira(options.issues ?? []), fakeSlack(options.slackUsers ?? {}), fakeGitLab()]);
   const agents = fakeAgents(options.script);
   const env = {
     JIRA_SITE_URL: jira.url,

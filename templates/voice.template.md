@@ -1,13 +1,13 @@
 # La voix de <TON NOM>
 
-> **Ceci est un modele.** Copie-le en `voice.md` dans ce meme dossier, puis remplis-le a
-> partir de tes propres ecrits. `voice.md` est gitignore : ton profil de voix reste chez toi.
+> **Ceci est un modele.** Copie-le en `~/.redline/voice.md`, puis remplis-le a partir de tes
+> propres ecrits. Ton profil de voix reste chez toi, hors du depot.
 >
 > Le README explique comment le faire produire par Claude a partir de ton corpus, en une
 > seule invite. Ce fichier decrit ce que cette invite doit produire.
 >
-> Tant que `voice.md` n'existe pas, `writer-voice-tone` rend ce modele en signalant que la
-> voix n'est **pas calibree** — l'agent le sait et reste factuel.
+> Tant que `voice.md` n'existe pas, redline transmet ce modele en signalant que la voix n'est
+> **pas calibree** — le redacteur le sait et reste factuel.
 
 Regles d'ecriture pour tout texte publie **sous ton nom** : messages et reponses Slack,
 commentaires Jira, reponses dans les threads de MR GitLab.
