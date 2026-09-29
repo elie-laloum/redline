@@ -15,6 +15,7 @@
     "bun": ">=1.3.14"
   },
   "scripts": {
+    "redline": "bun src/cli/main.ts",
     "test": "bun test --timeout 30000 tests/unit",
     "test:workflow": "bun test --timeout 600000 tests/workflow",
     "test:all": "bun run test && bun run test:workflow",
@@ -31,5 +32,8 @@
   "devDependencies": {
     "@types/bun": "^1.4.2",
     "typescript": "^6.0.3"
+  },
+  "bin": {
+    "redline": "src/cli/main.ts"
   }
 }

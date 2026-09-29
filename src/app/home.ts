@@ -1,0 +1,37 @@
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { git, gitAllowFailure } from "../adapters/git.ts";
+import { createMemoryStore } from "../adapters/memory-store.ts";
+import type { Paths } from "./paths.ts";
+
+const IDENTITY = ["-c", "user.name=redline", "-c", "user.email=redline@localhost"];
+
+const GITIGNORE = ["*", "!.gitignore", "!CLAUDE.md", "!memory/", "!memory/**", "!tickets/", "!tickets/**", ""].join("\n");
+
+const READER_GUIDE = [
+  "# Espace de lecture redline",
+  "",
+  "- `memory/` : la memoire versionnee, une note par fichier, frontmatter compris.",
+  "- `/repos/<nom>` : les depots du registre, montes en lecture seule. Ils sont la source de verite du code.",
+  "- Tu ne modifies rien ici : tu lis, tu cites `fichier:ligne`, tu rends ta reponse.",
+  "",
+].join("\n");
+
+export async function ensureHome(paths: Paths): Promise<void> {
+  for (const directory of [paths.home, paths.tickets, paths.runs, paths.logs, paths.figma, paths.locks]) mkdirSync(directory, { recursive: true });
+  createMemoryStore(paths.memory, Number.MAX_SAFE_INTEGER).ensureLayout();
+  if (!existsSync(join(paths.home, ".gitignore"))) writeFileSync(join(paths.home, ".gitignore"), GITIGNORE, "utf8");
+  if (!existsSync(join(paths.home, "CLAUDE.md"))) writeFileSync(join(paths.home, "CLAUDE.md"), READER_GUIDE, "utf8");
+  if (!existsSync(join(paths.home, ".git"))) await git(paths.home, ["init", "-q", "-b", "main"]);
+  if (!(await gitAllowFailure(paths.home, ["rev-parse", "--verify", "HEAD"])).ok) {
+    await git(paths.home, ["add", "--", ".gitignore", "CLAUDE.md"]);
+    await git(paths.home, [...IDENTITY, "commit", "-q", "-m", "redline: home"]);
+  }
+}
+
+export async function commitHome(paths: Paths, message: string): Promise<string | null> {
+  await git(paths.home, ["add", "-A", "--", "memory", "tickets"]);
+  if ((await gitAllowFailure(paths.home, ["diff", "--cached", "--quiet"])).ok) return null;
+  await git(paths.home, [...IDENTITY, "commit", "-q", "-m", message]);
+  return git(paths.home, ["rev-parse", "--short", "HEAD"]);
+}
