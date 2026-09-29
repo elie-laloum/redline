@@ -1,0 +1,56 @@
+import { join } from "node:path";
+import { type AgentObservation, defineAgentTask, defineJsonResponse, type Logging, type PromptVariables, type Sandbox, type TaskContext } from "@elie-laloum/outpost";
+import type * as v from "valibot";
+import type { RoleName } from "../domain/roles.ts";
+import type { AgentFactory } from "../ports/agents.ts";
+
+export const PROMPTS = join(import.meta.dir, "..", "prompts");
+
+export interface Role<I, O> {
+  readonly name: RoleName;
+  readonly prompt: string;
+  readonly tag: string;
+  values(input: I): PromptVariables;
+  schema(input: I): v.GenericSchema<unknown, O>;
+}
+
+export function defineRole<I, S extends v.GenericSchema>(spec: {
+  readonly name: RoleName;
+  readonly tag: string;
+  readonly values: (input: I) => PromptVariables;
+  readonly schema: S | ((input: I) => S);
+}): Role<I, v.InferOutput<S>> {
+  return {
+    name: spec.name,
+    prompt: join(PROMPTS, `${spec.name}.md`),
+    tag: spec.tag,
+    values: spec.values,
+    schema: (input) => (typeof spec.schema === "function" ? spec.schema(input) : spec.schema),
+  };
+}
+
+export interface AgentSession {
+  readonly sandbox: Sandbox;
+  readonly agents: AgentFactory;
+  readonly logging?: Logging;
+  readonly observe?: (role: RoleName, event: AgentObservation) => void;
+}
+
+export async function ask<I, O>(context: TaskContext, session: AgentSession, role: Role<I, O>, input: I): Promise<O> {
+  const limits = session.agents.limits(role.name);
+  const task = defineAgentTask<O>({
+    key: role.name,
+    sandbox: session.sandbox,
+    request: () => ({
+      agent: session.agents.agent(role.name),
+      label: role.name,
+      brief: { file: role.prompt, values: role.values(input) },
+      response: defineJsonResponse({ tag: role.tag, schema: role.schema(input), repairs: 1 }),
+      deadlineMs: limits.deadlineMs,
+      idleMs: limits.idleMs,
+      ...(session.logging !== undefined ? { logging: session.logging } : {}),
+      ...(session.observe ? { observe: (event: AgentObservation) => session.observe?.(role.name, event) } : {}),
+    }),
+  });
+  return (await task.perform(context)).value;
+}

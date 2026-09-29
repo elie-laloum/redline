@@ -1,16 +1,20 @@
 import { createCheckRunner } from "../adapters/checks.ts";
+import { createClaudeAgents } from "../adapters/claude-agents.ts";
 import { createFigma } from "../adapters/figma.ts";
 import { createGitlab } from "../adapters/gitlab.ts";
 import { createJira } from "../adapters/jira.ts";
 import { createMemoryStore, type MemoryStore } from "../adapters/memory-store.ts";
+import { createOutpostSandboxes } from "../adapters/outpost-sandboxes.ts";
 import { loadSecrets, type Secrets } from "../adapters/secrets.ts";
 import { createSlack } from "../adapters/slack.ts";
+import type { AgentFactory } from "../ports/agents.ts";
 import type { Chat } from "../ports/chat.ts";
 import type { CheckRunner } from "../ports/checks.ts";
 import type { Design } from "../ports/design.ts";
 import type { Forge } from "../ports/forge.ts";
+import type { Sandboxes } from "../ports/sandboxes.ts";
 import type { Tracker } from "../ports/tracker.ts";
-import { homeDirectory, logDirectory, type Paths, pathsOf } from "./paths.ts";
+import { expandTilde, homeDirectory, logDirectory, type Paths, pathsOf } from "./paths.ts";
 import { type Configuration, loadConfiguration } from "./settings.ts";
 
 export interface Services {
@@ -18,6 +22,8 @@ export interface Services {
   readonly forge: Forge;
   readonly chat: Chat;
   readonly design: Design;
+  readonly agents: AgentFactory;
+  readonly sandboxes: Sandboxes;
 }
 
 export interface AppContext {
@@ -42,7 +48,10 @@ export function createContext(options: ContextOptions = {}): AppContext {
   const configuration = loadConfiguration(paths, options.templates);
   const secrets = loadSecrets(paths.env, env);
   const { settings } = configuration;
-  const services = lazyServices(secrets, options.services ?? {});
+  const services = lazyServices(secrets, options.services ?? {}, {
+    agents: () => createClaudeAgents(settings),
+    sandboxes: () => createOutpostSandboxes({ settings, registry: configuration.registry, home: paths.home, resolvePath: expandTilde, isolation: "docker" }),
+  });
 
   return {
     paths,
@@ -59,9 +68,14 @@ export function createContext(options: ContextOptions = {}): AppContext {
   };
 }
 
-function lazyServices(secrets: Secrets, overrides: Partial<Services>): Services {
+function lazyServices(
+  secrets: Secrets,
+  overrides: Partial<Services>,
+  runtime: { agents: () => AgentFactory; sandboxes: () => Sandboxes },
+): Services {
   const cache: Partial<Services> = { ...overrides };
   const build: { [K in keyof Services]: () => Services[K] } = {
+    ...runtime,
     tracker: () => createJira({ site: secrets.require("JIRA_SITE_URL"), email: secrets.require("JIRA_EMAIL"), token: secrets.require("JIRA_API_TOKEN") }),
     forge: () => createGitlab({ host: secrets.get("GITLAB_HOST") ?? "https://gitlab.com", token: secrets.require("GITLAB_TOKEN") }),
     chat: () => createSlack({ base: secrets.get("SLACK_API_BASE") ?? "https://slack.com/api", token: secrets.require("SLACK_USER_TOKEN") }),
@@ -83,6 +97,12 @@ function lazyServices(secrets: Secrets, overrides: Partial<Services>): Services 
     },
     get design() {
       return get("design");
+    },
+    get agents() {
+      return get("agents");
+    },
+    get sandboxes() {
+      return get("sandboxes");
     },
   };
 }
