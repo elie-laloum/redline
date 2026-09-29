@@ -23,7 +23,7 @@ export interface Interviewed<O> {
   readonly transcript: readonly Exchange[];
 }
 
-export interface InterviewOptions<O extends WorkflowJson> {
+export interface InterviewOptions<O> {
   readonly key: string;
   readonly workflow: string;
   readonly title: string;
@@ -41,7 +41,7 @@ interface InterviewState {
   readonly consumed: string | null;
 }
 
-export function defineInterview<O extends WorkflowJson>(options: InterviewOptions<O>): Task<Interviewed<O>> {
+export function defineInterview<O>(options: InterviewOptions<O>): Task<Interviewed<O>> {
   const memo = options.memo ? createMemo(options.workflow, options.key, options.memo) : null;
   return defineTask<Interviewed<O>>({
     key: options.key,
@@ -55,14 +55,14 @@ export function defineInterview<O extends WorkflowJson>(options: InterviewOption
       while (true) {
         const next = state.pending[0];
         if (next) interaction.suspend(render(options.title, next, state), state as unknown as WorkflowJson);
-        if (state.turn >= options.maxTurns) {
-          throw new Escalation("convergence", options.key, `${options.maxTurns} lot(s) de questions sans conclusion.`);
-        }
         const turn = await options.think(context, state.transcript, state.turn + 1);
         if ("done" in turn) {
           const result: Interviewed<O> = { output: turn.done, transcript: state.transcript };
           await memo?.remember(context, result as unknown as WorkflowJson);
           return result;
+        }
+        if (state.turn >= options.maxTurns) {
+          throw new Escalation("convergence", options.key, `${options.maxTurns} lot(s) de questions sans conclusion.`);
         }
         state = { ...state, turn: state.turn + 1, pending: turn.ask.map(sanitize) };
       }

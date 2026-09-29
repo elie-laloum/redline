@@ -43,3 +43,5 @@ export function grillSchema() {
     v.check((reply) => (reply.done ? reply.questions.length === 0 : reply.questions.length > 0), "done:true sans question, ou done:false avec au moins une question"),
   );
 }
+
+export type GrillReply = v.InferOutput<ReturnType<typeof grillSchema>>;

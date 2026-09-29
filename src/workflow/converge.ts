@@ -25,7 +25,7 @@ export interface Converged<C> {
   readonly carry: Carry;
 }
 
-export interface ConvergeOptions<C extends WorkflowJson> {
+export interface ConvergeOptions<C> {
   readonly key: string;
   readonly after?: readonly Task[];
   readonly seed?: (context: TaskContext) => string | null;
@@ -35,7 +35,7 @@ export interface ConvergeOptions<C extends WorkflowJson> {
   readonly timeoutMs?: number;
 }
 
-export function converge<C extends WorkflowJson>(options: ConvergeOptions<C>): Task<Converged<C>> {
+export function converge<C>(options: ConvergeOptions<C>): Task<Converged<C>> {
   const maxRounds = 1 + options.gates.reduce((total, gate) => total + gate.budget, 0);
   return defineLoopTask<Converged<C>>({
     key: options.key,
