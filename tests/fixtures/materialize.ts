@@ -1,17 +1,10 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { materialize } from "./repos.ts";
 
-/**
- * Ecrit les depots de fixture sur disque, pour les ouvrir a la main.
- *
- * Les tests, eux, les recreent dans un dossier temporaire a chaque cas : un
- * depot neuf par test, sans heriter du tag qu'un test precedent a pousse. Ce
- * script sert a inspecter, pas a alimenter la suite.
- *
- *   pnpm fixtures [dossier]
- */
+// Ecrit les depots de fixture sur disque pour les inspecter : bun run fixtures [dossier].
+// Les tests, eux, les recreent dans un dossier temporaire a chaque cas.
 const target = resolve(process.argv[2] ?? "tests/.fixtures");
 rmSync(target, { recursive: true, force: true });
 

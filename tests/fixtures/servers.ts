@@ -1,16 +1,7 @@
 import { createServer, type Server } from "node:http";
 
-/**
- * Les faux services externes.
- *
- * Tous les effets de bord externes passent deja par des tools : il suffit donc
- * de substituer ce que ces tools appellent, sans toucher a un seul agent. C'est
- * le benefice direct de la regle « toute action constante est un tool ».
- *
- * Ce qui n'est PAS substitue ici : git. Les faux repos sont de vrais depots avec
- * un vrai remote bare. Mocker git reviendrait a ne plus tester la partie la plus
- * fragile du systeme.
- */
+// Faux Jira, GitLab et Slack, sur des ports locaux. Git, lui, n'est jamais simule :
+// les repos de fixture sont de vrais depots avec un vrai remote bare.
 
 export interface FakeService {
   readonly url: string;

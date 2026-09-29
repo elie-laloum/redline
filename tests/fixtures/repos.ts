@@ -2,13 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-/**
- * Les faux repos sont de **vrais depots git**, avec un remote **bare** local.
- *
- * `create-worktree`, `create-commit` et `push-tag` s'executent donc pour de
- * vrai, et les tests verifient l'etat reel du depot. Mocker git reviendrait a ne
- * plus tester la partie la plus fragile du systeme.
- */
+// De vrais depots git avec un remote bare local : les tests verifient l'etat reel du depot.
 
 export interface FixtureRepo {
   readonly name: string;
@@ -62,10 +56,8 @@ interface Blueprint {
   files: Record<string, string>;
 }
 
-/**
- * Quatre depots : deux levels differents, une dependance amont/aval, un
- * monorepo, une suite qui passe et une qu'on peut faire echouer a la demande.
- */
+// Quatre depots : deux levels, une dependance amont/aval, un monorepo, et une suite
+// qu'on peut faire echouer a la demande.
 export function blueprints(): Blueprint[] {
   return [
     {
@@ -107,10 +99,7 @@ export function blueprints(): Blueprint[] {
           2,
         ),
         "package-lock.json": lockfile("fixture-app"),
-        // Le lien amont vit ici plutot que dans `dependencies` : un vrai
-        // `npm ci` irait chercher le paquet sur un registre, et la sandbox
-        // n'en a pas. Ce que le bump doit prouver, c'est qu'une version se
-        // propage a l'aval — pas que npm sait resoudre.
+        // Le lien amont vit hors de `dependencies` : `npm ci` irait le chercher sur un registre.
         "deps.json": JSON.stringify({ "@fixture/core": "1.0.0" }, null, 2),
         "src/list.js": "export function list() {\n  return [];\n}\n",
         "scripts/bump.mjs":
@@ -128,9 +117,7 @@ export function blueprints(): Blueprint[] {
       monorepoTool: "turbo",
       files: {
         "package.json": JSON.stringify(
-          // Pas de champ `workspaces` : `npm ci` exigerait un lockfile qui les
-          // liste. Ce qu'on teste ici, c'est que `monorepo-filter` retrouve
-          // les paquets en remontant au package.json le plus proche.
+          // Pas de `workspaces` : `npm ci` exigerait un lockfile qui les liste.
           { name: "fixture-mono", version: "1.0.0", private: true, type: "module" },
           null,
           2,

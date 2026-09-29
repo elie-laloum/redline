@@ -57,12 +57,12 @@ Tutoiement ou vouvoiement, longueur des paragraphes, phrases courtes ou longues.
 Formules de politesse, excuses, superlatifs, « n'hesite pas ». Liste-les : un interdit se
 verifie, une preference se discute.
 
-### ⛔ Ne jamais ecrire `@autopilot`
+### ⛔ Ne jamais ecrire `@redline` ni `@autopilot`
 
-**Cette regle-la n'est pas une preference, c'est une contrainte du systeme.** `@autopilot` en
-tete d'un message est le marqueur par lequel tu t'adresses deliberement a l'autopilot. Un
-agent qui l'ecrit se repond a lui-meme en boucle, dans un fil public. Garde cette section
-telle quelle.
+**Cette regle-la n'est pas une preference, c'est une contrainte du systeme.** Ces mentions en
+tete d'un message sont le marqueur par lequel tu t'adresses deliberement a l'outil. Un agent
+qui les ecrit se repond a lui-meme en boucle, dans un fil public. Garde cette section telle
+quelle.
 
 ---
 
@@ -109,7 +109,7 @@ Une liste de questions fermees, derivees des sections precedentes. Une seule rep
 signifie qu'il faut reecrire. Vise huit a dix questions : en dessous elle ne couvre rien,
 au-dessus elle n'est plus lue.
 
-1. Le message est-il exempt de `@autopilot` — le seul interdit qui casserait le systeme ?
+1. Le message est-il exempt de `@redline` et de `@autopilot` — le seul interdit qui casserait le systeme ?
 2. …
 
 ## 8. Le test decisif
