@@ -13,6 +13,7 @@ export interface Paths {
   readonly logs: string;
   readonly figma: string;
   readonly locks: string;
+  readonly tmp: string;
 }
 
 export const TEMPLATES = resolve(import.meta.dir, "..", "..", "templates");
@@ -39,6 +40,7 @@ export function pathsOf(home: string): Paths {
     logs: join(home, "logs"),
     figma: join(home, "figma"),
     locks: join(home, "locks"),
+    tmp: join(home, "tmp"),
   };
 }
 

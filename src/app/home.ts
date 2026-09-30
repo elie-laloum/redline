@@ -18,7 +18,7 @@ const READER_GUIDE = [
 ].join("\n");
 
 export async function ensureHome(paths: Paths): Promise<void> {
-  for (const directory of [paths.home, paths.tickets, paths.runs, paths.logs, paths.figma, paths.locks]) mkdirSync(directory, { recursive: true });
+  for (const directory of [paths.home, paths.tickets, paths.runs, paths.logs, paths.figma, paths.locks, paths.tmp]) mkdirSync(directory, { recursive: true });
   createMemoryStore(paths.memory, Number.MAX_SAFE_INTEGER).ensureLayout();
   if (!existsSync(join(paths.home, ".gitignore"))) writeFileSync(join(paths.home, ".gitignore"), GITIGNORE, "utf8");
   if (!existsSync(join(paths.home, "CLAUDE.md"))) writeFileSync(join(paths.home, "CLAUDE.md"), READER_GUIDE, "utf8");
@@ -27,6 +27,13 @@ export async function ensureHome(paths: Paths): Promise<void> {
     await git(paths.home, ["add", "--", ".gitignore", "CLAUDE.md"]);
     await git(paths.home, [...IDENTITY, "commit", "-q", "-m", "redline: home"]);
   }
+}
+
+// outpost bind-mounts folders made with mkdtemp(tmpdir()). On macOS tmpdir() is /var/folders,
+// which colima does not share with its VM: keep them under the home, which it does share.
+export function redirectTmpdir(paths: Paths): void {
+  mkdirSync(paths.tmp, { recursive: true });
+  process.env.TMPDIR = paths.tmp;
 }
 
 export async function commitHome(paths: Paths, message: string): Promise<string | null> {

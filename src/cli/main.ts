@@ -1,6 +1,8 @@
 #!/usr/bin/env -S bun --no-env-file
 import { Command } from "commander";
 import packageJson from "../../package.json" with { type: "json" };
+import { redirectTmpdir } from "../app/home.ts";
+import { homeDirectory, pathsOf } from "../app/paths.ts";
 import { benchCommand } from "./commands/bench.ts";
 import { check } from "./commands/check.ts";
 import { clearCommand } from "./commands/clear.ts";
@@ -9,6 +11,8 @@ import { migrateHomeCommand } from "./commands/migrate-home.ts";
 import { resumeCommand, startCommand } from "./commands/run.ts";
 import { statusCommand } from "./commands/status.ts";
 import { guarded } from "./output.ts";
+
+redirectTmpdir(pathsOf(homeDirectory()));
 
 const program = new Command("redline")
   .description("Livraison autonome depuis un ticket Jira : cadrage, TDD adversarial, memoire, publication.")

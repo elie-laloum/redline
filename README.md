@@ -108,7 +108,8 @@ redline/
 ├── tickets/<KEY>.yaml      the ledger of a run, versioned
 ├── runs/<KEY>/             checkpoints and cache, disposable
 ├── logs/<KEY>/             full command output, disposable
-└── figma/<KEY>/            rendered mockups, disposable
+├── figma/<KEY>/            rendered mockups, disposable
+└── tmp/                    redline's TMPDIR, disposable
 ```
 
 Tokens come from `~/.redline/.env`; a variable exported in the shell overrides its line there.
@@ -124,7 +125,8 @@ repository, with every registry repository mounted read-only under `/repos/<name
 
 - **Bun 1.3.14+** — package manager, runtime and test runner. TypeScript runs as is.
 - **Docker** — agents run in containers built from the outpost agent image; tests and builds
-  run on your machine, in the worktree the agent edits.
+  run on your machine, in the worktree the agent edits. Colima works as is: it shares only
+  `$HOME` with its VM, so redline points `TMPDIR` at `~/.redline/tmp` rather than `/var/folders`.
 - **Claude Code credentials** — agents use your account (`~/.claude/.credentials.json`, or
   `claude setup-token`).
 - **Jira Cloud**, **GitLab**, **Slack** — with a personal access token for each.

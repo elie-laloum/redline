@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, it } from "bun:test";
-import { commitHome, ensureHome } from "../../src/app/home.ts";
+import { commitHome, ensureHome, redirectTmpdir } from "../../src/app/home.ts";
 import { newLedger, readLedger, recordEvent, updateLedger, writeLedger } from "../../src/app/ledger.ts";
 import { acquireLock, readLock } from "../../src/app/lock.ts";
 import { migrateHome } from "../../src/app/migrate.ts";
@@ -30,6 +31,18 @@ describe("le dossier redline", () => {
     assert.ok(await commitHome(paths, "memory: FT-1"));
     assert.equal(git("show", "--name-only", "--format=", "HEAD"), "memory/repos/a.md");
     assert.equal(await commitHome(paths, "memory: FT-1"), null);
+  });
+
+  it("heberge les dossiers temporaires, que colima partage avec sa VM", () => {
+    const previous = process.env.TMPDIR;
+    try {
+      redirectTmpdir(paths);
+      assert.equal(tmpdir(), paths.tmp);
+      assert.ok(existsSync(paths.tmp));
+    } finally {
+      if (previous === undefined) delete process.env.TMPDIR;
+      else process.env.TMPDIR = previous;
+    }
   });
 });
 
