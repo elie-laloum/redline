@@ -33,7 +33,7 @@ const CASES: Case[] = [
   },
   {
     role: roles.planner,
-    input: { ticket: TICKET, notes: null, functional: "", technical: "", scope: "", repos: "", types: ["feature"], memory: "", feedback: null },
+    input: { ticket: TICKET, notes: null, functional: "", functionalExchanges: [], technical: "", technicalExchanges: [], scope: "", repos: "", types: ["feature"], memory: "", feedback: null },
     ok: { summary: "Plan.", repos: [PLAN_REPO], openPoints: [] },
     ko: { summary: "Plan.", repos: [{ ...PLAN_REPO, code: [] }], openPoints: [] },
   },

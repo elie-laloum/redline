@@ -35,7 +35,7 @@ export function planTask(
     key: "plan",
     after: [deps.ticket, deps.functional, deps.technical, deps.scope, deps.memory],
     cache: cached(run, ["planner"], (context) =>
-      digest({ ticket: context.value(deps.ticket), functional: context.value(deps.functional).output, technical: context.value(deps.technical).output, scope: context.value(deps.scope).scope, amendments }),
+      digest({ ticket: context.value(deps.ticket), functional: context.value(deps.functional), technical: context.value(deps.technical), scope: context.value(deps.scope).scope, amendments }),
     ),
     seed: () => (amendments.length ? `L'humain a demande d'amender le plan :\n${bullets(amendments)}` : null),
     make: (context, carry) =>
@@ -46,7 +46,9 @@ export function planTask(
           ticket: context.value(deps.ticket),
           notes: run.ledger.notes,
           functional: renderGrill(context.value(deps.functional).output),
+          functionalExchanges: context.value(deps.functional).transcript,
           technical: renderGrill(context.value(deps.technical).output),
+          technicalExchanges: context.value(deps.technical).transcript,
           scope: renderScope(scope, reader.repoPath),
           repos: renderCapabilities(repos),
           types: settings.naming.types,

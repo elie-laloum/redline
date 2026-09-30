@@ -28,6 +28,8 @@ describe("le cadrage", () => {
     assert.match(asked[0] ?? "", /Grill fonctionnel · 1\/1 — Periode par defaut/);
     assert.match(asked[1] ?? "", /Revue du plan[\s\S]*T1 \[ut\] Sans periode/);
     assert.match(world.agents.prompts["functional-grill"]?.[1] ?? "", /Reponse : Mois en cours/);
+    assert.match(world.agents.prompts.planner?.[0] ?? "", /echanges bruts[\s\S]*\*\*Periode par defaut\*\* — Quelle periode a l'ouverture \?\n  Reponse : Mois en cours/);
+    assert.match(world.agents.prompts.planner?.[0] ?? "", /aucune question : le grill a conclu sur le ticket seul/);
     assert.deepEqual(world.agents.remaining(), {});
   });
 

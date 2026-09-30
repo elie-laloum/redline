@@ -12,9 +12,20 @@ le code.
 
 {{FUNCTIONAL}}
 
+Les echanges bruts avec l'humain dont ils sont tires :
+
+{{FUNCTIONAL_EXCHANGES}}
+
 ## Les arbitrages techniques
 
 {{TECHNICAL}}
+
+Les echanges bruts avec l'humain dont ils sont tires :
+
+{{TECHNICAL_EXCHANGES}}
+
+Les arbitrages resument ces echanges. Quand un resume perd une nuance, restreint ou deforme une
+reponse, c'est la reponse de l'humain qui fait foi.
 
 ## Le perimetre retenu
 

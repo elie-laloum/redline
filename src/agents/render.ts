@@ -5,8 +5,8 @@ export function bullets(lines: readonly string[], empty = "(rien)"): string {
   return lines.length ? lines.map((line) => `- ${line}`).join("\n") : empty;
 }
 
-export function transcript(exchanges: readonly Exchange[]): string {
-  if (exchanges.length === 0) return "(aucune question posee pour l'instant)";
+export function transcript(exchanges: readonly Exchange[], empty = "(aucune question posee pour l'instant)"): string {
+  if (exchanges.length === 0) return empty;
   return exchanges.map((exchange) => `- **${exchange.question.header}** — ${exchange.question.text}\n  Reponse : ${exchange.answer}`).join("\n");
 }
 
