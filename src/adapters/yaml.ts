@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { mkdirSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { Document, isScalar, parse, visit } from "yaml";
 
@@ -18,10 +18,6 @@ export function stringifyStrict(value: unknown): string {
 
 export function parseYaml(text: string): unknown {
   return parse(text);
-}
-
-export function readYamlFile(path: string): unknown {
-  return parse(readFileSync(path, "utf8"));
 }
 
 export function writeYamlAtomic(path: string, value: unknown): void {

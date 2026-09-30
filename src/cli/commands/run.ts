@@ -1,4 +1,5 @@
 import * as clack from "@clack/prompts";
+import { killRunningCommands } from "../../adapters/exec.ts";
 import { type AppContext, createContext } from "../../app/context.ts";
 import type { DriveRequest } from "../../app/driver.ts";
 import { ensureHome } from "../../app/home.ts";
@@ -34,7 +35,10 @@ export async function resumeCommand(input: string, options: { fresh?: boolean; n
 async function interactive(app: AppContext, key: string, request: DriveRequest): Promise<number> {
   const controller = new AbortController();
   const interrupt = () => {
-    if (controller.signal.aborted) process.exit(130);
+    if (controller.signal.aborted) {
+      killRunningCommands();
+      process.exit(130);
+    }
     clack.log.warn("Interruption demandee : le run s'arrete proprement (Ctrl-C encore pour forcer).");
     controller.abort();
   };

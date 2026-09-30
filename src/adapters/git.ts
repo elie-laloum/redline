@@ -21,14 +21,6 @@ export async function git(cwd: string, args: readonly string[], timeoutMs?: numb
   return result.stdout;
 }
 
-export async function headSha(cwd: string): Promise<string> {
-  return git(cwd, ["rev-parse", "HEAD"]);
-}
-
-export async function isClean(cwd: string): Promise<boolean> {
-  return (await git(cwd, ["status", "--porcelain"])) === "";
-}
-
 export async function listTags(cwd: string): Promise<string[]> {
   return (await git(cwd, ["tag", "--list"])).split("\n").map((line) => line.trim()).filter(Boolean);
 }
