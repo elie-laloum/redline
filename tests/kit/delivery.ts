@@ -23,6 +23,8 @@ export function approved(world: World, override?: Plan): FramingOutcome {
       url: `${world.jira.url}/browse/${ISSUE.key}`,
       labels: [],
       links: [],
+      references: [],
+      related: [],
     },
     figma: { frames: [], skipped: [] },
     functional: { arbitrages: [{ question: "Periode par defaut ?", answer: "Mois en cours", why: "humain" }], contradictions: [] },

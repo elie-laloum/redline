@@ -1,3 +1,4 @@
+import type { RelatedTicket, TicketSnapshot } from "../domain/ticket.ts";
 import type { Exchange } from "../workflow/interview.ts";
 
 export function bullets(lines: readonly string[], empty = "(rien)"): string {
@@ -13,7 +14,9 @@ export function arbitrages(entries: readonly { question: string; answer: string;
   return bullets(entries.map((entry) => `${entry.question} → ${entry.answer} (${entry.why})`), "(aucun arbitrage)");
 }
 
-export function ticket(snapshot: { key: string; title: string; url: string; description: string; criteria: readonly { id: string; text: string }[] }, notes: string | null): string {
+type RenderedTicket = Pick<TicketSnapshot, "key" | "title" | "url" | "description" | "criteria"> & { readonly related?: readonly RelatedTicket[] };
+
+export function ticket(snapshot: RenderedTicket, notes: string | null): string {
   return [
     `**${snapshot.key} — ${snapshot.title}** (${snapshot.url})`,
     "",
@@ -21,8 +24,22 @@ export function ticket(snapshot: { key: string; title: string; url: string; desc
     "",
     "Criteres d'acceptation :",
     ...snapshot.criteria.map((criterion) => `- ${criterion.id} : ${criterion.text}`),
+    ...relatedTickets(snapshot.related ?? []),
     ...(notes ? ["", `Notes de l'humain au lancement : ${notes}`] : []),
   ].join("\n");
+}
+
+function relatedTickets(related: readonly RelatedTicket[]): string[] {
+  if (related.length === 0) return [];
+  return [
+    "",
+    "Tickets associes — du contexte : le perimetre reste celui du ticket ci-dessus.",
+    ...related.flatMap((entry) =>
+      "unavailable" in entry
+        ? ["", `### ${entry.key} (${entry.relation}) — illisible : ${entry.unavailable}`]
+        : ["", `### ${entry.key} — ${entry.title} (${entry.relation} ; ${entry.issueType}, ${entry.status}) ${entry.url}`, "", entry.description || "(description vide)"],
+    ),
+  ];
 }
 
 export function feedback(text: string | null): string {

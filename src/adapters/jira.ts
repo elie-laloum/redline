@@ -1,6 +1,6 @@
 import { collectUrls, extractAcceptanceCriteria, flattenDocument, splitCriteria, toDocument } from "../domain/acceptance.ts";
 import { fail } from "../domain/failure.ts";
-import { squadOf } from "../domain/ticket.ts";
+import { type ReferenceSources, referencesOf, squadOf } from "../domain/ticket.ts";
 import type { Tracker, TrackerIdentity } from "../ports/tracker.ts";
 import { request } from "./http.ts";
 
@@ -19,8 +19,13 @@ type IssuePayload = {
     readonly issuetype?: { readonly name?: string };
     readonly labels?: readonly string[];
     readonly attachment?: readonly { readonly content?: string }[];
+    readonly parent?: ReferenceSources["parent"];
+    readonly subtasks?: ReferenceSources["subtasks"];
+    readonly issuelinks?: ReferenceSources["issuelinks"];
   };
 };
+
+const FIELDS = "summary,description,status,issuetype,labels,attachment,parent,subtasks,issuelinks";
 
 export function createJira(credentials: JiraCredentials): Tracker {
   const site = credentials.site.replace(/\/+$/, "");
@@ -54,12 +59,13 @@ export function createJira(credentials: JiraCredentials): Tracker {
 
     async getTicket(key) {
       const { status, data } = await request<IssuePayload>(
-        issue(key, "?fields=summary,description,status,issuetype,labels,attachment"),
+        issue(key, `?fields=${FIELDS}`),
         { headers, allow: [401, 403, 404] },
       );
       if (status !== 200 || !data?.key) return unreachable(key, status);
       const title = data.fields?.summary ?? "";
       const description = flattenDocument(data.fields?.description);
+      const links = collectUrls(description, data.fields?.attachment ?? []);
       return {
         key: data.key,
         squad: squadOf(data.key),
@@ -70,7 +76,9 @@ export function createJira(credentials: JiraCredentials): Tracker {
         status: data.fields?.status?.name ?? "",
         url: `${site}/browse/${data.key}`,
         labels: data.fields?.labels ?? [],
-        links: collectUrls(description, data.fields?.attachment ?? []),
+        links,
+        references: referencesOf({ key: data.key, site, parent: data.fields?.parent, subtasks: data.fields?.subtasks, issuelinks: data.fields?.issuelinks, links }),
+        related: [],
       };
     },
 

@@ -50,8 +50,20 @@ async function serve(handler: Handler): Promise<FakeService & { server: Server }
 
 // ------------------------------------------------------------------ Jira ----
 
+type IssueSeed = {
+  key: string;
+  summary: string;
+  status?: string;
+  issueType?: string;
+  description?: string;
+  parent?: string;
+  subtasks?: string[];
+  /** Liens formels, dans le sens sortant : { type: "Blocks", to: "FT-9" } → « blocks » FT-9. */
+  links?: { type: string; to: string }[];
+};
+
 export interface FakeJira extends FakeService {
-  readonly issues: Map<string, { key: string; summary: string; status: string; issueType: string; description: string }>;
+  readonly issues: Map<string, Required<Omit<IssueSeed, "parent">> & { parent: string | null }>;
   readonly comments: { key: string; body: string; document: unknown }[];
   readonly transitions: { key: string; to: string }[];
   /** Statuts accessibles depuis l'etat courant. Scriptable par scenario. */
@@ -60,9 +72,7 @@ export interface FakeJira extends FakeService {
   rejectCredentials: boolean;
 }
 
-export async function fakeJira(
-  seed: { key: string; summary: string; status?: string; issueType?: string; description?: string }[],
-): Promise<FakeJira> {
+export async function fakeJira(seed: IssueSeed[]): Promise<FakeJira> {
   const issues = new Map(
     seed.map((issue) => [
       issue.key,
@@ -72,6 +82,9 @@ export async function fakeJira(
         status: issue.status ?? "READY TO DEV",
         issueType: issue.issueType ?? "Story",
         description: issue.description ?? "",
+        parent: issue.parent ?? null,
+        subtasks: issue.subtasks ?? [],
+        links: issue.links ?? [],
       },
     ]),
   );
@@ -97,6 +110,9 @@ export async function fakeJira(
             issuetype: { name: issue.issueType },
             labels: [],
             attachment: [],
+            ...(issue.parent ? { parent: { key: issue.parent } } : {}),
+            subtasks: issue.subtasks.map((key) => ({ key })),
+            issuelinks: issue.links.map((link) => ({ type: { name: link.type, inward: `is ${link.type.toLowerCase()} by`, outward: link.type.toLowerCase() }, outwardIssue: { key: link.to } })),
           },
         },
       };

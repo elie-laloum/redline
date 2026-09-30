@@ -31,6 +31,34 @@ describe("le cadrage", () => {
     assert.deepEqual(world.agents.remaining(), {});
   });
 
+  it("donne aux agents les tickets lies, parents, sous-taches et cites, sans bloquer sur un illisible", async () => {
+    world = await createWorld({
+      issues: [
+        { ...ISSUE, parent: "FT-100", subtasks: ["FT-2"], links: [{ type: "Blocks", to: "FT-404" }] },
+        { key: "FT-100", summary: "Refonte des filtres", issueType: "Epic", description: "Tous les filtres passent a la periode." },
+        { key: "FT-2", summary: "Libelle du filtre", issueType: "Sub-task" },
+        { key: "FT-3", summary: "Export par periode" },
+      ],
+      script: { "functional-grill": [{ reply: functionalDone }], "scope-scout": scouts(), "technical-grill": [{ reply: technicalDone() }], planner: [{ reply: plan() }] },
+    });
+    const issue = world.jira.issues.get(ISSUE.key);
+    if (issue) issue.description += `\nVoir aussi ${world.jira.url}/browse/FT-3`;
+    const { outcome } = await frame(world, world.ledger("FT-1"), ["Approuver"]);
+
+    assert.deepEqual(outcome?.ticket.related.map((entry) => [entry.key, entry.relation, "unavailable" in entry]), [
+      ["FT-100", "parent", false],
+      ["FT-2", "sous-tache", false],
+      ["FT-404", "blocks", true],
+      ["FT-3", "cite dans la description", false],
+    ]);
+    for (const role of ["functional-grill", "scope-scout", "technical-grill", "planner"] as const) {
+      const prompt = world.agents.prompts[role]?.[0] ?? "";
+      assert.match(prompt, /### FT-100 — Refonte des filtres \(parent ; Epic, READY TO DEV\)/, role);
+      assert.match(prompt, /### FT-404 \(blocks\) — illisible/, role);
+      assert.match(prompt, /### FT-3 — Export par periode/, role);
+    }
+  });
+
   it("amender le plan ne relance que le planner, avec la note", async () => {
     world = await createWorld({
       issues: [ISSUE],

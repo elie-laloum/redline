@@ -12,6 +12,8 @@ export const TICKET: TicketSnapshot = {
   url: "https://jira.test/browse/FT-1025",
   labels: [],
   links: [],
+  references: [],
+  related: [],
 };
 
 export const PLAN_REPO: PlanRepo = {

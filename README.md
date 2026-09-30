@@ -50,6 +50,10 @@ CLOSING    ◆ memory planner ⟲ ■ ops check → ■ one memory commit
            → ◆ finalizer ⟲ ■ publishable → ■ push · draft MRs · Slack · Jira
 ```
 
+The ticket comes with the tickets it points to — parent, subtasks, formal links and `/browse/`
+links to the same Jira site in its description — read once and handed to every agent that reads
+the ticket, as context: the scope stays the ticket's own.
+
 Every loop is one outpost loop task with one budget per gate: when a gate exceeds its budget
 the run escalates as `convergence`, a broken environment escalates at once as `environment`
 without spending a turn, and a decision that belongs to a human escalates as `arbitrage`.

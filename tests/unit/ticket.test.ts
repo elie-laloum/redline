@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "bun:test";
 import { collectUrls, extractAcceptanceCriteria, flattenDocument, splitCriteria } from "../../src/domain/acceptance.ts";
-import { normalizeKey, titleDrift } from "../../src/domain/ticket.ts";
+import { ticket } from "../../src/agents/render.ts";
+import { normalizeKey, referencesOf, titleDrift } from "../../src/domain/ticket.ts";
+import { TICKET } from "../kit/samples.ts";
 
 describe("normalizeKey", () => {
   it("accepte une cle, une cle en minuscules et une URL", () => {
@@ -56,5 +58,52 @@ describe("lecture d'un ticket Jira", () => {
   it("signale un titre qui a bouge depuis le gel", () => {
     assert.equal(titleDrift({ title: "A" }, { title: "B" }), true);
     assert.equal(titleDrift({ title: "A " }, { title: "A" }), false);
+  });
+});
+
+describe("les tickets associes", () => {
+  const site = "https://org.atlassian.net";
+
+  it("rassemble parent, sous-taches, liens formels dans les deux sens et URL du meme site", () => {
+    const references = referencesOf({
+      key: "FT-1",
+      site,
+      parent: { key: "FT-100" },
+      subtasks: [{ key: "FT-2" }],
+      issuelinks: [
+        { type: { inward: "is blocked by", outward: "blocks" }, outwardIssue: { key: "FT-3" } },
+        { type: { inward: "is blocked by", outward: "blocks" }, inwardIssue: { key: "OPS-4" } },
+      ],
+      links: [`${site}/browse/FT-5`, "https://autre.atlassian.net/browse/FT-6", `${site}/browse/FT-1`, `${site}/browse/FT-3`, "https://figma.com/design/ABC"],
+    });
+    assert.deepEqual(references, [
+      { key: "FT-100", relation: "parent" },
+      { key: "FT-2", relation: "sous-tache" },
+      { key: "FT-3", relation: "blocks" },
+      { key: "OPS-4", relation: "is blocked by" },
+      { key: "FT-5", relation: "cite dans la description" },
+    ]);
+  });
+
+  it("les donne aux agents comme du contexte, avec ceux qui n'ont pas pu etre lus", () => {
+    const rendered = ticket(
+      {
+        ...TICKET,
+        related: [
+          { key: "FT-100", relation: "parent", title: "Refonte des filtres", issueType: "Epic", status: "En cours", url: `${site}/browse/FT-100`, description: "Tous les filtres passent a la periode." },
+          { key: "OPS-4", relation: "is blocked by", unavailable: "Ticket Jira OPS-4 introuvable, ou invisible pour moi@test." },
+        ],
+      },
+      "Pas de migration de donnees.",
+    );
+    assert.match(rendered, /Tickets associes — du contexte : le perimetre reste celui du ticket ci-dessus\./);
+    assert.match(rendered, /### FT-100 — Refonte des filtres \(parent ; Epic, En cours\)[\s\S]*Tous les filtres passent a la periode\./);
+    assert.match(rendered, /### OPS-4 \(is blocked by\) — illisible : Ticket Jira OPS-4 introuvable/);
+    assert.match(rendered, /Notes de l'humain au lancement : Pas de migration de donnees\.$/);
+  });
+
+  it("ne change rien pour un ticket fige avant leur arrivee", () => {
+    const { related: _related, references: _references, ...older } = TICKET;
+    assert.doesNotMatch(ticket(older, null), /Tickets associes/);
   });
 });
