@@ -7,12 +7,14 @@ behind it and the constraints it has to respect.
 
 - `start` and `resume` open the interface once pre-flight has passed (ticket fetch,
   authentication check, agent image confirmation and build); bringing pre-flight inside the
-  interface is slice 4. A home screen on a bare `redline` (runs list, new run, resume) comes
-  later; `status` stays plain text.
+  interface is slice 5, with `init`. A home screen on a bare `redline` (runs list, new run,
+  resume) comes later; `status` stays plain text.
 - The interface is the default when stdout is a TTY. `--plain`, a pipe, CI or `nohup` keep the
   current clack output, which stays the reference fallback.
-- The interface lives in the run's process. Closing it stops the run the way `Ctrl-C` does;
-  checkpoints and `resume` cover everything a detached viewer would.
+- For `start` and `resume`, the interface lives in the run's process. Closing it stops the run the
+  way `Ctrl-C` does. Watching a run from another terminal is `show`, a separate read-only
+  process (below); there is no `start --detach`.
+- `init` opens the same interface on the configuration; [init.md](init.md) records its design.
 - It is tuned for Linux and WSL2 under Bun. Other environments fall back to plain text without
   losing anything.
 - The interface speaks French, like the task labels, the grill questions and the escalations.
@@ -129,10 +131,49 @@ listens; clack ignores what it cannot show.
 | `gate` | `converge`, after each verdict | task, gate, round, verdict, spent / budget, feedback text |
 | `command` | registry checks and dependency installs | task, label, command, start / progress / end, exit code, log path |
 | `publication` | release and closing | tag, pipeline, push, merge request, Slack, Jira — with a link when there is one |
-| `preflight` | `start` and `resume` — planned, slice 4 | step, status, detail |
+| `preflight` | `start` and `resume` — planned, slice 5 | step, status, detail |
 
 Agent observations carry the task that asked explicitly: `ask()` gets its source from the
 session it runs in, so parallel agents are never attributed by guesswork.
+
+## Event journal
+
+Nothing a run emits survives its process today: agent text, registry commands and the journal
+are gone once it exits, and checkpoints keep only task statuses, values, refused gate feedback
+and the phase's total tokens. The journal keeps the rest.
+
+- Every run appends each `RunEvent` to `runs/<KEY>/events.jsonl`, one line per event with its
+  time, all phases and resumes in sequence, with the dashboard or `--plain` alike. Agent text
+  deltas are coalesced over about 250 ms to keep the file small. The journal is not tracked in
+  the home's git repository, and `clear` deletes it with the rest of the run.
+- The reducer takes each event's time from its line, so a replay shows the durations the live
+  screen showed.
+- `resume` replays the journal for the phases already finished, instead of reading them back
+  from their checkpoints.
+
+## Viewing a run: `show`
+
+`redline show [ticket]` opens the same screen, read-only, on a run that is finished, escalated,
+interrupted, or running in another terminal.
+
+- It is a separate process that drives nothing: it never calls the driver, never takes the
+  ticket's lock and writes nothing. `q` and `Ctrl-C` close the viewer at once and never touch the
+  run.
+- It replays the journal, then follows it: a watch on the directory, with a 500 ms poll as a
+  fallback, since inotify is unreliable on `/mnt/c` under WSL. A run is running while the pid in
+  `locks/<KEY>.json` is alive; `ledger.active` is null while a run waits for an answer, so it
+  cannot tell. If a `resume` starts elsewhere while `show` is open, `show` follows it. A process
+  that died without ending cleanly turns the banner into `interrompu, reprends avec resume`.
+- A question pending in the other terminal is shown without its controls; the banner says it
+  waits in the other terminal, with its pid.
+- Without a ticket, it lists the runs — running ones first, then by date — with their phase,
+  escalation and age; typing filters the list, `Enter` opens a run, and `q` from a run goes back
+  to the list.
+- A run from before the journal is rebuilt from its ledger and checkpoints: phase, durations from
+  the timestamps on disk rather than from the moment `show` opened, tasks left running by a dead
+  process marked interrupted, task errors and refused gate feedback, publications. The banner
+  says that agent text and the journal are not there.
+- Without a TTY, `show` refuses and points at `status <ticket>`, which stays plain text.
 
 ## View model
 
@@ -142,10 +183,12 @@ only mirror its state.
 
 ## Slices
 
-Slices 1 to 3 are in place; slice 4 is not.
+Slices 1 to 3 are in place; the others are not.
 
 1. `RunEvent` channel, agent attribution, gate / command / publication events, view model.
    Clack output unchanged.
 2. Read-only dashboard for `start` and `resume`, `--plain`, TTY detection.
 3. Question panels, plan review, bell.
-4. Pre-flight inside the interface, agent image build output piped into the journal.
+4. Event journal, `show`, and `resume` replaying the journal.
+5. `init` ([init.md](init.md)). Its image and check sections bring pre-flight inside the
+   interface, with the agent image build's output shown; `start` and `resume` reuse them.
