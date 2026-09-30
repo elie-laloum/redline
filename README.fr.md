@@ -85,9 +85,7 @@ Un ticket disposant déjà d'un état est repris. Vérifier dans la découverte 
 
 ## Suivre le travail
 
-La vue live montre le périmètre, le plan, l'avancement des dépôts, les questions et les événements. L'autorité sur l'état reste dans les fichiers locaux. Voir les [notes produit](tools/live-shell/PRODUCT.md) et les [notes de design](tools/live-shell/DESIGN.md).
-
-L’animation ci-dessus montre l’interface en fonctionnement avec le [scénario fourni](tools/live-shell/demo). Les étapes pour la reproduire sont dans le [guide de démonstration](docs/demo.md).
+Dans un terminal, `start` et `resume` ouvrent un tableau de bord plein écran : chaque tâche de la phase et son statut, les tokens du ticket, le budget dépensé par juge dans la boucle en cours, les dépôts livrés, les agents de la tâche sélectionnée en direct, et un journal des verdicts, des commandes et des actions publiques. À la fin du run, l'écran reste sur l'issue jusqu'à `q`, puis le rapport texte s'affiche. `--plain`, un pipe ou la CI gardent la sortie texte. Décisions et raccourcis : [docs/tui.md](docs/tui.md).
 
 ## Les vérifications
 

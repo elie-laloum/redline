@@ -7,6 +7,10 @@ const NEXT: Readonly<Record<string, string>> = {
   arbitrage: "Une decision te revient. Tranche-la, puis : bun redline resume {KEY} --fresh --note \"ta decision\"",
 };
 
+export function nextStep(key: string, kind: string): string {
+  return (NEXT[kind] ?? "").replaceAll("{KEY}", key);
+}
+
 export function report(key: string, outcome: DriveOutcome): number {
   switch (outcome.status) {
     case "done": {
@@ -20,7 +24,7 @@ export function report(key: string, outcome: DriveOutcome): number {
     case "escalated": {
       const { escalation } = outcome;
       clack.log.error(`Escalade ${escalation.kind} sur ${escalation.task}\n${escalation.detail}`);
-      clack.outro((NEXT[escalation.kind] ?? "").replaceAll("{KEY}", key));
+      clack.outro(nextStep(key, escalation.kind));
       return 2;
     }
     case "paused":

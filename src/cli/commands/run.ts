@@ -12,8 +12,9 @@ import { offerImageBuild } from "./image.ts";
 import { clackProgress } from "../progress.ts";
 import { report } from "../report.ts";
 import { runSession } from "../session.ts";
+import { type DashboardSession, openDashboard } from "../tui/dashboard.ts";
 
-export async function startCommand(input: string, options: { notes?: string; figma?: string[]; auth?: AuthMode }): Promise<number> {
+export async function startCommand(input: string, options: { notes?: string; figma?: string[]; auth?: AuthMode; plain?: boolean }): Promise<number> {
   const key = normalizeKey(input);
   const app = createContext(options.auth ? { authentication: options.auth } : {});
   await ensureHome(app.paths);
@@ -26,15 +27,15 @@ export async function startCommand(input: string, options: { notes?: string; fig
     writeLedger(app.paths, newLedger({ key, squad: ticket.squad, title: ticket.title, url: ticket.url, notes: options.notes ?? null, figmaOverrides: options.figma ?? [], budgets: app.configuration.settings.budgets }));
     clack.log.info(`${ticket.key} — ${ticket.title}`);
   }
-  return interactive(app, key, {});
+  return interactive(app, key, {}, options);
 }
 
-export async function resumeCommand(input: string, options: { fresh?: boolean; note?: string; auth?: AuthMode }): Promise<number> {
+export async function resumeCommand(input: string, options: { fresh?: boolean; note?: string; auth?: AuthMode; plain?: boolean }): Promise<number> {
   const key = normalizeKey(input);
   const app = createContext(options.auth ? { authentication: options.auth } : {});
   clack.intro(`redline ${key} — reprise`);
   await preflight(app);
-  return interactive(app, key, { resume: true, ...(options.fresh ? { fresh: { note: options.note ?? null } } : {}) });
+  return interactive(app, key, { resume: true, ...(options.fresh ? { fresh: { note: options.note ?? null } } : {}) }, options);
 }
 
 async function preflight(app: AppContext): Promise<void> {
@@ -42,21 +43,31 @@ async function preflight(app: AppContext): Promise<void> {
   await sandboxPreflight(app, { build: offerImageBuild });
 }
 
-async function interactive(app: AppContext, key: string, request: DriveRequest): Promise<number> {
+async function interactive(app: AppContext, key: string, request: DriveRequest, options: { plain?: boolean }): Promise<number> {
   const controller = new AbortController();
+  let dashboard: DashboardSession | null = null;
   const interrupt = () => {
     if (controller.signal.aborted) {
       killRunningCommands();
+      dashboard?.close();
       process.exit(130);
     }
-    clack.log.warn("Interruption demandee : le run s'arrete proprement (Ctrl-C encore pour forcer).");
+    if (dashboard) dashboard.stopping();
+    else clack.log.warn("Interruption demandee : le run s'arrete proprement (Ctrl-C encore pour forcer).");
     controller.abort();
   };
   process.on("SIGINT", interrupt);
   try {
-    const outcome = await runSession(app, key, request, { prompter: clackPrompter, progress: clackProgress(), signal: controller.signal });
+    if (!options.plain && process.stdout.isTTY && process.stdin.isTTY) {
+      dashboard = await openDashboard({ key, title: readLedger(app.paths, key)?.title ?? "" }, { interrupt });
+    }
+    const session = dashboard ?? { prompter: clackPrompter, progress: clackProgress() };
+    const outcome = await runSession(app, key, request, { prompter: session.prompter, progress: session.progress, signal: controller.signal });
+    if (dashboard) await dashboard.finish(outcome);
+    dashboard?.close();
     return report(key, outcome);
   } finally {
+    dashboard?.close();
     process.off("SIGINT", interrupt);
   }
 }

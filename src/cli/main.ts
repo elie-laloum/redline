@@ -27,7 +27,8 @@ program
   .option("--notes <texte>", "consigne transmise a tous les agents")
   .option("--figma <url...>", "maquettes a prendre en compte en plus de celles du ticket")
   .addOption(authOption())
-  .action((ticket: string, options: { notes?: string; figma?: string[]; auth?: AuthMode }) => guarded(() => startCommand(ticket, options)));
+  .option("--plain", "sortie texte au lieu du tableau de bord plein ecran")
+  .action((ticket: string, options: { notes?: string; figma?: string[]; auth?: AuthMode; plain?: boolean }) => guarded(() => startCommand(ticket, options)));
 
 program
   .command("resume")
@@ -36,7 +37,8 @@ program
   .option("--fresh", "rouvre la tache escaladee avec un budget neuf")
   .option("--note <texte>", "consigne transmise a la tache rouverte")
   .addOption(authOption())
-  .action((ticket: string, options: { fresh?: boolean; note?: string; auth?: AuthMode }) => guarded(() => resumeCommand(ticket, options)));
+  .option("--plain", "sortie texte au lieu du tableau de bord plein ecran")
+  .action((ticket: string, options: { fresh?: boolean; note?: string; auth?: AuthMode; plain?: boolean }) => guarded(() => resumeCommand(ticket, options)));
 
 program
   .command("status")

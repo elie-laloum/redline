@@ -80,6 +80,14 @@ bun redline resume <KEY>                        # after fixing the environment
 bun redline resume <KEY> --fresh --note "…"     # reopen the escalated task with a new budget
 ```
 
+## Watching a run
+
+In a terminal, `start` and `resume` open a full-screen dashboard: every task of the phase with
+its status, the ticket's tokens, the loop's spent budget per gate, the repositories delivered,
+the selected task's agents live, and a journal of verdicts, commands and public actions. When the
+run ends the screen stays on the outcome until `q`, then the plain report is printed. `--plain`,
+a pipe or CI keep the plain-text output. Decisions and keys: [docs/tui.md](docs/tui.md).
+
 ## Where things live
 
 **The project holds the code and the templates.**
@@ -87,7 +95,8 @@ bun redline resume <KEY> --fresh --note "…"     # reopen the escalated task wi
 ```
 redline/
 ├── src/
-│   ├── cli/          commander + clack: start, resume, status, clear, check, bench, image, migrate-home
+│   ├── cli/          commander + clack: start, resume, status, clear, check, bench, image, migrate-home;
+│   │                 dashboard/ (pure view model) and tui/ (OpenTUI dashboard)
 │   ├── app/          composition root, phase driver, ledger, lock, settings, home
 │   ├── phases/       framing/, delivery/, closing/ — one outpost workflow each
 │   ├── workflow/     converge (loops with per-gate budgets), durable interview, memo
