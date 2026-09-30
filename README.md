@@ -145,8 +145,12 @@ cp templates/env.example ~/.redline/.env                             # then fill
 cp templates/redline.example.yaml ~/.redline/redline.yaml
 cp templates/repositories.example.yaml ~/.redline/repositories.yaml  # your repositories
 cp templates/voice.template.md ~/.redline/voice.md                   # your voice — see below
+bun redline image build                                              # the agent image, built locally
 bun redline check
 ```
+
+`start` and `resume` first check that Docker answers and that the agent image exists; when it
+does not, they offer to build it.
 
 The CLI is also published on npm as `@elie-laloum/redline`. It still runs on Bun:
 `bun add -g @elie-laloum/redline`, then `redline check`. The templates ship with the package.

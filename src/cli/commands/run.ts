@@ -4,8 +4,10 @@ import { type AppContext, createContext } from "../../app/context.ts";
 import type { DriveRequest } from "../../app/driver.ts";
 import { ensureHome } from "../../app/home.ts";
 import { newLedger, readLedger, writeLedger } from "../../app/ledger.ts";
+import { sandboxPreflight } from "../../app/preflight.ts";
 import { normalizeKey } from "../../domain/ticket.ts";
 import { clackPrompter } from "../ask.ts";
+import { offerImageBuild } from "./image.ts";
 import { clackProgress } from "../progress.ts";
 import { report } from "../report.ts";
 import { runSession } from "../session.ts";
@@ -15,6 +17,7 @@ export async function startCommand(input: string, options: { notes?: string; fig
   const app = createContext();
   await ensureHome(app.paths);
   clack.intro(`redline ${key}`);
+  await sandboxPreflight(app, { build: offerImageBuild });
   if (readLedger(app.paths, key)) {
     clack.log.info("Un run existe deja pour ce ticket : il reprend la ou il en etait.");
   } else {
@@ -29,6 +32,7 @@ export async function resumeCommand(input: string, options: { fresh?: boolean; n
   const key = normalizeKey(input);
   const app = createContext();
   clack.intro(`redline ${key} — reprise`);
+  await sandboxPreflight(app, { build: offerImageBuild });
   return interactive(app, key, { resume: true, ...(options.fresh ? { fresh: { note: options.note ?? null } } : {}) });
 }
 
