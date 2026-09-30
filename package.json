@@ -1,12 +1,11 @@
 {
-  "name": "redline",
+  "name": "@elie-laloum/redline",
   "version": "3.0.0",
-  "private": true,
   "license": "MIT",
   "author": "Elie Laloum <pro@elielaloum.com>",
   "repository": {
     "type": "git",
-    "url": "https://gitlab.com/e.laloum/autopilot.git"
+    "url": "https://github.com/elie-laloum/redline.git"
   },
   "type": "module",
   "description": "Autonomous delivery from a Jira ticket: framing, adversarial TDD repo by repo, memory, publication.",
@@ -35,5 +34,10 @@
   },
   "bin": {
     "redline": "src/cli/main.ts"
-  }
+  },
+  "files": [
+    "src",
+    "templates",
+    "docker"
+  ]
 }

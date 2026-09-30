@@ -142,6 +142,9 @@ cp templates/voice.template.md ~/.redline/voice.md                   # your voic
 bun redline check
 ```
 
+The CLI is also published on npm as `@elie-laloum/redline`. It still runs on Bun:
+`bun add -g @elie-laloum/redline`, then `redline check`. The templates ship with the package.
+
 `bun redline check` is the one command to run after any change: it validates the settings and
 the registry, reports missing tokens, checks Docker, the agent image and your Claude
 credentials, and warns about registry checkouts that are dirty or off their base branch —
