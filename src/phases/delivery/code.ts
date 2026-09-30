@@ -14,7 +14,7 @@ import { batches, type PlanCode } from "../../domain/plan.ts";
 import type { Contradiction } from "../../domain/scope.ts";
 import { isTestFile } from "../../domain/zones.ts";
 import { type Converged, converge, type Gate, type Verdict } from "../../workflow/converge.ts";
-import { cached, session } from "../run.ts";
+import { cached, commandObserver, session } from "../run.ts";
 import { commitWork } from "./commit.ts";
 import { arbitragesOf, type DeliveryContext, monorepoFilter, type RepoTarget, seedOf, withTarget } from "./context.ts";
 import type { TestsCandidate } from "./tests.ts";
@@ -26,14 +26,18 @@ export interface CodeCandidate {
   readonly contradictions: readonly Contradiction[];
 }
 
-type DeveloperTurn = { feedback: string | null; lines: readonly PlanCode[] };
+type DeveloperTurn = { task: string; feedback: string | null; lines: readonly PlanCode[] };
+
+function codeKey(target: RepoTarget): string {
+  return `${target.repo.name}.code`;
+}
 
 async function developerTurn(run: DeliveryContext, target: RepoTarget, context: TaskContext, turn: DeveloperTurn): Promise<CodeCandidate> {
   const { settings } = run.app.configuration;
   return withTarget(run, target, async (opened) => {
     const baseline = await git(opened.directory, ["rev-parse", "HEAD"]);
     const reply = await opened.withSandbox((sandbox) =>
-      ask(context, session(run, sandbox), developer, {
+      ask(context, session(run, sandbox, { task: turn.task }), developer, {
         ticket: run.framing.ticket,
         notes: run.ledger.notes,
         entry: target.entry,
@@ -74,12 +78,13 @@ export function batchTasks(run: DeliveryContext, target: RepoTarget, tests: Task
   const tasks: Task<CodeCandidate>[] = [];
   for (const [index, lines] of batches(target.entry.code, size).entries()) {
     const previous = tasks.at(-1);
+    const key = `${target.repo.name}.code-${index + 1}`;
     tasks.push(
       defineTask({
-        key: `${target.repo.name}.code-${index + 1}`,
+        key,
         after: [tests, ...(previous ? [previous] : [])],
         cache: cached(run, ["developer"], () => digest({ entry: target.entry, lines, branch: target.branch, arbitrages: arbitragesOf(run) })),
-        perform: (context) => developerTurn(run, target, context, { feedback: null, lines }),
+        perform: (context) => developerTurn(run, target, context, { task: key, feedback: null, lines }),
       }),
     );
   }
@@ -87,13 +92,14 @@ export function batchTasks(run: DeliveryContext, target: RepoTarget, tests: Task
 }
 
 export function codeTask(run: DeliveryContext, target: RepoTarget, tests: Task<Converged<TestsCandidate>>, lots: readonly Task<CodeCandidate>[]): Task<Converged<CodeCandidate>> {
-  const key = `${target.repo.name}.code`;
+  const key = codeKey(target);
   const budgets = run.ledger.budgets;
   return converge<CodeCandidate>({
     key,
     after: [tests, ...lots],
     cache: cached(run, ["developer", "appeal-arbiter", "test-adversary", "code-adversary"], () => digest({ entry: target.entry, branch: target.branch, seed: seedOf(run, key) })),
     seed: () => seedOf(run, key),
+    ...(run.events ? { events: run.events } : {}),
     make: async (context, carry) => {
       if (carry.round === 1 && !carry.feedback) {
         const produced = lots.map((lot) => context.value(lot));
@@ -104,7 +110,7 @@ export function codeTask(run: DeliveryContext, target: RepoTarget, tests: Task<C
           contradictions: produced.flatMap((lot) => lot.contradictions),
         };
       }
-      return developerTurn(run, target, context, { feedback: carry.feedback?.text ?? null, lines: target.entry.code });
+      return developerTurn(run, target, context, { task: key, feedback: carry.feedback?.text ?? null, lines: target.entry.code });
     },
     gates: [
       appealsGate(run, target, budgets.testDispute, budgets.disputeBeforeEscalation),
@@ -143,7 +149,7 @@ async function arbitrate(run: DeliveryContext, target: RepoTarget, context: Loop
   const { settings } = run.app.configuration;
   return withTarget(run, target, async (opened) => {
     const baseline = await git(opened.directory, ["rev-parse", "HEAD"]);
-    const reply = await opened.withSandbox((sandbox) => ask(context, session(run, sandbox), appealArbiter, { notes: run.ledger.notes, repo: target.repo.name, tests: target.entry.tests, appeal, previous: [] }));
+    const reply = await opened.withSandbox((sandbox) => ask(context, session(run, sandbox, { task: codeKey(target) }), appealArbiter, { notes: run.ledger.notes, repo: target.repo.name, tests: target.entry.tests, appeal, previous: [] }));
     if (reply.decision === "accepte") {
       await commitWork({
         directory: opened.directory,
@@ -169,7 +175,7 @@ function integrityGate(run: DeliveryContext, target: RepoTarget, tests: Task<Con
         const changed = (await git(opened.directory, ["diff", "--name-only", `${since}..HEAD`])).split("\n").filter((path) => path && isTestFile(path));
         if (changed.length === 0 || target.entry.tests.length === 0) return { kind: "pass" };
         const verdict = await opened.withSandbox((sandbox) =>
-          ask(context, session(run, sandbox), testAdversary, { ticket: run.framing.ticket, notes: run.ledger.notes, repo: target.repo.name, tests: target.entry.tests, files: changed, kinds: declaredTestKinds(target.repo) }),
+          ask(context, session(run, sandbox, { task: codeKey(target) }), testAdversary, { ticket: run.framing.ticket, notes: run.ledger.notes, repo: target.repo.name, tests: target.entry.tests, files: changed, kinds: declaredTestKinds(target.repo) }),
         );
         const failing = failingLines(verdict.lines);
         return failing.length === 0 ? { kind: "pass" } : { kind: "arbitrage", text: `Des tests modifies par l'arbitre ne tiennent plus la checklist :\n${renderVerdicts(failing)}` };
@@ -188,7 +194,7 @@ function greenGate(run: DeliveryContext, target: RepoTarget, key: string, budget
         const filter = await monorepoFilter(target, opened.directory);
         const failures: string[] = [];
         for (const kind of kinds) {
-          const result = await checks.run(target.repo, kind, opened.directory, { filter, label: `${key}-${kind}`, ...(run.signal ? { signal: run.signal } : {}) });
+          const result = await checks.run(target.repo, kind, opened.directory, { filter, label: `${key}-${kind}`, observe: commandObserver(run, key, kind), ...(run.signal ? { signal: run.signal } : {}) });
           if (result.stoppedBy === "silence" || result.stoppedBy === "timeout") return { kind: "environment", text: renderCheck(result) };
           if (!result.passed) failures.push(renderCheck(result));
         }
@@ -205,7 +211,7 @@ function codeAdversaryGate(run: DeliveryContext, target: RepoTarget, budget: num
       withTarget(run, target, async (opened): Promise<Verdict> => {
         const base = await git(opened.directory, ["merge-base", "HEAD", `origin/${target.repo.baseBranch}`]);
         const verdict = await opened.withSandbox((sandbox) =>
-          ask(context, session(run, sandbox), codeAdversary, { ticket: run.framing.ticket, notes: run.ledger.notes, repo: target.repo.name, code: target.entry.code, arbitrages: arbitragesOf(run), base }),
+          ask(context, session(run, sandbox, { task: codeKey(target) }), codeAdversary, { ticket: run.framing.ticket, notes: run.ledger.notes, repo: target.repo.name, code: target.entry.code, arbitrages: arbitragesOf(run), base }),
         );
         const failing = failingLines(verdict.lines);
         return failing.length === 0 ? { kind: "pass" } : { kind: "feedback", text: `L'adversaire du code refuse ces lignes :\n${renderVerdicts(failing)}` };

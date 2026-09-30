@@ -1,4 +1,5 @@
 import { defineLoopTask, type LoopTaskContext, type Task, type TaskCacheOptions, type TaskContext, type WorkflowJson } from "@elie-laloum/outpost";
+import type { RunObserver } from "../domain/run-events.ts";
 import { Escalation } from "./escalation.ts";
 
 export type Verdict =
@@ -33,6 +34,7 @@ export interface ConvergeOptions<C> {
   readonly gates: readonly Gate<C>[];
   readonly cache?: TaskCacheOptions;
   readonly timeoutMs?: number;
+  readonly events?: RunObserver;
 }
 
 export function converge<C>(options: ConvergeOptions<C>): Task<Converged<C>> {
@@ -53,8 +55,18 @@ export function converge<C>(options: ConvergeOptions<C>): Task<Converged<C>> {
         const verdict = await gate.judge(context, candidate, { ...carry, memo });
         if (verdict.kind === "environment" || verdict.kind === "arbitrage") throw new Escalation(verdict.kind, `${options.key}/${gate.name}`, verdict.text);
         if (verdict.memo !== undefined) memo[gate.name] = verdict.memo;
+        const spent = (carry.spent[gate.name] ?? 0) + (verdict.kind === "pass" ? 0 : 1);
+        options.events?.({
+          type: "gate",
+          task: options.key,
+          gate: gate.name,
+          round: carry.round,
+          verdict: verdict.kind,
+          spent,
+          budget: gate.budget,
+          text: verdict.kind === "pass" ? null : verdict.text,
+        });
         if (verdict.kind === "pass") continue;
-        const spent = (carry.spent[gate.name] ?? 0) + 1;
         if (spent > gate.budget) {
           throw new Escalation("convergence", `${options.key}/${gate.name}`, `budget de ${gate.budget} tour(s) epuise. Dernier retour : ${verdict.text}`);
         }

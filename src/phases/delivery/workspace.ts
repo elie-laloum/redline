@@ -7,6 +7,7 @@ import { git, gitAllowFailure } from "../../adapters/git.ts";
 import { installCommand } from "../../domain/monorepo.ts";
 import { Escalation } from "../../workflow/escalation.ts";
 import { applyUpgrades } from "./bump.ts";
+import { commandObserver } from "../run.ts";
 import { type DeliveryContext, type RepoTarget, withTarget } from "./context.ts";
 import type { Release } from "./summary.ts";
 
@@ -47,7 +48,17 @@ async function install(run: DeliveryContext, target: RepoTarget, directory: stri
   if (!existsSync(join(directory, "package.json"))) return;
   if (!force && existsSync(join(directory, "node_modules"))) return;
   const seconds = run.app.configuration.settings.timeouts.repoSetupSeconds;
-  const result = await execute(installCommand(target.repo.packageManager), { cwd: directory, timeoutMs: seconds * 1000, silenceMs: seconds * 1000, ...(run.signal ? { signal: run.signal } : {}) });
+  const command = installCommand(target.repo.packageManager);
+  const observe = commandObserver(run, `${target.repo.name}.workspace`, "install");
+  observe?.start(command);
+  const result = await execute(command, {
+    cwd: directory,
+    timeoutMs: seconds * 1000,
+    silenceMs: seconds * 1000,
+    ...(observe ? { onProgress: observe.progress } : {}),
+    ...(run.signal ? { signal: run.signal } : {}),
+  });
+  observe?.end({ elapsedMs: result.durationMs, exitCode: result.exitCode, passed: result.exitCode === 0, logPath: result.logPath });
   if (result.exitCode !== 0) {
     throw new Escalation("environment", `${target.repo.name}.workspace`, `installation des dependances en echec : ${stopReason(result) ?? (result.stderr || result.stdout).trim().slice(-800)}`);
   }

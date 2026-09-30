@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { afterAll, describe, it } from "bun:test";
 import { createLocalTransport, createWorkflowCheckpointStore, defineWorkflow, type WorkflowJson } from "@elie-laloum/outpost";
 import { parseEscalation } from "../../src/domain/escalation.ts";
+import type { RunEvent, RunObserver } from "../../src/domain/run-events.ts";
 import { type Carry, converge, type Gate, type Verdict } from "../../src/workflow/converge.ts";
 import { temporaryDirectory } from "../helpers.ts";
 
@@ -21,10 +22,11 @@ function scriptedGate(name: string, budget: number, verdicts: Verdict[]): Gate<W
   return gate;
 }
 
-async function execute(gates: Gate<WorkflowJson>[], seed: string | null = null) {
+async function execute(gates: Gate<WorkflowJson>[], seed: string | null = null, events?: RunObserver) {
   const carries: Carry[] = [];
   const task = converge({
     key: "repo.tests",
+    ...(events ? { events } : {}),
     seed: () => seed,
     make: async (_context, carry) => {
       carries.push(carry);
@@ -44,6 +46,30 @@ describe("converge", () => {
     result.unwrap();
     assert.deepEqual(carries.map((carry) => carry.feedback?.text ?? null), [null, "T2 ne verifie rien", "rouge pour une erreur d'import"]);
     assert.deepEqual(result.value(task).carry.spent, { adversary: 1, red: 1 });
+  });
+
+  it("publie chaque verdict avec ce que le juge a depense de son budget", async () => {
+    const events: RunEvent[] = [];
+    const adversary = scriptedGate("adversary", 2, [{ kind: "feedback", text: "T2 ne verifie rien" }]);
+    const red = scriptedGate("red", 3, []);
+    const { result } = await execute([adversary, red], null, (event) => events.push(event));
+    result.unwrap();
+    assert.deepEqual(
+      events.map((event) => (event.type === "gate" ? [event.round, event.gate, event.verdict, event.spent, event.budget, event.text] : event.type)),
+      [
+        [1, "adversary", "feedback", 1, 2, "T2 ne verifie rien"],
+        [2, "adversary", "pass", 1, 2, null],
+        [2, "red", "pass", 0, 3, null],
+      ],
+    );
+  });
+
+  it("publie le verdict qui fait deborder le budget avant d'escalader", async () => {
+    const events: RunEvent[] = [];
+    const adversary = scriptedGate("adversary", 1, [{ kind: "feedback", text: "a" }, { kind: "feedback", text: "b" }]);
+    const { result } = await execute([adversary], null, (event) => events.push(event));
+    assert.equal(result.status, "failed");
+    assert.deepEqual(events.at(-1), { type: "gate", task: "repo.tests", gate: "adversary", round: 2, verdict: "feedback", spent: 2, budget: 1, text: "b" });
   });
 
   it("transmet la note humaine au premier tour", async () => {

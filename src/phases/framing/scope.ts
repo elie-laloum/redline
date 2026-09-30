@@ -61,7 +61,7 @@ export function scopeTask(run: RunContext, deps: { ticket: Task<TicketSnapshot>;
 async function scout(run: RunContext, context: TaskContext, repo: RepoEntry, ticket: TicketSnapshot, functional: string): Promise<Scouted> {
   const root = expandTilde(repo.path);
   const memory = renderNotes(selectNotes(run.app.memory().list(), { text: `${ticket.title}\n${ticket.description}`, repos: [repo.name] }, run.app.configuration.settings.memory.selection));
-  return withReader(run, `scout-${repo.name}`, async (session, reader) => {
+  return withReader(run, `scout-${repo.name}`, { task: "scope", lane: repo.name }, async (session, reader) => {
     let feedback: string | null = null;
     for (let attempt = 1; attempt <= 2; attempt += 1) {
       const reply = await ask(context, session, scopeScout, { ticket, notes: run.ledger.notes, functional, repo, path: reader.repoPath(repo.name), memory, feedback });

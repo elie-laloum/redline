@@ -8,6 +8,7 @@ import { readLedger, writeLedger } from "../../src/app/ledger.ts";
 import { lockFile, runDirectory } from "../../src/app/paths.ts";
 import type { Prompter } from "../../src/cli/ask.ts";
 import { silentProgress } from "../../src/cli/progress.ts";
+import type { RunEvent } from "../../src/domain/run-events.ts";
 import { runSession } from "../../src/cli/session.ts";
 import type { Script } from "../kit/agents.ts";
 import { codePass, codeRefuse, codeReply, IMPLEMENTATION, memoryReply, merge, proseReply, testsPhase } from "../kit/delivery.ts";
@@ -54,6 +55,42 @@ describe("une session redline", () => {
     assert.equal(git(world.app.paths.home, "log", "--format=%s", "-1"), "memory: FT-1");
     assert.ok(!existsSync(lockFile(world.app.paths, "FT-1")));
     assert.deepEqual(world.agents.remaining(), {});
+  });
+
+  it("publie ce qui se passe sur un seul canal, chaque agent rattache a sa tache", async () => {
+    world = await createWorld({ issues: [ISSUE], script: merge(framing, testsPhase, { developer: [implement], "code-adversary": [{ reply: codePass(["C1"]) }] }, closing) as Script });
+    world.ledger("FT-1");
+    const events: RunEvent[] = [];
+    await runSession(world.app, "FT-1", {}, { prompter: scripted(["Mois en cours", "Approuver"]), progress: { event: (event) => events.push(event), pause: () => {} } });
+
+    const phases = events.flatMap((event) => (event.type === "phase" ? [event] : []));
+    assert.deepEqual([...new Set(phases.map((event) => event.phase))], ["framing", "delivery", "closing"]);
+    assert.deepEqual(phases.find((event) => event.phase === "delivery")?.repos, ["fixture-core"]);
+    const usage = readLedger(world.app.paths, "FT-1")?.usage ?? {};
+    assert.deepEqual(Object.keys(usage), ["FT-1/framing/1", "FT-1/delivery/1", "FT-1/closing/1"]);
+    const spent = (runId: string) => (usage[runId]?.input ?? 0) + (usage[runId]?.output ?? 0);
+    const closingStart = phases.find((event) => event.phase === "closing");
+    assert.ok(spent("FT-1/framing/1") > 0 && spent("FT-1/delivery/1") > 0);
+    assert.equal((closingStart?.earlier.input ?? 0) + (closingStart?.earlier.output ?? 0), spent("FT-1/framing/1") + spent("FT-1/delivery/1"));
+    const [fresh, afterGrill] = phases.filter((event) => event.phase === "framing");
+    assert.equal(fresh?.tasks.find((task) => task.key === "ticket")?.status, "waiting");
+    assert.equal(afterGrill?.tasks.find((task) => task.key === "ticket")?.status, "done");
+    assert.equal(afterGrill?.tasks.find((task) => task.key === "plan")?.status, "waiting");
+
+    const sources = new Set(events.flatMap((event) => (event.type === "agent" ? [`${event.role}@${event.source.task}${event.source.lane ? `/${event.source.lane}` : ""}`] : [])));
+    assert.ok(sources.has("scope-scout@scope/fixture-core"));
+    assert.ok(sources.has("planner@plan"));
+    assert.ok(sources.has("developer@fixture-core.code-1"));
+    assert.ok(sources.has("code-adversary@fixture-core.code"));
+
+    assert.ok(events.some((event) => event.type === "gate" && event.task === "fixture-core.code" && event.gate === "adversaire" && event.verdict === "pass"));
+    const commands = events.flatMap((event) => (event.type === "command" && event.status !== "progress" ? [`${event.task}:${event.label}:${event.status}`] : []));
+    assert.ok(commands.includes("fixture-core.tests:ut:start"));
+    assert.ok(commands.includes("fixture-core.code:ut:end"));
+    assert.deepEqual(
+      events.flatMap((event) => (event.type === "publication" ? [event.action] : [])),
+      ["push", "merge-request", "slack", "jira", "jira"],
+    );
   });
 
   it("refuse de lancer un ticket deja en cours", async () => {

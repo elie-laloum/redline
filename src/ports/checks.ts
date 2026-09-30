@@ -1,12 +1,19 @@
 import type { CommandKind, RepoEntry } from "../domain/config.ts";
 import type { Diagnostic } from "../domain/reports.ts";
 
+export interface CommandObserver {
+  start(command: string): void;
+  progress(elapsedMs: number): void;
+  end(outcome: { readonly elapsedMs: number; readonly exitCode: number; readonly passed: boolean; readonly logPath: string | null }): void;
+}
+
 export interface CheckOptions {
   readonly paths?: readonly string[];
   readonly focus?: string;
   readonly filter?: string;
   readonly signal?: AbortSignal;
   readonly label?: string;
+  readonly observe?: CommandObserver;
 }
 
 export interface CheckReport {

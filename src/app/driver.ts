@@ -1,7 +1,7 @@
-import type { AgentObservation, Logging, Workflow, WorkflowAnswer, WorkflowEvent, WorkflowInputRequest, WorkflowResult } from "@elie-laloum/outpost";
+import type { Logging, Workflow, WorkflowAnswer, WorkflowCheckpoint, WorkflowCheckpointStore, WorkflowEvent, WorkflowInputRequest, WorkflowResult } from "@elie-laloum/outpost";
 import { type EscalationRecord, parseEscalation } from "../domain/escalation.ts";
 import { describeError } from "../domain/failure.ts";
-import type { RoleName } from "../domain/roles.ts";
+import { addTokens, NO_TOKENS, type PhaseTask, type RunEvent, type RunObserver, type RunPhase, type Tokens } from "../domain/run-events.ts";
 import type { ClosingContext } from "../phases/closing/context.ts";
 import { defineClosing, type Publication } from "../phases/closing/workflow.ts";
 import { defineDelivery } from "../phases/delivery/workflow.ts";
@@ -27,8 +27,7 @@ export type DriveOutcome =
 
 export interface DriveOptions {
   readonly signal?: AbortSignal;
-  readonly observe?: (event: WorkflowEvent) => void;
-  readonly agentObserve?: (role: RoleName, event: AgentObservation) => void;
+  readonly events?: RunObserver;
   readonly logging?: Logging;
   readonly version?: string;
 }
@@ -64,7 +63,7 @@ async function step(app: AppContext, ledger: Ledger, answers: readonly WorkflowA
     ledger,
     cache: storageFor(app.paths, key).cache,
     ...(options.logging !== undefined ? { logging: options.logging } : {}),
-    ...(options.agentObserve ? { observe: options.agentObserve } : {}),
+    ...(options.events ? { events: options.events } : {}),
     ...(options.signal ? { signal: options.signal } : {}),
   };
   switch (ledger.phase) {
@@ -74,44 +73,103 @@ async function step(app: AppContext, ledger: Ledger, answers: readonly WorkflowA
       return { outcome: { status: "escalated", escalation: ledger.escalation ?? unknownEscalation() } };
     case "framing": {
       const framing = defineFraming(run);
-      const result = await start(app, ledger, framing.workflow, `${key}/framing/${ledger.framing.attempt}`, answers, options);
+      const result = await start(app, ledger, framing.workflow, { phase: "framing", runId: `${key}/framing/${ledger.framing.attempt}`, repos: [] }, answers, options);
       const halted = await halt(app, ledger, "framing", result);
       if (halted) return halted;
       const outcome = framing.outcome(result);
-      return { ledger: save(app, outcome.decision === "approve" ? approve(ledger, outcome) : reopen(ledger, outcome)) };
+      const current = latest(app, ledger);
+      return { ledger: save(app, outcome.decision === "approve" ? approve(current, outcome) : reopen(current, outcome)) };
     }
     case "delivery": {
       const delivery = defineDelivery({ ...run, framing: approvedOf(ledger) });
-      const result = await start(app, ledger, delivery.workflow, `${key}/delivery/${ledger.delivery.generation}`, undefined, options);
+      const repos = approvedOf(ledger).plan.repos.map((repo) => repo.repo);
+      const result = await start(app, ledger, delivery.workflow, { phase: "delivery", runId: `${key}/delivery/${ledger.delivery.generation}`, repos }, undefined, options);
       const halted = await halt(app, ledger, "delivery", result);
       if (halted) return halted;
-      return { ledger: save(app, recordEvent({ ...ledger, phase: "closing", delivered: delivery.outcome(result) }, "livraison terminee")) };
+      return { ledger: save(app, recordEvent({ ...latest(app, ledger), phase: "closing", delivered: delivery.outcome(result) }, "livraison terminee")) };
     }
     case "closing": {
       const context: ClosingContext = { ...run, framing: approvedOf(ledger), delivered: deliveredOf(ledger) };
       const closing = defineClosing(context);
-      const result = await start(app, ledger, closing.workflow, `${key}/closing/${ledger.closing.attempt}`, undefined, options);
+      const repos = deliveredOf(ledger).map((repo) => repo.repo);
+      const result = await start(app, ledger, closing.workflow, { phase: "closing", runId: `${key}/closing/${ledger.closing.attempt}`, repos }, undefined, options);
       const halted = await halt(app, ledger, "closing", result);
       if (halted) return halted;
-      return { ledger: save(app, recordEvent({ ...ledger, phase: "done", publication: closing.outcome(result) }, "publication terminee")) };
+      return { ledger: save(app, recordEvent({ ...latest(app, ledger), phase: "done", publication: closing.outcome(result) }, "publication terminee")) };
     }
   }
 }
 
-async function start(app: AppContext, ledger: Ledger, workflow: Workflow, runId: string, answers: readonly WorkflowAnswer[] | undefined, options: DriveOptions): Promise<WorkflowResult> {
+interface Stage {
+  readonly phase: RunPhase;
+  readonly runId: string;
+  readonly repos: readonly string[];
+}
+
+async function start(app: AppContext, ledger: Ledger, workflow: Workflow, stage: Stage, answers: readonly WorkflowAnswer[] | undefined, options: DriveOptions): Promise<WorkflowResult> {
+  const { runId } = stage;
+  const checkpoints = storageFor(app.paths, ledger.key).checkpoints;
+  const events = options.events;
+  const earlier = Object.entries(ledger.usage).reduce((total, [other, tokens]) => (other === runId ? total : addTokens(total, tokens)), NO_TOKENS);
   save(app, { ...ledger, active: { runId, pid: process.pid } });
+  let spent: Tokens | null = null;
   try {
-    return await workflow.start({
-      checkpoint: { store: storageFor(app.paths, ledger.key).checkpoints, runId, version: options.version ?? checkpointVersion(), resume: "retry-incomplete" },
+    const result = await workflow.start({
+      checkpoint: { store: events ? announcing(checkpoints, (checkpoint) => events(phaseEvent(workflow, stage, checkpoint, earlier))) : checkpoints, runId, version: options.version ?? checkpointVersion(), resume: "retry-incomplete" },
       onQuota: { action: "pause" },
       ...(answers?.length ? { answers } : {}),
       ...(options.signal ? { signal: options.signal } : {}),
-      ...(options.observe ? { observe: options.observe } : {}),
+      ...(events ? { observe: (event: WorkflowEvent) => events({ type: "workflow", event }) } : {}),
     });
+    const { input, cached, output } = result.usage.tokens;
+    spent = { input, cached, output };
+    return result;
   } finally {
     const current = readLedger(app.paths, ledger.key);
-    if (current) writeLedger(app.paths, { ...current, active: null });
+    if (current) writeLedger(app.paths, { ...current, active: null, ...(spent ? { usage: { ...current.usage, [runId]: spent } } : {}) });
   }
+}
+
+/** start() records the run's usage on disk: a transition written after it builds on that ledger. */
+function latest(app: AppContext, ledger: Ledger): Ledger {
+  return readLedger(app.paths, ledger.key) ?? ledger;
+}
+
+/** Outpost writes the whole checkpoint once before running any task: the phase is announced from it, restored tasks included. */
+function announcing(store: WorkflowCheckpointStore, announce: (checkpoint: WorkflowCheckpoint) => void): WorkflowCheckpointStore {
+  return {
+    async acquire(runId) {
+      const lease = await store.acquire(runId);
+      let announced = false;
+      return {
+        read: () => lease.read(),
+        release: () => lease.release(),
+        async write(checkpoint) {
+          await lease.write(checkpoint);
+          if (announced) return;
+          announced = true;
+          announce(checkpoint);
+        },
+      };
+    },
+  };
+}
+
+function phaseEvent(workflow: Workflow, stage: Stage, checkpoint: WorkflowCheckpoint, earlier: Tokens): RunEvent {
+  const records = new Map(checkpoint.records.map((record) => [record.key, record]));
+  const tasks = workflow.tasks.map((task): PhaseTask => {
+    const record = records.get(task.key);
+    return {
+      key: task.key,
+      status: record?.status ?? "waiting",
+      attempts: record?.attempts ?? 0,
+      startedAt: record?.startedAt ?? null,
+      finishedAt: record?.finishedAt ?? null,
+      cached: record?.cacheHit === true,
+    };
+  });
+  const { input, cached, output } = checkpoint.usage.tokens;
+  return { type: "phase", phase: stage.phase, tasks, repos: stage.repos, usage: { input, cached, output }, earlier };
 }
 
 async function halt(app: AppContext, ledger: Ledger, phase: "framing" | "delivery" | "closing", result: WorkflowResult): Promise<{ outcome: DriveOutcome } | null> {

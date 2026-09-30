@@ -3,6 +3,7 @@ import { manifestVersion } from "../../adapters/packages.ts";
 import { git, gitAllowFailure, listTags } from "../../adapters/git.ts";
 import { parseDevVersion, nextDevVersion } from "../../domain/versions.ts";
 import { Escalation } from "../../workflow/escalation.ts";
+import { emit } from "../run.ts";
 import { type DeliveryContext, type RepoTarget, withTarget } from "./context.ts";
 import type { Release } from "./summary.ts";
 
@@ -21,6 +22,7 @@ export function releaseTask(run: DeliveryContext, target: RepoTarget, after: rea
         const tag = (await tagAtHead(directory, base, run.ledger.key)) ?? (await createTag(directory, base, run.ledger.key, settings.naming.devVersionSuffix));
         const pushed = await gitAllowFailure(directory, ["push", "-q", "origin", `refs/tags/${tag}`], 300_000);
         if (!pushed.ok) throw new Escalation("environment", key, `push du tag ${tag} refuse : ${pushed.stderr}`);
+        emit(run, { type: "publication", task: key, action: "tag", detail: `tag ${tag} pousse`, url: null });
         const watch = await run.app.services.forge.watchPipeline({
           project: target.repo.gitlabProject,
           ref: tag,
@@ -29,6 +31,7 @@ export function releaseTask(run: DeliveryContext, target: RepoTarget, after: rea
           pollSeconds: settings.timeouts.ciPollSeconds,
           ...(run.signal ? { signal: run.signal } : {}),
         });
+        emit(run, { type: "publication", task: key, action: "pipeline", detail: `pipeline du tag ${tag} : ${watch.verdict}`, url: watch.url ?? null });
         if (watch.verdict !== "success") {
           const jobs = watch.jobs.map((job) => `${job.name}=${job.status}`).join(", ");
           throw new Escalation("environment", key, `pipeline du tag ${tag} : ${watch.verdict} apres ${watch.waitedSeconds}s${jobs ? ` (${jobs})` : ""}${watch.url ? ` — ${watch.url}` : ""}`);

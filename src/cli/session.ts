@@ -23,8 +23,7 @@ export async function runSession(app: AppContext, key: string, first: DriveReque
     while (true) {
       const outcome = await drive(app, key, request, {
         ...(session.signal ? { signal: session.signal } : {}),
-        observe: session.progress.workflow,
-        agentObserve: session.progress.agent,
+        events: session.progress.event,
       });
       session.progress.pause();
       if (outcome.status !== "waiting") return outcome;

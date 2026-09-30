@@ -37,9 +37,10 @@ export function planTask(
     cache: cached(run, ["planner"], (context) =>
       digest({ ticket: context.value(deps.ticket), functional: context.value(deps.functional), technical: context.value(deps.technical), scope: context.value(deps.scope).scope, amendments }),
     ),
+    ...(run.events ? { events: run.events } : {}),
     seed: () => (amendments.length ? `L'humain a demande d'amender le plan :\n${bullets(amendments)}` : null),
     make: (context, carry) =>
-      withReader(run, "planner", (session, reader) => {
+      withReader(run, "planner", { task: "plan" }, (session, reader) => {
         const scope = context.value(deps.scope).scope;
         const repos = scope.impacted.flatMap((entry) => findRepo(registry, entry.repo) ?? []);
         return ask(context, session, planner, {

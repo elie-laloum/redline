@@ -20,6 +20,7 @@ const ContradictionSchema = v.object({ note: v.string(), claim: v.string(), evid
 const ArbitrageSchema = v.object({ question: v.string(), answer: v.string(), why: v.string() });
 const GrillOutcomeSchema = v.object({ arbitrages: v.array(ArbitrageSchema), contradictions: v.array(ContradictionSchema) });
 const TicketReferenceSchema = v.object({ key: v.string(), relation: v.string() });
+const TokensSchema = v.object({ input: v.number(), cached: v.number(), output: v.number() });
 
 const FramingOutcomeSchema: v.GenericSchema<unknown, FramingOutcome> = v.object({
   decision: v.picklist(["approve", "amend", "reject-functional", "reject-technical"]),
@@ -105,6 +106,8 @@ export const LedgerSchema = v.object({
   escalation: v.nullable(v.object({ kind: v.picklist(ESCALATION_KINDS), task: v.string(), detail: v.string(), at: v.string() })),
   publication: v.nullable(json),
   history: v.array(v.object({ at: v.string(), event: v.string() })),
+  /** Tokens spent by each workflow run of the ticket, by run id: a rerun of the same run id replaces its entry. */
+  usage: v.optional(v.record(v.string(), TokensSchema), {}),
 });
 
 export type Ledger = v.InferOutput<typeof LedgerSchema>;
@@ -172,5 +175,6 @@ export function newLedger(input: Pick<Ledger, "key" | "squad" | "title" | "url" 
     escalation: null,
     publication: null,
     history: [{ at: now, event: "run ouvert" }],
+    usage: {},
   };
 }

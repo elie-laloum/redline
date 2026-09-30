@@ -133,7 +133,7 @@ describe("un agent en sandbox", () => {
     const workspace = await openWorkspace({ repository: directory.path, branch: { mode: "named", name: "feat/FT-1025" } });
     const sandbox = await workspace.sandbox({ sandboxProvider: createLocalSandboxProvider() });
     const input = { ticket: TICKET, notes: null, entry: PLAN_REPO, batch: PLAN_REPO.code, arbitrages: "", checks: "", feedback: null };
-    const task = defineTask({ key: "developer-lot", perform: (context) => ask(context, { sandbox, agents }, roles.developer, input) });
+    const task = defineTask({ key: "developer-lot", perform: (context) => ask(context, { sandbox, agents, source: { task: "developer-lot" } }, roles.developer, input) });
     const result = await defineWorkflow("prompts", [task]).start();
     await sandbox.close();
     result.unwrap();

@@ -57,6 +57,7 @@ export function functionalInterview(run: RunContext, deps: { ticket: Task<Ticket
       withReader(
         run,
         "functional-grill",
+        { task: "functional" },
         async (session) => {
           const reply = await ask(context, session, functionalGrill, {
             ticket: context.value(deps.ticket),
@@ -94,7 +95,7 @@ export function technicalInterview(
       key: (context: TaskContext) => digest({ functional: context.value(deps.functional).output, scope: context.value(deps.scope).scope, reopen }),
     },
     think: (context, transcript, turn) =>
-      withReader(run, "technical-grill", async (session, reader) => {
+      withReader(run, "technical-grill", { task: "technical" }, async (session, reader) => {
         const scope = context.value(deps.scope).scope;
         const repos = scope.impacted.flatMap((entry) => findRepo(registry, entry.repo) ?? []);
         const reply = await ask(context, session, technicalGrill, {

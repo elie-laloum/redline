@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { type AgentObservation, defineAgentTask, defineJsonResponse, type Logging, type PromptVariables, ResponseError, type Sandbox, type TaskContext } from "@elie-laloum/outpost";
 import type * as v from "valibot";
 import type { RoleName } from "../domain/roles.ts";
+import type { AgentSource, RunObserver } from "../domain/run-events.ts";
 import type { AgentFactory } from "../ports/agents.ts";
 import { Escalation } from "../workflow/escalation.ts";
 
@@ -34,7 +35,8 @@ export interface AgentSession {
   readonly sandbox: Sandbox;
   readonly agents: AgentFactory;
   readonly logging?: Logging;
-  readonly observe?: (role: RoleName, event: AgentObservation) => void;
+  readonly source: AgentSource;
+  readonly events?: RunObserver;
 }
 
 export async function ask<I, O>(context: TaskContext, session: AgentSession, role: Role<I, O>, input: I): Promise<O> {
@@ -50,7 +52,7 @@ export async function ask<I, O>(context: TaskContext, session: AgentSession, rol
       deadlineMs: limits.deadlineMs,
       idleMs: limits.idleMs,
       ...(session.logging !== undefined ? { logging: session.logging } : {}),
-      ...(session.observe ? { observe: (event: AgentObservation) => session.observe?.(role.name, event) } : {}),
+      ...(session.events ? { observe: (event: AgentObservation) => session.events?.({ type: "agent", source: session.source, role: role.name, event }) } : {}),
     }),
   });
   try {

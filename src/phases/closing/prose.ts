@@ -29,8 +29,9 @@ export function proseTask(run: ClosingContext, after: readonly Task[]): Task<Con
     key: "prose",
     after,
     cache: cached(run, ["finalizer"], () => digest({ framing: run.framing, delivered: run.delivered, voice })),
+    ...(run.events ? { events: run.events } : {}),
     make: (context, carry) =>
-      withReader(run, "finalizer", (session) =>
+      withReader(run, "finalizer", { task: "prose" }, (session) =>
         ask(context, session, finalizer, {
           ticket: run.framing.ticket,
           notes: run.ledger.notes,

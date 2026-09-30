@@ -31,8 +31,9 @@ export function memoryPlanTask(run: ClosingContext): Task<Converged<MemoryPlan>>
   return converge<MemoryPlan>({
     key: "memory-plan",
     cache: cached(run, ["memory-planner"], () => digest({ framing: run.framing, delivered: run.delivered })),
+    ...(run.events ? { events: run.events } : {}),
     make: (context, carry) =>
-      withReader(run, "memory-planner", (session) =>
+      withReader(run, "memory-planner", { task: "memory-plan" }, (session) =>
         ask(context, session, memoryPlanner, {
           ticket: run.framing.ticket,
           notes: run.ledger.notes,

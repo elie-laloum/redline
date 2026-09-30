@@ -24,6 +24,7 @@ export function createCheckRunner(options: CheckRunnerOptions): CheckRunner {
       const targeted = template !== null && paths.length > 0;
       const focus = check.focus ?? (!targeted && paths.length > 0 ? paths.map((path) => escape(basename(path))).join("|") : undefined);
       const full = [command, check.filter, targeted ? renderTargeting(template, paths) : ""].filter(Boolean).join(" ");
+      check.observe?.start(full);
       const result = await run(full, {
         cwd: directory,
         timeoutMs: options.commandSeconds * 1000,
@@ -31,8 +32,10 @@ export function createCheckRunner(options: CheckRunnerOptions): CheckRunner {
         focus,
         log: { directory: options.logDirectory, label: check.label ?? `${repo.name}-${kind}` },
         signal: check.signal,
+        ...(check.observe ? { onProgress: check.observe.progress } : {}),
       });
       const passed = result.exitCode === 0;
+      check.observe?.end({ elapsedMs: result.durationMs, exitCode: result.exitCode, passed, logPath: result.logPath });
       return {
         kind,
         ran: true,
