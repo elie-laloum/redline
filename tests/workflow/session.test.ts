@@ -3,6 +3,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { afterEach, describe, it } from "bun:test";
 import { clearTicket } from "../../src/app/clear.ts";
+import { drive } from "../../src/app/driver.ts";
 import { readLedger, writeLedger } from "../../src/app/ledger.ts";
 import { lockFile, runDirectory } from "../../src/app/paths.ts";
 import type { Prompter } from "../../src/cli/ask.ts";
@@ -117,5 +118,18 @@ describe("une session redline", () => {
     assert.ok(!existsSync(runDirectory(world.app.paths, "FT-1")));
     const core = world.repos.find((repo) => repo.name === "fixture-core")?.path ?? "";
     assert.doesNotMatch(git(core, "branch", "--list"), /FT-1/);
+  });
+
+  it("escalade un checkpoint ecrit par d'autres briefs, et repart proprement avec --fresh", async () => {
+    world = await createWorld({ issues: [ISSUE], script: { "functional-grill": [{ reply: functionalAsk }, { reply: functionalAsk }] } as Script });
+    world.ledger("FT-1");
+    const waiting = await drive(world.app, "FT-1", {}, { version: "briefs-v1" });
+    assert.equal(waiting.status, "waiting");
+    const stale = await drive(world.app, "FT-1", {}, { version: "briefs-v2" });
+    assert.equal(stale.status, "escalated");
+    assert.match(stale.status === "escalated" ? stale.escalation.detail : "", /--fresh/);
+    const fresh = await drive(world.app, "FT-1", { resume: true, fresh: { note: null } }, { version: "briefs-v2" });
+    assert.equal(fresh.status, "waiting");
+    assert.equal(readLedger(world.app.paths, "FT-1")?.framing.attempt, 2);
   });
 });

@@ -30,6 +30,7 @@ export interface DriveOptions {
   readonly observe?: (event: WorkflowEvent) => void;
   readonly agentObserve?: (role: RoleName, event: AgentObservation) => void;
   readonly logging?: Logging;
+  readonly version?: string;
 }
 
 const REOPEN = { amend: "plan", "reject-functional": "functional", "reject-technical": "technical" } as const;
@@ -43,46 +44,56 @@ export async function drive(app: AppContext, key: string, request: DriveRequest,
   }
 
   while (true) {
-    const run: RunContext = {
-      app,
-      ledger,
-      cache: storageFor(app.paths, key).cache,
-      ...(options.logging !== undefined ? { logging: options.logging } : {}),
-      ...(options.agentObserve ? { observe: options.agentObserve } : {}),
-      ...(options.signal ? { signal: options.signal } : {}),
-    };
-    switch (ledger.phase) {
-      case "done":
-        return { status: "done", publication: ledger.publication as Publication };
-      case "escalated":
-        return { status: "escalated", escalation: ledger.escalation ?? unknownEscalation() };
-      case "framing": {
-        const framing = defineFraming(run);
-        const result = await start(app, ledger, framing.workflow, `${key}/framing/${ledger.framing.attempt}`, answers, options);
-        answers = undefined;
-        const halted = await halt(app, ledger, "framing", result);
-        if (halted) return halted.outcome;
-        const outcome = framing.outcome(result);
-        ledger = save(app, outcome.decision === "approve" ? approve(ledger, outcome) : reopen(ledger, outcome));
-        break;
-      }
-      case "delivery": {
-        const delivery = defineDelivery({ ...run, framing: ledger.approved as FramingOutcome });
-        const result = await start(app, ledger, delivery.workflow, `${key}/delivery/${ledger.delivery.generation}`, undefined, options);
-        const halted = await halt(app, ledger, "delivery", result);
-        if (halted) return halted.outcome;
-        ledger = save(app, recordEvent({ ...ledger, phase: "closing", delivered: delivery.outcome(result) }, "livraison terminee"));
-        break;
-      }
-      case "closing": {
-        const context: ClosingContext = { ...run, framing: ledger.approved as FramingOutcome, delivered: ledger.delivered as DeliveredRepo[] };
-        const closing = defineClosing(context);
-        const result = await start(app, ledger, closing.workflow, `${key}/closing/${ledger.closing.attempt}`, undefined, options);
-        const halted = await halt(app, ledger, "closing", result);
-        if (halted) return halted.outcome;
-        ledger = save(app, recordEvent({ ...ledger, phase: "done", publication: closing.outcome(result) }, "publication terminee"));
-        break;
-      }
+    try {
+      const next = await step(app, ledger, answers, options);
+      answers = undefined;
+      if ("outcome" in next) return next.outcome;
+      ledger = next.ledger;
+    } catch (error) {
+      if (!(error instanceof Error && /incompatible workflow checkpoint/i.test(error.message)) || ledger.phase === "done" || ledger.phase === "escalated") throw error;
+      const detail = `le checkpoint de ${ledger.phase} a ete ecrit par une autre version des briefs ou de redline. Reprends avec bun redline resume ${key} --fresh : les taches finies sont restituees par le cache.`;
+      return escalate(app, ledger, ledger.phase, { kind: "environment", task: ledger.phase, detail, at: new Date().toISOString() });
+    }
+  }
+}
+
+async function step(app: AppContext, ledger: Ledger, answers: readonly WorkflowAnswer[] | undefined, options: DriveOptions): Promise<{ outcome: DriveOutcome } | { ledger: Ledger }> {
+  const key = ledger.key;
+  const run: RunContext = {
+    app,
+    ledger,
+    cache: storageFor(app.paths, key).cache,
+    ...(options.logging !== undefined ? { logging: options.logging } : {}),
+    ...(options.agentObserve ? { observe: options.agentObserve } : {}),
+    ...(options.signal ? { signal: options.signal } : {}),
+  };
+  switch (ledger.phase) {
+    case "done":
+      return { outcome: { status: "done", publication: ledger.publication as Publication } };
+    case "escalated":
+      return { outcome: { status: "escalated", escalation: ledger.escalation ?? unknownEscalation() } };
+    case "framing": {
+      const framing = defineFraming(run);
+      const result = await start(app, ledger, framing.workflow, `${key}/framing/${ledger.framing.attempt}`, answers, options);
+      const halted = await halt(app, ledger, "framing", result);
+      if (halted) return halted;
+      const outcome = framing.outcome(result);
+      return { ledger: save(app, outcome.decision === "approve" ? approve(ledger, outcome) : reopen(ledger, outcome)) };
+    }
+    case "delivery": {
+      const delivery = defineDelivery({ ...run, framing: ledger.approved as FramingOutcome });
+      const result = await start(app, ledger, delivery.workflow, `${key}/delivery/${ledger.delivery.generation}`, undefined, options);
+      const halted = await halt(app, ledger, "delivery", result);
+      if (halted) return halted;
+      return { ledger: save(app, recordEvent({ ...ledger, phase: "closing", delivered: delivery.outcome(result) }, "livraison terminee")) };
+    }
+    case "closing": {
+      const context: ClosingContext = { ...run, framing: ledger.approved as FramingOutcome, delivered: ledger.delivered as DeliveredRepo[] };
+      const closing = defineClosing(context);
+      const result = await start(app, ledger, closing.workflow, `${key}/closing/${ledger.closing.attempt}`, undefined, options);
+      const halted = await halt(app, ledger, "closing", result);
+      if (halted) return halted;
+      return { ledger: save(app, recordEvent({ ...ledger, phase: "done", publication: closing.outcome(result) }, "publication terminee")) };
     }
   }
 }
@@ -91,7 +102,7 @@ async function start(app: AppContext, ledger: Ledger, workflow: Workflow, runId:
   save(app, { ...ledger, active: { runId, pid: process.pid } });
   try {
     return await workflow.start({
-      checkpoint: { store: storageFor(app.paths, ledger.key).checkpoints, runId, version: checkpointVersion(), resume: "retry-incomplete" },
+      checkpoint: { store: storageFor(app.paths, ledger.key).checkpoints, runId, version: options.version ?? checkpointVersion(), resume: "retry-incomplete" },
       onQuota: { action: "pause" },
       ...(answers?.length ? { answers } : {}),
       ...(options.signal ? { signal: options.signal } : {}),
@@ -113,12 +124,14 @@ async function halt(app: AppContext, ledger: Ledger, phase: "framing" | "deliver
       return { outcome: { status: "cancelled" } };
     case "paused":
       return { outcome: { status: "paused", detail: "quota atteint : reprends plus tard avec bun redline resume" } };
-    default: {
-      const escalation = escalationOf(result, phase);
-      save(app, recordEvent({ ...(readLedger(app.paths, ledger.key) ?? ledger), phase: "escalated", resumePhase: phase, escalation }, `escalade ${escalation.kind} sur ${escalation.task}`));
-      return { outcome: { status: "escalated", escalation } };
-    }
+    default:
+      return { outcome: escalate(app, ledger, phase, escalationOf(result, phase)) };
   }
+}
+
+function escalate(app: AppContext, ledger: Ledger, phase: "framing" | "delivery" | "closing", escalation: EscalationRecord): DriveOutcome {
+  save(app, recordEvent({ ...(readLedger(app.paths, ledger.key) ?? ledger), phase: "escalated", resumePhase: phase, escalation }, `escalade ${escalation.kind} sur ${escalation.task}`));
+  return { status: "escalated", escalation };
 }
 
 function escalationOf(result: WorkflowResult, phase: string): EscalationRecord {
