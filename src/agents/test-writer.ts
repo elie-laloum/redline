@@ -7,6 +7,7 @@ import { CommitIntentSchema, text } from "./shared.ts";
 
 export interface TestWriterInput {
   readonly ticket: TicketSnapshot;
+  readonly notes: string | null;
   readonly entry: PlanRepo;
   readonly arbitrages: string;
   readonly kinds: readonly string[];
@@ -29,7 +30,7 @@ export const testWriter = defineRole({
       }, "chaque ligne de la checklist tests est rattachee a un fichier, ou declaree non couvrable"),
     ),
   values: (input: TestWriterInput) => ({
-    TICKET: ticket(input.ticket, null),
+    TICKET: ticket(input.ticket, input.notes),
     REPO: input.entry.repo,
     CHANGES: bullets(input.entry.changes),
     TESTS: bullets(input.entry.tests.map((test) => `${test.id} [${test.kind}] ${test.criterion} (couvre ${test.covers.join(", ")})`)),

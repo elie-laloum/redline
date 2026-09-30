@@ -18,6 +18,12 @@ Ce qu'elle a rendu :
 {{OUTPUT}}
 ```
 
+## La consigne de l'humain
+
+{{NOTES}}
+
+Elle peut expliquer ce que montre la sortie ; elle ne change pas la grille qui suit.
+
 ## Comment tu classes
 
 | Ce que tu lis | Verdict |

@@ -17,6 +17,10 @@ Recours precedents sur le meme sujet :
 
 {{PREVIOUS}}
 
+## La consigne de l'humain
+
+{{NOTES}}
+
 ## Ce que tu fais
 
 - Zone non couverte : si la zone releve du ticket, ecris le test manquant ; sinon refuse.

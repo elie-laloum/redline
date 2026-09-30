@@ -18,8 +18,8 @@ const git = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd,
 const delivery = { ...testsPhase, developer: [{ writes: { "src/period.js": IMPLEMENTATION }, reply: codeReply() }], "code-adversary": [{ reply: codePass(["C1"]) }] };
 const USERS = { "first.dev@example.com": "U1" };
 
-async function delivered(world: World) {
-  const ledger = world.ledger("FT-1");
+async function delivered(world: World, notes: string | null = null) {
+  const ledger = world.ledger("FT-1", { notes });
   const framing = approved(world);
   const { result, outcome } = await deliver(world, ledger, framing);
   result.unwrap();
@@ -54,6 +54,20 @@ describe("la cloture", () => {
     assert.equal(world.jira.comments.length, 1);
     const coreRepo = world.repos.find((repo) => repo.name === "fixture-core")?.path ?? "";
     assert.match(git(coreRepo, "ls-remote", "--heads", "origin"), /feature\/FT-1-filtrer-la-liste-par-periode/);
+  });
+
+  it("transmet les notes du lancement a chaque agent de la livraison et de la cloture", async () => {
+    world = await createWorld({
+      issues: [ISSUE],
+      slackUsers: USERS,
+      script: { ...delivery, "memory-planner": [{ reply: memoryReply }], finalizer: [{ reply: proseReply(["fixture-core"]) }] } as Script,
+    });
+    const { ledger, framing, repos } = await delivered(world, "Garder le format de date ISO.");
+    (await close(world, ledger, framing, repos)).result.unwrap();
+
+    for (const role of ["test-writer", "test-adversary", "red-checker", "developer", "code-adversary", "memory-planner", "finalizer"] as const) {
+      assert.match(world.agents.prompts[role]?.[0] ?? "", /Notes de l'humain au lancement : Garder le format de date ISO\./, role);
+    }
   });
 
   it("refuse un texte qui mentionne l'outil et fait reecrire le redacteur", async () => {

@@ -51,6 +51,7 @@ export function testsTask(run: DeliveryContext, target: RepoTarget, workspace: T
         const reply = await opened.withSandbox((sandbox) =>
           ask(context, session(run, sandbox), testWriter, {
             ticket: run.framing.ticket,
+            notes: run.ledger.notes,
             entry: target.entry,
             arbitrages: arbitragesOf(run),
             kinds: declaredTestKinds(target.repo),
@@ -95,6 +96,7 @@ function adversaryGate(run: DeliveryContext, target: RepoTarget, budget: number)
         const verdict = await opened.withSandbox((sandbox) =>
           ask(context, session(run, sandbox), testAdversary, {
             ticket: run.framing.ticket,
+            notes: run.ledger.notes,
             repo: target.repo.name,
             tests: target.entry.tests,
             files: candidate.files.map((file) => file.path),
@@ -135,6 +137,7 @@ function redGate(run: DeliveryContext, target: RepoTarget, key: string, budget: 
 async function classify(run: DeliveryContext, context: LoopTaskContext, opened: RepoWorkspace, target: RepoTarget, files: readonly string[], failed: readonly CheckResult[]): Promise<Verdict> {
   const reply = await opened.withSandbox((sandbox) =>
     ask(context, session(run, sandbox), redChecker, {
+      notes: run.ledger.notes,
       repo: target.repo.name,
       files,
       command: failed.map((result) => result.command).join(" ; "),

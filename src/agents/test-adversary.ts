@@ -7,6 +7,7 @@ import { everyOnce, type LineVerdict, LineVerdictSchema, text } from "./shared.t
 
 export interface TestAdversaryInput {
   readonly ticket: TicketSnapshot;
+  readonly notes: string | null;
   readonly repo: string;
   readonly tests: readonly PlanTest[];
   readonly files: readonly string[];
@@ -22,7 +23,7 @@ export const testAdversary = defineRole({
       weaknesses: v.array(v.object({ file: text, problem: text })),
     }),
   values: (input: TestAdversaryInput) => ({
-    TICKET: ticket(input.ticket, null),
+    TICKET: ticket(input.ticket, input.notes),
     REPO: input.repo,
     TESTS: bullets(input.tests.map((test) => `${test.id} [${test.kind}] ${test.criterion}`)),
     FILES: bullets(input.files),

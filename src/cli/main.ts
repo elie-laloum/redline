@@ -22,7 +22,7 @@ program
   .command("start")
   .description("Cadre, livre et publie un ticket Jira")
   .argument("<ticket>", "cle ou URL du ticket")
-  .option("--notes <texte>", "consigne transmise aux grills")
+  .option("--notes <texte>", "consigne transmise a tous les agents")
   .option("--figma <url...>", "maquettes a prendre en compte en plus de celles du ticket")
   .action((ticket: string, options: { notes?: string; figma?: string[] }) => guarded(() => startCommand(ticket, options)));
 

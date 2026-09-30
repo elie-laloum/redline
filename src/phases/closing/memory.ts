@@ -35,6 +35,7 @@ export function memoryPlanTask(run: ClosingContext): Task<Converged<MemoryPlan>>
       withReader(run, "memory-planner", (session) =>
         ask(context, session, memoryPlanner, {
           ticket: run.framing.ticket,
+          notes: run.ledger.notes,
           arbitrages: arbitrages([...run.framing.functional.arbitrages, ...run.framing.technical.arbitrages]),
           plan: renderPlan(run.framing.plan),
           delivered: run.delivered.map((repo) => `### ${repo.repo} (${repo.branch})\n${bullets(repo.commits)}`).join("\n\n"),

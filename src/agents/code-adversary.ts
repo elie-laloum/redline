@@ -7,6 +7,7 @@ import { everyOnce, type LineVerdict, LineVerdictSchema } from "./shared.ts";
 
 export interface CodeAdversaryInput {
   readonly ticket: TicketSnapshot;
+  readonly notes: string | null;
   readonly repo: string;
   readonly code: readonly PlanCode[];
   readonly arbitrages: string;
@@ -22,7 +23,7 @@ export const codeAdversary = defineRole({
       remarks: v.array(v.string()),
     }),
   values: (input: CodeAdversaryInput) => ({
-    TICKET: ticket(input.ticket, null),
+    TICKET: ticket(input.ticket, input.notes),
     REPO: input.repo,
     CODE: bullets(input.code.map((line) => `${line.id} ${line.criterion}`)),
     ARBITRAGES: input.arbitrages,

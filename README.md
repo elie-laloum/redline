@@ -52,7 +52,8 @@ CLOSING    ◆ memory planner ⟲ ■ ops check → ■ one memory commit
 
 The ticket comes with the tickets it points to — parent, subtasks, formal links and `/browse/`
 links to the same Jira site in its description — read once and handed to every agent that reads
-the ticket, as context: the scope stays the ticket's own.
+the ticket, as context: the scope stays the ticket's own. The `--notes` given to `start` reach
+every agent too.
 
 Every loop is one outpost loop task with one budget per gate: when a gate exceeds its budget
 the run escalates as `convergence`, a broken environment escalates at once as `environment`

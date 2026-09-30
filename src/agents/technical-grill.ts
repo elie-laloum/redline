@@ -6,6 +6,7 @@ import { grillSchema } from "./shared.ts";
 
 export interface TechnicalGrillInput {
   readonly ticket: TicketSnapshot;
+  readonly notes: string | null;
   readonly functional: string;
   readonly scope: string;
   readonly conventions: string;
@@ -21,7 +22,7 @@ export const technicalGrill = defineRole({
   tag: "grill",
   schema: grillSchema(),
   values: (input: TechnicalGrillInput) => ({
-    TICKET: ticket(input.ticket, null),
+    TICKET: ticket(input.ticket, input.notes),
     FUNCTIONAL: input.functional,
     SCOPE: input.scope,
     CONVENTIONS: input.conventions,

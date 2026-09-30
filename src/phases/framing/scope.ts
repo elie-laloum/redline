@@ -64,7 +64,7 @@ async function scout(run: RunContext, context: TaskContext, repo: RepoEntry, tic
   return withReader(run, `scout-${repo.name}`, async (session, reader) => {
     let feedback: string | null = null;
     for (let attempt = 1; attempt <= 2; attempt += 1) {
-      const reply = await ask(context, session, scopeScout, { ticket, functional, repo, path: reader.repoPath(repo.name), memory, feedback });
+      const reply = await ask(context, session, scopeScout, { ticket, notes: run.ledger.notes, functional, repo, path: reader.repoPath(repo.name), memory, feedback });
       const contradictions = reply.contradictions.map((entry) => ({ ...entry, raisedBy: `scope-scout/${repo.name}` }));
       if (!reply.impacted) return { repo, entry: null, exclusion: { repo: repo.name, reason: reply.reason }, contradictions };
       const problems = evidenceProblems(root, reply.evidence);

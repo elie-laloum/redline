@@ -99,6 +99,7 @@ export function technicalInterview(
         const repos = scope.impacted.flatMap((entry) => findRepo(registry, entry.repo) ?? []);
         const reply = await ask(context, session, technicalGrill, {
           ticket: context.value(deps.ticket),
+          notes: run.ledger.notes,
           functional: renderGrill(context.value(deps.functional).output),
           scope: renderScope(scope, reader.repoPath),
           conventions: renderConventions(repos, reader),

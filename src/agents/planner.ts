@@ -5,6 +5,7 @@ import { defineRole } from "./role.ts";
 
 export interface PlannerInput {
   readonly ticket: TicketSnapshot;
+  readonly notes: string | null;
   readonly functional: string;
   readonly technical: string;
   readonly scope: string;
@@ -19,7 +20,7 @@ export const planner = defineRole({
   tag: "plan",
   schema: PlanSchema,
   values: (input: PlannerInput) => ({
-    TICKET: ticket(input.ticket, null),
+    TICKET: ticket(input.ticket, input.notes),
     FUNCTIONAL: input.functional,
     TECHNICAL: input.technical,
     SCOPE: input.scope,

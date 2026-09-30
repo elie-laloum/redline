@@ -1,6 +1,6 @@
 import * as v from "valibot";
 import type { PlanTest } from "../domain/plan.ts";
-import { bullets } from "./render.ts";
+import { bullets, launchNotes } from "./render.ts";
 import { defineRole } from "./role.ts";
 import { CommitIntentSchema, text } from "./shared.ts";
 
@@ -12,6 +12,7 @@ export interface Appeal {
 
 export interface AppealArbiterInput {
   readonly repo: string;
+  readonly notes: string | null;
   readonly tests: readonly PlanTest[];
   readonly appeal: Appeal;
   readonly previous: readonly string[];
@@ -29,5 +30,6 @@ export const appealArbiter = defineRole({
     TESTS: bullets(input.tests.map((test) => `${test.id} [${test.kind}] ${test.criterion}`)),
     APPEAL: `${input.appeal.kind}${input.appeal.test ? ` sur ${input.appeal.test}` : ""} — ${input.appeal.reason}`,
     PREVIOUS: bullets(input.previous, "(premier recours sur ce sujet)"),
+    NOTES: launchNotes(input.notes),
   }),
 });

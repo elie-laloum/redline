@@ -6,6 +6,7 @@ import { defineRole } from "./role.ts";
 
 export interface MemoryPlannerInput {
   readonly ticket: TicketSnapshot;
+  readonly notes: string | null;
   readonly arbitrages: string;
   readonly plan: string;
   readonly delivered: string;
@@ -21,7 +22,7 @@ export const memoryPlanner = defineRole({
   tag: "memoire",
   schema: v.object({ operations: v.array(MemoryOpSchema), decisions: v.array(ContradictionDecisionSchema) }),
   values: (input: MemoryPlannerInput) => ({
-    TICKET: ticket(input.ticket, null),
+    TICKET: ticket(input.ticket, input.notes),
     ARBITRAGES: input.arbitrages,
     PLAN: input.plan,
     DELIVERED: input.delivered,

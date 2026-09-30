@@ -1,10 +1,11 @@
 import * as v from "valibot";
-import { bullets } from "./render.ts";
+import { bullets, launchNotes } from "./render.ts";
 import { defineRole } from "./role.ts";
 import { text } from "./shared.ts";
 
 export interface RedCheckerInput {
   readonly repo: string;
+  readonly notes: string | null;
   readonly files: readonly string[];
   readonly command: string;
   readonly output: string;
@@ -22,5 +23,6 @@ export const redChecker = defineRole({
     FILES: bullets(input.files),
     COMMAND: input.command,
     OUTPUT: input.output,
+    NOTES: launchNotes(input.notes),
   }),
 });

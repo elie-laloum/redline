@@ -25,8 +25,13 @@ export function ticket(snapshot: RenderedTicket, notes: string | null): string {
     "Criteres d'acceptation :",
     ...snapshot.criteria.map((criterion) => `- ${criterion.id} : ${criterion.text}`),
     ...relatedTickets(snapshot.related ?? []),
-    ...(notes ? ["", `Notes de l'humain au lancement : ${notes}`] : []),
+    ...(notes ? ["", launchNotes(notes)] : []),
   ].join("\n");
+}
+
+/** The --notes of start, for the roles that do not receive the ticket. */
+export function launchNotes(notes: string | null): string {
+  return notes ? `Notes de l'humain au lancement : ${notes}` : "(aucune)";
 }
 
 function relatedTickets(related: readonly RelatedTicket[]): string[] {

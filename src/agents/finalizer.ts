@@ -6,6 +6,7 @@ import { everyOnce, text } from "./shared.ts";
 
 export interface FinalizerInput {
   readonly ticket: TicketSnapshot;
+  readonly notes: string | null;
   readonly arbitrages: string;
   readonly plan: string;
   readonly repos: readonly { readonly repo: string; readonly commits: readonly string[] }[];
@@ -27,7 +28,7 @@ export const finalizer = defineRole({
       jira: text,
     }),
   values: (input: FinalizerInput) => ({
-    TICKET: ticket(input.ticket, null),
+    TICKET: ticket(input.ticket, input.notes),
     ARBITRAGES: input.arbitrages,
     PLAN: input.plan,
     REPOS: input.repos.map((entry) => `### ${entry.repo}\n${entry.commits.map((commit) => `- ${commit}`).join("\n")}`).join("\n\n"),

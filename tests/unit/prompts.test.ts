@@ -24,64 +24,64 @@ interface Case {
 
 const CASES: Case[] = [
   { role: roles.functionalGrill, input: { ticket: TICKET, notes: null, figma: "(aucune)", memory: "", transcript: [], turn: 1, maxTurns: 5, reopen: null }, ok: grill, ko: { ...grill, questions: [] } },
-  { role: roles.technicalGrill, input: { ticket: TICKET, functional: "", scope: "", conventions: "", memory: "", transcript: [], turn: 1, maxTurns: 5, reopen: null }, ok: { ...grill, done: true, questions: [] }, ko: { ...grill, done: true } },
+  { role: roles.technicalGrill, input: { ticket: TICKET, notes: null, functional: "", scope: "", conventions: "", memory: "", transcript: [], turn: 1, maxTurns: 5, reopen: null }, ok: { ...grill, done: true, questions: [] }, ko: { ...grill, done: true } },
   {
     role: roles.scopeScout,
-    input: { ticket: TICKET, functional: "", repo: { name: "core", level: 1, layer: "backend", description: "d" }, path: "/repos/core", memory: "", feedback: null },
+    input: { ticket: TICKET, notes: null, functional: "", repo: { name: "core", level: 1, layer: "backend", description: "d" }, path: "/repos/core", memory: "", feedback: null },
     ok: { impacted: false, area: "", evidence: [], reason: "rien a changer", contradictions: [] },
     ko: { impacted: true, area: "x", evidence: [], reason: "impacte sans preuve", contradictions: [] },
   },
   {
     role: roles.planner,
-    input: { ticket: TICKET, functional: "", technical: "", scope: "", repos: "", types: ["feature"], memory: "", feedback: null },
+    input: { ticket: TICKET, notes: null, functional: "", technical: "", scope: "", repos: "", types: ["feature"], memory: "", feedback: null },
     ok: { summary: "Plan.", repos: [PLAN_REPO], openPoints: [] },
     ko: { summary: "Plan.", repos: [{ ...PLAN_REPO, code: [] }], openPoints: [] },
   },
   {
     role: roles.testWriter,
-    input: { ticket: TICKET, entry: PLAN_REPO, arbitrages: "", kinds: ["ut"], feedback: null },
+    input: { ticket: TICKET, notes: null, entry: PLAN_REPO, arbitrages: "", kinds: ["ut"], feedback: null },
     ok: { files: [{ path: "tests/a.test.js", tests: ["T1"] }], commit: { type: "test", subject: "cover the period" }, uncoverable: [] },
     ko: { files: [], commit: { type: "test", subject: "nothing" }, uncoverable: [] },
   },
   {
     role: roles.appealArbiter,
-    input: { repo: "core", tests: PLAN_REPO.tests, appeal: { kind: "test-conteste", test: "T1", reason: "inverse" }, previous: [] },
+    input: { repo: "core", notes: null, tests: PLAN_REPO.tests, appeal: { kind: "test-conteste", test: "T1", reason: "inverse" }, previous: [] },
     ok: { decision: "refuse", reason: "le test est juste", commit: null },
     ko: { decision: "accepte", reason: "corrige", commit: null },
   },
   {
     role: roles.testAdversary,
-    input: { ticket: TICKET, repo: "core", tests: PLAN_REPO.tests, files: ["tests/a.test.js"], kinds: ["ut"] },
+    input: { ticket: TICKET, notes: null, repo: "core", tests: PLAN_REPO.tests, files: ["tests/a.test.js"], kinds: ["ut"] },
     ok: { lines: [verdictLine("T1")], weaknesses: [] },
     ko: { lines: [verdictLine("T1"), verdictLine("T9")], weaknesses: [] },
   },
   {
     role: roles.redChecker,
-    input: { repo: "core", files: ["tests/a.test.js"], command: "npm test", output: "AssertionError" },
+    input: { repo: "core", notes: null, files: ["tests/a.test.js"], command: "npm test", output: "AssertionError" },
     ok: { tests: [{ name: "a", verdict: "bon-rouge", reason: "AssertionError" }], environment: { blocked: false, reason: "" } },
     ko: { tests: [{ name: "a", verdict: "rouge", reason: "?" }], environment: { blocked: false, reason: "" } },
   },
   {
     role: roles.developer,
-    input: { ticket: TICKET, entry: PLAN_REPO, batch: PLAN_REPO.code, arbitrages: "", checks: "", feedback: null },
+    input: { ticket: TICKET, notes: null, entry: PLAN_REPO, batch: PLAN_REPO.code, arbitrages: "", checks: "", feedback: null },
     ok: { commit: { type: "feat", subject: "add the period" }, appeals: [], contradictions: [] },
     ko: { commit: { type: "wip", subject: "x" }, appeals: [], contradictions: [] },
   },
   {
     role: roles.codeAdversary,
-    input: { ticket: TICKET, repo: "core", code: PLAN_REPO.code, arbitrages: "", base: "abc123" },
+    input: { ticket: TICKET, notes: null, repo: "core", code: PLAN_REPO.code, arbitrages: "", base: "abc123" },
     ok: { lines: [verdictLine("C1")], remarks: [] },
     ko: { lines: [], remarks: [] },
   },
   {
     role: roles.memoryPlanner,
-    input: { ticket: TICKET, arbitrages: "", plan: "", delivered: "", contradictions: "", index: "", today: "2026-09-30", maxNoteLines: 100, feedback: null },
+    input: { ticket: TICKET, notes: null, arbitrages: "", plan: "", delivered: "", contradictions: "", index: "", today: "2026-09-30", maxNoteLines: 100, feedback: null },
     ok: { operations: [{ action: "delete", path: "changes/x.md", why: "fusionnee" }], decisions: [] },
     ko: { operations: [{ action: "rename", path: "changes/x.md", why: "?" }], decisions: [] },
   },
   {
     role: roles.finalizer,
-    input: { ticket: TICKET, arbitrages: "", plan: "", repos: [{ repo: "core", commits: ["feat: x"] }], voice: "", calibrated: false, feedback: null },
+    input: { ticket: TICKET, notes: null, arbitrages: "", plan: "", repos: [{ repo: "core", commits: ["feat: x"] }], voice: "", calibrated: false, feedback: null },
     ok: { mergeRequests: [{ repo: "core", summary: "Ajoute la periode." }], slack: "Salut.", jira: "Decisions." },
     ko: { mergeRequests: [], slack: "Salut.", jira: "Decisions." },
   },
@@ -132,7 +132,7 @@ describe("un agent en sandbox", () => {
     });
     const workspace = await openWorkspace({ repository: directory.path, branch: { mode: "named", name: "feat/FT-1025" } });
     const sandbox = await workspace.sandbox({ sandboxProvider: createLocalSandboxProvider() });
-    const input = { ticket: TICKET, entry: PLAN_REPO, batch: PLAN_REPO.code, arbitrages: "", checks: "", feedback: null };
+    const input = { ticket: TICKET, notes: null, entry: PLAN_REPO, batch: PLAN_REPO.code, arbitrages: "", checks: "", feedback: null };
     const task = defineTask({ key: "developer-lot", perform: (context) => ask(context, { sandbox, agents }, roles.developer, input) });
     const result = await defineWorkflow("prompts", [task]).start();
     await sandbox.close();

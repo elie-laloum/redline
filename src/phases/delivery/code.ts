@@ -35,6 +35,7 @@ async function developerTurn(run: DeliveryContext, target: RepoTarget, context: 
     const reply = await opened.withSandbox((sandbox) =>
       ask(context, session(run, sandbox), developer, {
         ticket: run.framing.ticket,
+        notes: run.ledger.notes,
         entry: target.entry,
         batch: turn.lines,
         arbitrages: arbitragesOf(run),
@@ -142,7 +143,7 @@ async function arbitrate(run: DeliveryContext, target: RepoTarget, context: Loop
   const { settings } = run.app.configuration;
   return withTarget(run, target, async (opened) => {
     const baseline = await git(opened.directory, ["rev-parse", "HEAD"]);
-    const reply = await opened.withSandbox((sandbox) => ask(context, session(run, sandbox), appealArbiter, { repo: target.repo.name, tests: target.entry.tests, appeal, previous: [] }));
+    const reply = await opened.withSandbox((sandbox) => ask(context, session(run, sandbox), appealArbiter, { notes: run.ledger.notes, repo: target.repo.name, tests: target.entry.tests, appeal, previous: [] }));
     if (reply.decision === "accepte") {
       await commitWork({
         directory: opened.directory,
@@ -168,7 +169,7 @@ function integrityGate(run: DeliveryContext, target: RepoTarget, tests: Task<Con
         const changed = (await git(opened.directory, ["diff", "--name-only", `${since}..HEAD`])).split("\n").filter((path) => path && isTestFile(path));
         if (changed.length === 0 || target.entry.tests.length === 0) return { kind: "pass" };
         const verdict = await opened.withSandbox((sandbox) =>
-          ask(context, session(run, sandbox), testAdversary, { ticket: run.framing.ticket, repo: target.repo.name, tests: target.entry.tests, files: changed, kinds: declaredTestKinds(target.repo) }),
+          ask(context, session(run, sandbox), testAdversary, { ticket: run.framing.ticket, notes: run.ledger.notes, repo: target.repo.name, tests: target.entry.tests, files: changed, kinds: declaredTestKinds(target.repo) }),
         );
         const failing = failingLines(verdict.lines);
         return failing.length === 0 ? { kind: "pass" } : { kind: "arbitrage", text: `Des tests modifies par l'arbitre ne tiennent plus la checklist :\n${renderVerdicts(failing)}` };
@@ -204,7 +205,7 @@ function codeAdversaryGate(run: DeliveryContext, target: RepoTarget, budget: num
       withTarget(run, target, async (opened): Promise<Verdict> => {
         const base = await git(opened.directory, ["merge-base", "HEAD", `origin/${target.repo.baseBranch}`]);
         const verdict = await opened.withSandbox((sandbox) =>
-          ask(context, session(run, sandbox), codeAdversary, { ticket: run.framing.ticket, repo: target.repo.name, code: target.entry.code, arbitrages: arbitragesOf(run), base }),
+          ask(context, session(run, sandbox), codeAdversary, { ticket: run.framing.ticket, notes: run.ledger.notes, repo: target.repo.name, code: target.entry.code, arbitrages: arbitragesOf(run), base }),
         );
         const failing = failingLines(verdict.lines);
         return failing.length === 0 ? { kind: "pass" } : { kind: "feedback", text: `L'adversaire du code refuse ces lignes :\n${renderVerdicts(failing)}` };

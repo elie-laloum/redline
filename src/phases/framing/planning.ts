@@ -44,6 +44,7 @@ export function planTask(
         const repos = scope.impacted.flatMap((entry) => findRepo(registry, entry.repo) ?? []);
         return ask(context, session, planner, {
           ticket: context.value(deps.ticket),
+          notes: run.ledger.notes,
           functional: renderGrill(context.value(deps.functional).output),
           technical: renderGrill(context.value(deps.technical).output),
           scope: renderScope(scope, reader.repoPath),

@@ -51,9 +51,10 @@ describe("la convergence du code", () => {
         "appeal-arbiter": [{ reply: { decision: "refuse", reason: "le plan dit mois en cours", commit: null } }],
       },
     });
-    const { result } = await deliver(world, world.ledger("FT-1"), approved(world));
+    const { result } = await deliver(world, world.ledger("FT-1", { notes: "Garder le format de date ISO." }), approved(world));
     const escalation = parseEscalation(String(result.errors[0]));
     assert.equal(escalation?.kind, "arbitrage");
+    assert.match(world.agents.prompts["appeal-arbiter"]?.[0] ?? "", /Notes de l'humain au lancement : Garder le format de date ISO\./);
     assert.match(escalation?.detail ?? "", /T1 conteste 2 fois/);
     assert.match(world.agents.prompts.developer?.[1] ?? "", /T1 — refuse : le plan dit mois en cours/);
     assert.deepEqual(world.agents.remaining(), {});

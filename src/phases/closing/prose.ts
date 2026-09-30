@@ -33,6 +33,7 @@ export function proseTask(run: ClosingContext, after: readonly Task[]): Task<Con
       withReader(run, "finalizer", (session) =>
         ask(context, session, finalizer, {
           ticket: run.framing.ticket,
+          notes: run.ledger.notes,
           arbitrages: arbitrages([...run.framing.functional.arbitrages, ...run.framing.technical.arbitrages]),
           plan: renderPlan(run.framing.plan),
           repos: run.delivered.map((repo) => ({ repo: repo.repo, commits: repo.commits })),

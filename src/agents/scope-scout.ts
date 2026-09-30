@@ -7,6 +7,7 @@ import { ContradictionSchema, text } from "./shared.ts";
 
 export interface ScopeScoutInput {
   readonly ticket: TicketSnapshot;
+  readonly notes: string | null;
   readonly functional: string;
   readonly repo: RepoEntry;
   readonly path: string;
@@ -22,7 +23,7 @@ export const scopeScout = defineRole({
     v.check((reply) => !reply.impacted || reply.evidence.length > 0, "un repo impacte porte au moins une preuve fichier:ligne"),
   ),
   values: (input: ScopeScoutInput) => ({
-    TICKET: ticket(input.ticket, null),
+    TICKET: ticket(input.ticket, input.notes),
     FUNCTIONAL: input.functional,
     REPO: `${input.repo.name} (level ${input.repo.level}, ${input.repo.layer}) — ${input.repo.description}`,
     REPO_PATH: input.path,

@@ -7,6 +7,7 @@ import { CommitIntentSchema, ContradictionSchema, text } from "./shared.ts";
 
 export interface DeveloperInput {
   readonly ticket: TicketSnapshot;
+  readonly notes: string | null;
   readonly entry: PlanRepo;
   readonly batch: readonly PlanCode[];
   readonly arbitrages: string;
@@ -23,7 +24,7 @@ export const developer = defineRole({
     contradictions: v.array(ContradictionSchema),
   }),
   values: (input: DeveloperInput) => ({
-    TICKET: ticket(input.ticket, null),
+    TICKET: ticket(input.ticket, input.notes),
     REPO: input.entry.repo,
     CHANGES: bullets(input.entry.changes),
     TESTS: bullets(input.entry.tests.map((test) => `${test.id} ${test.criterion}`)),
