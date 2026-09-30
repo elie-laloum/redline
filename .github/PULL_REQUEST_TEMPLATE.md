@@ -1,7 +1,7 @@
-## Problem / Problème
+## Problem
 
-## Proposed change / Changement proposé
+## Proposed change
 
-## Verification / Vérification
+## Verification
 
 This repository is a GitHub mirror. Accepted changes are integrated in the GitLab origin before synchronization.

@@ -1,12 +1,12 @@
 ---
-name: Bug report / Bug
-about: Report a reproducible issue / Signaler un problème reproductible
+name: Bug report
+about: Report a reproducible issue
 ---
 
-## What happened? / Que se passe-t-il ?
+## What happened?
 
-## Expected behavior / Comportement attendu
+## Expected behavior
 
-## Steps to reproduce / Reproduction
+## Steps to reproduce
 
-## Versions and sanitized logs / Versions et journaux anonymisés
+## Versions and sanitized logs

@@ -1,43 +1,67 @@
 <p align="center"><img src="assets/cover-v5.png" alt="Redline — One ticket. A coordinated change across repositories." width="100%"></p>
 
+[![npm](https://img.shields.io/npm/v/%40elie-laloum%2Fredline?style=flat-square&color=586475)](https://www.npmjs.com/package/@elie-laloum/redline)
+[![Built on outpost](https://img.shields.io/badge/built%20on-%40elie--laloum%2Foutpost-586475?style=flat-square)](https://www.npmjs.com/package/@elie-laloum/outpost)
 [![License](https://img.shields.io/badge/license-MIT-586475?style=flat-square)](LICENSE)
 
 # redline
 
-Autonomous delivery from a Jira ticket, built on
-[outpost](https://elie-laloum.github.io/outpost/). It takes a ticket and carries it to draft
-merge requests: framing with one human review, adversarial TDD repository by repository in
-dependency order, a memory update, then publication in a single block.
+Redline takes a Jira ticket and carries it to draft merge requests across every repository it
+touches. It frames the work with one human review, delivers each repository test-first with
+adversarial reviewers, in dependency order, updates a versioned knowledge base, then publishes
+everything in a single block: branches, merge requests, a Slack channel and a Jira transition.
 
 ```
 bun redline start <jira-url-or-key> [--notes "…"] [--figma <url>…]
 ```
 
+Redline is built on [**`@elie-laloum/outpost`**](https://www.npmjs.com/package/@elie-laloum/outpost)
+([documentation](https://elie-laloum.github.io/outpost/)), a TypeScript library for running
+coding agents in sandboxes and composing their work into typed, checkpointed workflows. Outpost
+runs the agents; redline decides what they are asked, checks what they return, and does
+everything else itself.
+
 > **Read this first.** This is one developer's working system, opened up because the design
-> may be useful to others — not a product. It assumes Jira, GitLab and Slack, and it was
+> may be useful to others — not a product. It assumes Jira Cloud, GitLab and Slack, and it was
 > shaped against a specific codebase. Nothing here auto-detects your setup: repositories,
 > commands and CI jobs are declared by hand in a registry file. Expect to adapt it, not to
-> install it. The agent briefs are in French.
+> install it. The CLI, the dashboard and the agent briefs speak French.
 
 **Original repository: [GitLab](https://gitlab.elielaloum.com/elielaloum/redline)** ·
 [Public GitHub mirror](https://github.com/elie-laloum/redline). The GitLab origin is private
-and requires access. Code changes are integrated in GitLab and synchronized to GitHub.
+and requires access. Changes are integrated in GitLab and synchronized to GitHub.
 
-## The idea that carries the rest
+## Contents
+
+- [How it works](#how-it-works)
+- [What outpost provides](#what-outpost-provides)
+- [Durable by construction](#durable-by-construction)
+- [Watching a run](#watching-a-run)
+- [Requirements](#requirements)
+- [Install](#install)
+- [Commands](#commands)
+- [Where things live](#where-things-live)
+- [Development](#development)
+- [Out of scope, deliberately](#out-of-scope-deliberately)
+- [Documentation](#documentation)
+
+## How it works
 
 **Code decides, agents judge.** Everything that happens the same way on every run is plain
 TypeScript: fetching the ticket, choosing candidate repositories, running tests, committing,
 counting loop budgets and disputes, tagging, bumping, pushing, opening merge requests, posting
-to Slack. An agent is called only where a judgment is needed — asking the right question,
+to Slack. An agent is called only where judgment is needed — asking the right question,
 reading code for impact, planning, writing tests and code, criticising them, classifying a
 failure, writing prose — and it answers in JSON validated against a schema.
+
+A run has three phases. Each one is an outpost workflow.
 
 ```
 ■ code   ◆ agent   ⟲ bounded loop
 
 FRAMING    ■ ticket → ■ figma → ■ memory → ◆ functional grill ⟲ human
            → ■ candidate repos → ◆ scope scout × N (parallel) → ■ evidence checked on disk
-           → ◆ technical grill ⟲ human → ◆ planner ⟲ ■ plan rules → ■ human review
+           → ■ memory → ◆ technical grill ⟲ human → ◆ planner ⟲ ■ plan rules → ■ human review
 
 DELIVERY   per repository, by ascending level
            ■ workspace (branch, bump, install, containers)
@@ -50,30 +74,72 @@ CLOSING    ◆ memory planner ⟲ ■ ops check → ■ one memory commit
            → ◆ finalizer ⟲ ■ publishable → ■ push · draft MRs · Slack · Jira
 ```
 
-The ticket comes with the tickets it points to — parent, subtasks, formal links and `/browse/`
-links to the same Jira site in its description — read once and handed to every agent that reads
-the ticket, as context: the scope stays the ticket's own. The `--notes` given to `start` reach
-every agent too.
+**Framing** reads the ticket together with the tickets it points to — parent, subtasks, formal
+links and `/browse/` links to the same Jira site — and hands them to every agent as context; the
+scope stays the ticket's own. The `--notes` given to `start` reach every agent too. The functional
+grill asks the human what the ticket leaves open. Scope scouts then read each candidate
+repository in parallel and must cite `file:line` evidence, which redline checks on disk. The
+technical grill settles the remaining choices, and the planner writes a plan per repository with
+two checklists — tests and code — that the plan rules validate before a human sees it.
 
-Every loop is one outpost loop task with one budget per gate: when a gate exceeds its budget
-the run escalates as `convergence`, a broken environment escalates at once as `environment`
-without spending a turn, and a decision that belongs to a human escalates as `arbitrage`.
-Agents never commit: redline folds their changes into a commit whose message it builds itself,
+**Delivery** takes the repositories by ascending `level`. In each one, the test writer writes
+failing tests, which must stay inside test files, survive a test adversary, fail when run — a
+test that is already green proves nothing — and fail for the right reason, as judged by the red
+checker. The developer then implements the code checklist in batches. It never edits a test: it
+files an appeal, which an arbiter settles, and a test contested too often escalates. The code
+must pass the registry's typecheck, lint and test commands, then a code adversary. A repository
+that others in scope depend on is released as a dev tag, its CI is watched, and the downstream
+repositories adopt that version before their own turn.
+
+**Closing** plans the memory update, checks every operation, and applies it as one commit to the
+knowledge base. The finalizer writes the merge request summaries, the Slack message and the Jira
+comment in your voice. Redline then pushes the branches, opens or updates the draft merge
+requests with links to one another, creates the Slack channel and invites the allowlist,
+comments on the ticket and moves it.
+
+**Twelve roles**, one brief each in [src/prompts/](src/prompts/): functional grill, scope scout,
+technical grill, planner, test writer, test adversary, red checker, developer, appeal arbiter,
+code adversary, memory planner and finalizer. The model and reasoning effort of each role are
+set in `redline.yaml`.
+
+Agents never commit. Redline folds their changes into a commit whose message it builds itself,
 and reverts anything written outside the role's zone — tests for the test writer, code for the
 developer.
 
+## What outpost provides
+
+Redline uses [`@elie-laloum/outpost`](https://www.npmjs.com/package/@elie-laloum/outpost) for
+everything that runs an agent or keeps a workflow alive, and adds none of it itself:
+
+| Outpost | Used by redline for |
+|---|---|
+| `defineWorkflow`, `defineTask` | the three phases and their tasks, with explicit dependencies |
+| `defineLoopTask` | every bounded loop: one attempt, then checks that return feedback or pass |
+| tasks with an `interaction` | grill questions and the plan review — the run stops, the human answers, the run resumes |
+| workflow checkpoints and the task cache | resuming a run where it stopped, and restoring finished tasks after a reopen |
+| `openWorkspace`, `createSandbox`, the Docker provider | one git worktree per repository, agents in containers, registry repositories mounted read-only |
+| `createClaudeHarness`, `defineAgentTask`, `defineJsonResponse` | Claude Code inside the container, answering in validated JSON |
+| quota pauses | a run that hits a usage limit pauses instead of failing |
+| the `outpost` CLI | `redline image build` and `redline image doctor` |
+
 ## Durable by construction
 
-Each phase is an outpost workflow with a checkpoint under `~/.redline/runs/<KEY>/`. Questions
-to the human are interaction tasks: the run stops, the CLI asks, the run resumes with the
-answer. `Ctrl-C` stops a run cleanly, and `bun redline resume <KEY>` picks up at the task that
-was interrupted — finished tasks, finished interviews and finished code batches are never
-redone.
+Each phase has a checkpoint under `~/.redline/runs/<KEY>/`, and a ledger in
+`~/.redline/tickets/<KEY>.yaml` records the phase, the approved plan, what was delivered, what
+was published and the tokens spent. `Ctrl-C` stops a run cleanly, and
+`bun redline resume <KEY>` picks up at the task that was interrupted: finished tasks, finished
+interviews and finished code batches are never redone.
 
-The human review of the plan is the only gate. `Amend` reruns the planner alone with your note;
-`Reject` reopens the functional or technical grill with it, and everything upstream of what was
-reopened is restored from cache. After approval, everything runs to publication, including
-the public, irreversible actions. The only interruptions left are escalations:
+The plan review is the only gate. `Amend` reruns the planner alone with your note; `Reject`
+reopens the functional or the technical grill with it, and everything upstream of what was
+reopened is restored from cache. After approval, everything runs to publication, including the
+public, irreversible actions. What can still stop a run is an escalation:
+
+| Escalation | Raised when |
+|---|---|
+| `convergence` | a loop's gate exceeded its budget |
+| `environment` | something outside the agents is broken — a fetch, an install, a stalled command, a CI pipeline — and no turn is spent on it |
+| `arbitrage` | the decision belongs to a human: a line the registry cannot test, a test contested too often, no repository in scope |
 
 ```
 bun redline resume <KEY>                        # after fixing the environment
@@ -82,11 +148,66 @@ bun redline resume <KEY> --fresh --note "…"     # reopen the escalated task wi
 
 ## Watching a run
 
-In a terminal, `start` and `resume` open a full-screen dashboard: every task of the phase with
-its status, the ticket's tokens, the loop's spent budget per gate, the repositories delivered,
-the selected task's agents live, and a journal of verdicts, commands and public actions. When the
-run ends the screen stays on the outcome until `q`, then the plain report is printed. `--plain`,
-a pipe or CI keep the plain-text output. Decisions and keys: [docs/tui.md](docs/tui.md).
+In a terminal, `start` and `resume` open a full-screen dashboard: every task seen, phase by phase,
+with its status; the ticket's tokens; the loop's spent budget per gate; the repositories
+delivered; the selected task's result and its agents live; and a journal of verdicts, commands
+and public actions. Grill questions and the plan review are answered in its panels, and a pending
+one rings the bell. When the run ends the screen stays on the outcome until `q`, then the plain
+report is printed. `--plain`, a pipe or CI keep the plain-text output.
+
+Design decisions, keys and the event channel behind it: [docs/tui.md](docs/tui.md).
+
+## Requirements
+
+- **Bun 1.3.14+** — runtime, package manager and test runner. TypeScript runs as is.
+- **Docker** — agents run in containers built from `docker/agent.Dockerfile`, with Claude Code
+  pinned. Tests and builds run on your machine, in the worktree the agent edits. Colima works
+  as is.
+- **Claude credentials** — by default the account logged in on the machine
+  (`~/.claude/.credentials.json`); a `claude setup-token` token or an API key also work.
+- **Jira Cloud, GitLab and Slack** — a personal token for each. The Slack token is a **user**
+  token (`xoxp-`): every action appears under your own name.
+- **Figma** is optional. Without a token the run continues without mockups.
+
+## Install
+
+From a clone:
+
+```
+bun install
+mkdir -p ~/.redline
+cp templates/env.example ~/.redline/.env                             # then fill in the tokens
+cp templates/redline.example.yaml ~/.redline/redline.yaml
+cp templates/repositories.example.yaml ~/.redline/repositories.yaml  # your repositories
+cp templates/voice.template.md ~/.redline/voice.md                   # your writing voice
+bun redline image build                                              # the agent image, built locally
+bun redline check
+```
+
+Redline is also published on npm as
+[`@elie-laloum/redline`](https://www.npmjs.com/package/@elie-laloum/redline). It still runs on
+Bun: `bun add -g @elie-laloum/redline`, then `redline check`. The templates and the Dockerfile
+ship with the package.
+
+`bun redline check` is the command to run after any change. The full walkthrough — tokens and
+their scopes, authentication modes, the registry, the settings and your writing voice — is in
+[docs/setup.md](docs/setup.md).
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `start <ticket> [--notes …] [--figma <url>…] [--auth <mode>] [--plain]` | frames, delivers and publishes a ticket; on a ticket that already has a run, resumes it |
+| `resume <ticket> [--fresh] [--note …] [--auth <mode>] [--plain]` | resumes an interrupted, waiting or escalated run; `--fresh` reopens the escalated task with a new budget |
+| `status [ticket] [--plan]` | lists the runs, or shows one run's phase, escalation, history and approved plan |
+| `clear <ticket> [--force] [--dry-run]` | removes a ticket's local state: worktrees, local branches, run, ledger, logs; lists the remote traces it leaves |
+| `auth [account\|oauth\|key]` | shows or changes how agents authenticate to Claude |
+| `check` | validates settings and registry, tokens, the Jira login, Docker, the agent image, Claude credentials and the registry checkouts |
+| `bench [repo…] [--kinds ut,lint]` | times the registry commands and measures their longest silence |
+| `image build` · `image doctor` | builds the agent image declared in `sandbox.image`; checks that Claude answers inside it |
+| `migrate-home [--from ~/.autopilot]` | copies the memory of a former autopilot installation |
+
+From a clone, prefix each command with `bun redline`; from npm, with `redline`.
 
 ## Where things live
 
@@ -95,22 +216,23 @@ a pipe or CI keep the plain-text output. Decisions and keys: [docs/tui.md](docs/
 ```
 redline/
 ├── src/
-│   ├── cli/          commander + clack: start, resume, status, clear, check, bench, image, migrate-home;
-│   │                 dashboard/ (pure view model) and tui/ (OpenTUI dashboard)
-│   ├── app/          composition root, phase driver, ledger, lock, settings, home
+│   ├── cli/          commander + clack commands; dashboard/ (pure view model), tui/ (OpenTUI)
+│   ├── app/          composition root, phase driver, ledger, lock, settings, home, diagnostics
 │   ├── phases/       framing/, delivery/, closing/ — one outpost workflow each
-│   ├── workflow/     converge (loops with per-gate budgets), durable interview, memo
+│   ├── workflow/     converge (loops with per-gate budgets), durable interview, memo, pool
 │   ├── agents/       one file per role: typed input, response schema
-│   ├── prompts/      one French brief per role
+│   ├── prompts/      one brief per role, in French
 │   ├── domain/       pure rules: config schemas, plan, scope, memory, naming, versions, zones
 │   ├── ports/        what phases need from the outside
-│   └── adapters/     Jira, GitLab, Slack, Figma, git, exec, checks, Claude, sandboxes
+│   └── adapters/     Jira, GitLab, Slack, Figma, git, exec, checks, Claude, outpost sandboxes
 ├── templates/        redline.example.yaml, repositories.example.yaml, env.example, voice.template.md
-├── evals/            planted-defect cases per role
+├── docker/           agent.Dockerfile
+├── docs/             setup, architecture, terminal interface
 └── tests/            unit/, workflow/, kit/, fixtures/
 ```
 
-**`~/.redline` holds your configuration, the knowledge and the state.**
+**`~/.redline` holds your configuration, the knowledge and the state.** Set `REDLINE_HOME` to
+move it.
 
 ```
 ~/.redline/
@@ -123,155 +245,33 @@ redline/
 ├── runs/<KEY>/             checkpoints and cache, disposable
 ├── logs/<KEY>/             full command output, disposable
 ├── figma/<KEY>/            rendered mockups, disposable
+├── locks/                  one lock per running ticket
 └── tmp/                    redline's TMPDIR, disposable
 ```
 
-Tokens come from `~/.redline/.env`; a variable exported in the shell overrides its line there.
-The `.env` of the directory you launch redline from is never read, although Bun would load it
-by default.
+`~/.redline` is a git repository in which everything is ignored except `memory/` and
+`tickets/`. Any configuration file missing from it falls back to its template, which lets a fresh
+clone run its test suite before anything is configured. How the code is organised and why:
+[docs/architecture.md](docs/architecture.md).
 
-It is a git repository, but everything in it is ignored except `memory/` and `tickets/`. Any
-file missing from it falls back to its template, which is what lets a fresh clone run its test
-suite before anything is configured. Scouts, grills and the planner read in a sandbox over this
-repository, with every registry repository mounted read-only under `/repos/<name>`.
-
-## Requirements
-
-- **Bun 1.3.14+** — package manager, runtime and test runner. TypeScript runs as is.
-- **Docker** — agents run in containers built from the outpost agent image; tests and builds
-  run on your machine, in the worktree the agent edits. Colima works as is: it shares only
-  `$HOME` with its VM, so redline points `TMPDIR` at `~/.redline/tmp` rather than `/var/folders`.
-- **Claude Code credentials** — by default agents use the account logged in on the machine
-  (`~/.claude/.credentials.json`). `bun redline auth oauth` switches to a `claude setup-token`
-  token, `bun redline auth key` to an API key billed by usage; the token goes into
-  `~/.redline/.env`, the mode into `redline.yaml`. `start` and `resume` take `--auth <mode>` to
-  override it for one run, and `bun redline auth` shows the active mode.
-- **Jira Cloud**, **GitLab**, **Slack** — with a personal access token for each.
-- **Figma** is optional. Without a token the run continues without mockups.
-
-The Slack token is a **user** token (`xoxp-`), not a bot token: every action appears under your
-own name. With a bot token the channel would be created by an app, and the point — a colleague
-seeing that *you* opened the channel — falls away.
-
-## Install
-
-```
-bun install
-mkdir -p ~/.redline
-cp templates/env.example ~/.redline/.env                             # then fill in the tokens
-cp templates/redline.example.yaml ~/.redline/redline.yaml
-cp templates/repositories.example.yaml ~/.redline/repositories.yaml  # your repositories
-cp templates/voice.template.md ~/.redline/voice.md                   # your voice — see below
-bun redline image build                                              # the agent image, built locally
-bun redline check
-```
-
-`start` and `resume` first check that Docker answers and that the agent image exists; when it
-does not, they offer to build it.
-
-The CLI is also published on npm as `@elie-laloum/redline`. It still runs on Bun:
-`bun add -g @elie-laloum/redline`, then `redline check`. The templates ship with the package.
-
-`bun redline check` is the one command to run after any change: it validates the settings and
-the registry, reports missing tokens, logs in to Jira, checks Docker, the agent image and your Claude
-credentials, and warns about registry checkouts that are dirty or off their base branch —
-scouts read them as they are.
-
-`bun redline bench [repo…] [--kinds ut,lint]` runs the registry commands in each checkout and
-reports their duration and their longest silence — the number that calibrates
-`commandSilenceSeconds`, beyond which a silent command is treated as an infrastructure wait.
-
-Coming from the former plugin, `bun redline migrate-home` copies `~/.autopilot/memory` over and
-archives its ticket files.
-
-## Adapting it to your own stack
-
-Almost all of the adaptation happens in `repositories.yaml`, and none of it in code.
-
-**Declare each repository** with its `level`, its local path, its GitLab project, its base
-branch and its dependencies. `level` carries the processing order: an upstream repository has a
-strictly lower level than anything depending on it, and the loader refuses a registry where a
-dependency flows the wrong way.
-
-**Declare each command** — `lint`, `typecheck`, `ut`, `it`, `ft`, `ct`, `e2e`. `null` means
-"this kind of check does not exist here", and it is a prohibition, not a gap: a plan that asks
-for an undeclared kind is refused before a human ever sees it. Never put a plausible but
-unverified command in the registry — a test you believe you are running and that never runs is
-worse than no test at all.
-
-A few keys exist because their absence cost real hours: `reports` says where a command writes
-its diagnostics when it does not write them to stdout, `containers` says what must be up before
-the first test, `localFiles` says which ignored config files to copy into a fresh worktree,
-`targeting` says how a runner accepts being pointed at specific files, and `withoutTests: true`
-marks a repository that deliberately has no suite. `release` says where a publishable
-repository keeps its version and how its tags are prefixed, and `bump` says how a downstream
-repository adopts an upstream dev version.
-
-Budgets, naming, the model and effort of each role, the agent image, the Slack allowlist and
-the Jira transitions live in `redline.yaml`.
-
-## Your writing voice
-
-The closing phase publishes under **your own name** — a Slack message, a Jira comment. A
-message that reads as machine-written is worse than no message at all, so the finalizer writes
-with `~/.redline/voice.md`: a profile of how *you* write, derived from what you have actually
-written. While it does not exist, the template is used and the finalizer is told the voice is
-not calibrated, so it stays factual instead of imitating a style it does not know.
-
-To produce yours, gather a real corpus — your own MR comments, Slack messages and commit
-messages, a few hundred lines is plenty — and give Claude this prompt alongside it:
-
-> You are building a writing-voice profile that another AI agent will follow to write
-> messages published under my name — Slack, Jira comments, GitLab MR thread replies.
->
-> The corpus below contains only texts I wrote myself. Work from observation, never from
-> assumption: every rule you state must be backed by a pattern that actually recurs in the
-> corpus, and you must quote real examples for each one. Where the corpus is too thin to
-> conclude, say so explicitly rather than filling the gap — mark those sections as
-> extrapolated.
->
-> Follow the structure of `voice.template.md` exactly, section by section. Pay particular
-> attention to:
->
-> - the **invariants** — what holds in every context, especially punctuation and spacing
->   habits, which are the most visible signature and the first thing an agent gets wrong;
-> - **restrictive** rules over permissive ones. An agent's reflex is to structure text with
->   labels, headings and bullet lists, and that is what gives away automation fastest. State
->   plainly what I never do.
-> - the **lexicon** — the words I use and the words I never use. Two people following the
->   same rules are told apart by this.
-> - a final **self-check list** of eight to ten closed questions derived from the rules above,
->   where a single "no" means rewrite.
->
-> Keep the `@redline` / `@autopilot` prohibition from the template verbatim: it is a system
-> constraint, not a style preference.
->
-> Report the corpus volume you actually analysed, per source, in the table at the top.
->
-> Here is the corpus:
-> [paste]
-
-Then read it back and correct it by hand. A profile you have not reread is a profile that will
-publish something you would not have written.
-
-## Verify
+## Development
 
 | Command | What it answers |
 |---|---|
 | `bun run test` | is this **function** correct? |
 | `bun run test:workflow` | does the **chain** hold end to end? scripted agents, real git, fake Jira, GitLab and Slack |
-| `bun run typecheck` | — |
+| `bun run typecheck` | do the types hold? |
+| `bun run fixtures` | writes the fixture repositories to `tests/.fixtures/` to open them by hand |
 
-The workflow tests replace a dry-run flag, and replace it better: the agents are scripted
-in-process through outpost's own harness, the fixture repositories are real repositories with
-a real bare remote, and Jira, GitLab and Slack are local fake servers. Every scenario asserts
-what actually happened — commits, tags, merge requests, messages.
+The workflow tests replace a dry-run flag, and replace it better: agents are scripted
+in-process through outpost's own harness, the fixture repositories are real repositories with a
+real bare remote, and Jira, GitLab and Slack are local fake servers. Every scenario asserts what
+actually happened — commits, tags, merge requests, messages.
 
-**On the fixture repositories.** A git repository inside a git repository is a nested `.git`,
-which git will not track without a submodule. They are described in `tests/fixtures/repos.ts`
-and materialized per test in a temporary directory: real repositories, with a real bare
-remote, different levels, an upstream/downstream dependency, a monorepo, and a suite that can
-be made to fail on demand. To open them by hand: `bun run fixtures`.
+A git repository inside a git repository is a nested `.git`, which git will not track without a
+submodule. The fixture repositories are therefore described in `tests/fixtures/repos.ts` and
+materialized per test in a temporary directory: different levels, an upstream/downstream
+dependency, a monorepo, and a suite that can be made to fail on demand.
 
 ## Out of scope, deliberately
 
@@ -282,9 +282,16 @@ handling them on the same branch — does not exist yet; it is handled by hand.
 ticket's words and the repositories in scope, within a fixed budget: exact, free, debuggable,
 never out of sync.
 
-## Contributing
+**No eval runner yet.** The roles are covered by the workflow tests with scripted answers; a
+runner that scores real Claude answers against planted defects is still to be built on outpost.
 
-Start with [CONTRIBUTING.md](CONTRIBUTING.md).
+## Documentation
+
+- [docs/setup.md](docs/setup.md) — tokens, authentication, the registry, the settings, your writing voice
+- [docs/architecture.md](docs/architecture.md) — layers, phases, loops, escalations, durability
+- [docs/tui.md](docs/tui.md) — the terminal dashboard and its event channel
+- [CHANGELOG.md](CHANGELOG.md) — what changed, release by release
+- [CONTRIBUTING.md](CONTRIBUTING.md) — how to propose a change
 
 ## License
 

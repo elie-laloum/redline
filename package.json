@@ -39,6 +39,7 @@
   "files": [
     "src",
     "templates",
-    "docker"
+    "docker",
+    "CHANGELOG.md"
   ]
 }
