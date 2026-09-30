@@ -1,251 +1,125 @@
 import assert from "node:assert/strict";
-import { after, before, describe, it } from "node:test";
+import { describe, it } from "bun:test";
+import * as v from "valibot";
+import { parse } from "yaml";
 import {
   commandFor,
+  declaredTestKinds,
+  downstreamInScope,
+  eligibleRepos,
   findRepo,
   isRepoEligible,
-  loadConfig,
-  loadRegistry,
   orderByLevel,
+  RegistrySchema,
+  registryProblems,
   resolveBySquad,
-  squadOf,
-} from "../../plugins/autopilot/mcp/lib/config.ts";
-import { filterFlags } from "../../plugins/autopilot/mcp/lib/git.ts";
-import { sandboxProject, useProjectConfig } from "../helpers.ts";
+  targetingFor,
+} from "../../src/domain/config.ts";
+import { filterFlags } from "../../src/domain/monorepo.ts";
+import { squadOf } from "../../src/domain/ticket.ts";
+import { exampleRegistry, exampleSettings, registryFrom, registryYaml, repoYaml } from "../helpers.ts";
 
-before(useProjectConfig);
+const REGISTRY = registryFrom(`${registryYaml(
+  repoYaml("lib-theme", { layer: "front", packageName: '"@fixture/theme"', commands: "{ lint: pnpm lint, typecheck: pnpm typecheck, ut: null, it: null, ft: null, ct: null, e2e: null }", withoutTests: "true" }),
+  repoYaml("lib-ds", { level: "2", layer: "front", packageName: '"@fixture/ds"', dependsOn: "[lib-theme]", commands: "{ lint: yarn lint, typecheck: yarn build, ut: yarn test, it: null, ft: null, ct: null, e2e: null }" }),
+  repoYaml("api-a", { level: "2" }),
+  repoYaml("api-b", { level: "2" }),
+  repoYaml("app-web", { level: "3", layer: "front", monorepoTool: "turbo", dependsOn: "[lib-ds, lib-theme]" }),
+  repoYaml("banc-front", { layer: "eval" }),
+)}evalOnly:\n  repos: [banc-front]\n  jiraProjects: [TJ]\n`);
 
-/**
- * Les comportements se verifient sur un registre de fixture, jamais sur celui de
- * la machine : `repositories.yaml` est gitignore et varie d'un poste a l'autre.
- * Ce qui se verifie sur le registre reel, ce sont ses invariants — plus bas.
- */
-const REGISTRE = `schemaVersion: 1
+const repo = (name: string) => findRepo(REGISTRY, name) ?? assert.fail(`${name} absent`);
 
-repositories:
-  - name: lib-theme
-    level: 1
-    path: ~/fixture/lib-theme
-    gitlabProject: fixture/lib-theme
-    baseBranch: main
-    layer: front
-    packageManager: pnpm
-    monorepoTool: null
-    packageName: "@fixture/theme"
-    dependsOn: []
-    commands: { lint: pnpm lint, typecheck: pnpm typecheck, ut: null, it: null, ft: null, ct: null, e2e: null }
-    withoutTests: true
-    ciJobsToWatch: []
-    description: Theme sans suite de test.
-    keywords: [theme]
-
-  - name: lib-ds
-    level: 2
-    path: ~/fixture/lib-ds
-    gitlabProject: fixture/lib-ds
-    baseBranch: main
-    layer: front
-    packageManager: yarn
-    monorepoTool: null
-    packageName: "@fixture/ds"
-    dependsOn: [lib-theme]
-    commands: { lint: yarn lint, typecheck: yarn build, ut: yarn test, it: null, ft: null, ct: null, e2e: null }
-    ciJobsToWatch: [build]
-    description: Librairie de composants, pas un monorepo.
-    keywords: [composant]
-
-  - name: api-a
-    level: 2
-    path: ~/fixture/api-a
-    gitlabProject: fixture/api-a
-    baseBranch: main
-    layer: backend
-    packageManager: npm
-    monorepoTool: null
-    packageName: null
-    dependsOn: []
-    commands: { lint: npm run lint, typecheck: npm run build, ut: npm run test:unit, it: null, ft: null, ct: null, e2e: null }
-    ciJobsToWatch: [build]
-    description: Service backend, meme level que api-b.
-    keywords: [backend]
-
-  - name: api-b
-    level: 2
-    path: ~/fixture/api-b
-    gitlabProject: fixture/api-b
-    baseBranch: main
-    layer: backend
-    packageManager: npm
-    monorepoTool: null
-    packageName: null
-    dependsOn: []
-    commands: { lint: npm run lint, typecheck: npm run build, ut: npm run test:unit, it: null, ft: null, ct: null, e2e: null }
-    ciJobsToWatch: [build]
-    description: Service backend, meme level que api-a.
-    keywords: [backend]
-
-  - name: app-web
-    level: 3
-    path: ~/fixture/app-web
-    gitlabProject: fixture/app-web
-    baseBranch: main
-    layer: front
-    packageManager: pnpm
-    monorepoTool: turbo
-    packageName: null
-    dependsOn: [lib-ds, lib-theme]
-    commands: { lint: pnpm turbo run lint, typecheck: pnpm turbo run typecheck, ut: pnpm turbo run test:unit, it: null, ft: null, ct: null, e2e: null }
-    ciJobsToWatch: [build]
-    description: Monorepo turbo.
-    keywords: [ecran]
-
-  - name: banc-front
-    level: 1
-    path: ~/fixture/banc-front
-    gitlabProject: fixture/banc-front
-    baseBranch: main
-    layer: eval
-    packageManager: pnpm
-    monorepoTool: null
-    packageName: null
-    dependsOn: []
-    commands: { lint: pnpm lint, typecheck: pnpm typecheck, ut: pnpm test, it: null, ft: null, ct: null, e2e: null }
-    ciJobsToWatch: []
-    description: Banc d'essai.
-    keywords: [eval]
-
-evalOnly:
-  repos: [banc-front]
-  jiraProjects: [TJ]
-`;
-
-
-describe("le registre reel", () => {
-  it("se charge et declare un level pour chaque repo", () => {
-    const registry = loadRegistry();
-    assert.equal(registry.schemaVersion, 1);
+describe("le registre modele", () => {
+  it("se valide et ne porte aucune incoherence", () => {
+    const registry = exampleRegistry();
     assert.ok(registry.repositories.length > 0);
-    for (const repo of registry.repositories) {
-      assert.equal(typeof repo.level, "number", `${repo.name} sans level`);
-      assert.ok(repo.baseBranch, `${repo.name} sans baseBranch`);
-      assert.ok(repo.gitlabProject.includes("/"), `${repo.name} sans chemin gitlab`);
-    }
+    assert.deepEqual(registryProblems(registry), []);
   });
 
-  it("garde chaque dependance amont a un level strictement inferieur", () => {
-    // C'est verifie au chargement : un dependsOn qui remonte le courant rendrait
-    // l'ordre de traitement faux, et le bug apparaitrait au bump, pas ici.
-    const byName = new Map(loadRegistry().repositories.map((repo) => [repo.name, repo]));
-    for (const repo of byName.values()) {
-      for (const upstream of repo.dependsOn) {
-        assert.ok(byName.get(upstream)!.level < repo.level, `${repo.name} -> ${upstream}`);
-      }
-    }
+  it("refuse une commande vide qui passerait pour une commande", () => {
+    const yaml = registryYaml(repoYaml("vide", { commands: '{ lint: "  ", typecheck: null, ut: "true", it: null, ft: null, ct: null, e2e: null }' }));
+    assert.equal(v.safeParse(RegistrySchema, parse(yaml)).success, false);
+  });
+
+  it("refuse un fichier local qui sort du depot", () => {
+    const yaml = registryYaml(repoYaml("fuite", { localFiles: "[../secret]" }));
+    assert.equal(v.safeParse(RegistrySchema, parse(yaml)).success, false);
+  });
+});
+
+describe("la coherence du registre", () => {
+  it("signale une dependance vers un repo inconnu", () => {
+    const registry = registryFrom(registryYaml(repoYaml("a", { dependsOn: "[fantome]" })));
+    assert.match(registryProblems(registry).join(), /fantome/);
+  });
+
+  it("signale une dependance qui remonte le courant", () => {
+    const registry = registryFrom(registryYaml(repoYaml("amont", { level: "2" }), repoYaml("aval", { level: "2", dependsOn: "[amont]" })));
+    assert.match(registryProblems(registry).join(), /level inferieur/);
+  });
+
+  it("exige que l'absence de tests soit declaree", () => {
+    const registry = registryFrom(registryYaml(repoYaml("muet", { commands: "{ lint: null, typecheck: null, ut: null, it: null, ft: null, ct: null, e2e: null }" })));
+    assert.match(registryProblems(registry).join(), /withoutTests/);
   });
 });
 
 describe("le comportement du registre", () => {
-  let projet: ReturnType<typeof sandboxProject>;
-
-  before(() => {
-    projet = sandboxProject({ registry: REGISTRE });
-  });
-  after(() => {
-    projet.cleanup();
-    useProjectConfig();
+  it("ordonne amont vers aval, stable a level egal", () => {
+    assert.deepEqual(orderByLevel([repo("app-web"), repo("lib-theme"), repo("lib-ds")]).map((r) => r.name), ["lib-theme", "lib-ds", "app-web"]);
+    assert.deepEqual(orderByLevel([repo("api-b"), repo("api-a")]).map((r) => r.name), ["api-a", "api-b"]);
   });
 
-  describe("orderByLevel", () => {
-    it("ordonne amont vers aval", () => {
-      const ordered = orderByLevel([findRepo("app-web"), findRepo("lib-theme"), findRepo("lib-ds")]);
-      assert.deepEqual(
-        ordered.map((repo) => repo.name),
-        ["lib-theme", "lib-ds", "app-web"],
-      );
-    });
-
-    it("est stable a level egal", () => {
-      const ordered = orderByLevel([findRepo("api-b"), findRepo("api-a")]);
-      assert.deepEqual(
-        ordered.map((repo) => repo.name),
-        ["api-a", "api-b"],
-      );
-    });
+  it("rend la commande declaree, ou null au lieu d'en inventer une", () => {
+    assert.equal(commandFor(repo("lib-ds"), "ut"), "yarn test");
+    assert.equal(commandFor(repo("lib-theme"), "ut"), null);
+    assert.deepEqual(declaredTestKinds(repo("lib-ds")), ["ut"]);
   });
 
-  describe("selection de commande par type", () => {
-    it("rend la commande declaree", () => {
-      // Pas la commande elle-meme : elle change avec le repo, et un test qui la
-      // recopie transforme une mise a jour de registre en echec de suite. Ce qui
-      // compte est qu'elle vienne de la, telle quelle.
-      const app = findRepo("app-web");
-      assert.equal(commandFor(app, "ut"), app.commands.ut);
-      assert.ok(commandFor(app, "ut")?.trim(), "app-web doit declarer une commande ut");
-    });
-
-    it("rend null quand le type n'existe pas dans le repo, au lieu d'en inventer une", () => {
-      assert.equal(commandFor(findRepo("lib-theme"), "ut"), null);
-      assert.equal(commandFor(findRepo("app-web"), "e2e"), null);
-    });
-
-    it("echoue clairement sur un repo inconnu", () => {
-      assert.throws(() => findRepo("nope"), /Repo inconnu du registre/);
-    });
+  it("distingue le repo qui ne declare pas de ciblage de celui qui declare ne pas se cibler", () => {
+    const registry = registryFrom(registryYaml(repoYaml("mtr", { targeting: '{ ut: null, ft: "-- -g {glob}" }' }), repoYaml("libre")));
+    const mtr = findRepo(registry, "mtr") ?? assert.fail();
+    assert.equal(targetingFor(mtr, "ft"), "-- -g {glob}");
+    assert.equal(targetingFor(mtr, "ut"), null);
+    assert.equal(targetingFor(findRepo(registry, "libre") ?? assert.fail(), "ut"), "{paths}");
   });
 
-  describe("filtres monorepo", () => {
-    it("rend des --filter pour turbo", () => {
-      assert.equal(filterFlags(findRepo("app-web"), ["@app/web", "@app/lab"]), "--filter=@app/web --filter=@app/lab");
-    });
-
-    it("ne rend rien pour un repo qui n'est pas un monorepo", () => {
-      assert.equal(filterFlags(findRepo("lib-ds"), ["quoi-que-ce-soit"]), "");
-    });
-
-    it("ne rend rien quand aucun paquet n'a bouge", () => {
-      assert.equal(filterFlags(findRepo("app-web"), []), "");
-    });
+  it("rend les filtres monorepo", () => {
+    assert.equal(filterFlags(repo("app-web").monorepoTool, ["@app/web", "@app/lab"]), "--filter=@app/web --filter=@app/lab");
+    assert.equal(filterFlags(repo("lib-ds").monorepoTool, ["x"]), "");
+    assert.equal(filterFlags(repo("app-web").monorepoTool, []), "");
   });
 
-  describe("cloisonnement des repos de banc d'essai", () => {
-    it("garde les repos d'eval hors d'un vrai ticket", () => {
-      assert.equal(isRepoEligible(findRepo("banc-front"), "FT-1025"), false);
-      assert.equal(isRepoEligible(findRepo("app-web"), "FT-1025"), true);
-    });
+  it("cloisonne les repos de banc d'essai dans les deux sens", () => {
+    assert.equal(isRepoEligible(REGISTRY, repo("banc-front"), "FT"), false);
+    assert.equal(isRepoEligible(REGISTRY, repo("app-web"), "FT"), true);
+    assert.equal(isRepoEligible(REGISTRY, repo("app-web"), "TJ"), false);
+    assert.deepEqual(eligibleRepos(REGISTRY, "TJ").map((r) => r.name), ["banc-front"]);
+  });
 
-    it("garde les vrais repos hors d'un ticket de test", () => {
-      assert.equal(isRepoEligible(findRepo("app-web"), "TJ-731"), false);
-      assert.equal(isRepoEligible(findRepo("banc-front"), "TJ-731"), true);
-    });
+  it("trouve les repos aval d'un amont, dans le perimetre seulement", () => {
+    assert.deepEqual(downstreamInScope(REGISTRY, "lib-ds", ["lib-ds", "app-web"]).map((r) => r.name), ["app-web"]);
+    assert.deepEqual(downstreamInScope(REGISTRY, "lib-ds", ["lib-ds"]), []);
   });
 });
 
 describe("resolution par squad", () => {
-  it("lit le prefixe de la cle Jira", () => {
+  it("lit le prefixe de la cle Jira et refuse une cle mal formee", () => {
     assert.equal(squadOf("FT-1025"), "FT");
     assert.equal(squadOf("rev-42"), "REV");
-  });
-
-  it("refuse une cle mal formee plutot que de deviner", () => {
     assert.throws(() => squadOf("pas-une-cle"), /Cle Jira mal formee/);
   });
 
-  it("est insensible a la casse", () => {
-    const indexed = { default: ["personne"], bySquad: { FT: ["a@x.fr"] } };
-    assert.deepEqual(resolveBySquad(indexed, "ft"), ["a@x.fr"]);
-    assert.deepEqual(resolveBySquad(indexed, "Ft"), ["a@x.fr"]);
-    assert.deepEqual(resolveBySquad(indexed, "FT"), ["a@x.fr"]);
-  });
-
-  it("retombe sur default pour une squad inconnue, sans echouer", () => {
+  it("est insensible a la casse et retombe sur default", () => {
     const indexed = { default: ["repli"], bySquad: { FT: ["a@x.fr"] } };
+    assert.deepEqual(resolveBySquad(indexed, "ft"), ["a@x.fr"]);
     assert.deepEqual(resolveBySquad(indexed, "NOUVELLE"), ["repli"]);
   });
 
-  it("resout la transition Jira de la configuration reelle", () => {
-    const transitions = loadConfig().jira.transitions;
-    assert.equal(resolveBySquad(transitions, "FT").apresMr, "VALIDATION");
-    assert.equal(resolveBySquad(transitions, "TJ").apresMr, "En cours");
-    assert.equal(resolveBySquad(transitions, "INCONNUE").apresMr, "VALIDATION");
+  it("resout la transition Jira des reglages modeles", () => {
+    const transitions = exampleSettings().jira.transitions;
+    assert.equal(resolveBySquad(transitions, "FT").afterMergeRequest, "VALIDATION");
+    assert.equal(resolveBySquad(transitions, "TJ").afterMergeRequest, "En cours");
   });
 });

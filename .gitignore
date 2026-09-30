@@ -1,42 +1,12 @@
-# secrets — présent dès le premier commit, jamais après
+# secrets : la configuration reelle vit dans ~/.redline, jamais ici
 .env
 .env.*
-!.env.example
-
-# configuration locale : elle décrit une infrastructure, elle ne se publie pas.
-# Les modèles versionnés à côté servent de repli — le projet tourne sans elle.
-autopilot.yaml
-repositories.yaml
-
-# profil de voix : il se calibre sur un corpus personnel et porte le nom de
-# quelqu'un. Le modèle à côté dit comment le produire.
-plugins/autopilot/rules/voice.md
 
 node_modules/
 dist/
-.turbo/
-.tanstack/
-.output/
-.vite/
 *.log
 .DS_Store
 
 # artefacts de test
 tests/.tmp/
-tests/fixtures/repos/**/node_modules/
-
-# live-shell
-tools/live-shell/dist/
-tools/live-shell/.nitro/
-
-# resultats de `claude plugin eval`
-plugins/autopilot/evals/results/
-
-# depots de fixture materialises a la main (pnpm fixtures)
 tests/.fixtures/
-
-# impeccable : artefacts de run, jetables — la revue, le cache du hook et le
-# journal des questions posees pendant une passe de design.
-tools/live-shell/.impeccable/review/
-tools/live-shell/.impeccable/hook.cache.json
-tools/live-shell/.impeccable/questions/

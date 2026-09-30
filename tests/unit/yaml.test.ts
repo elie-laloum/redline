@@ -1,12 +1,6 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
-import { parseYaml, stringifyStrict } from "../../plugins/autopilot/mcp/lib/yaml.ts";
-
-/**
- * Le YAML d'un fichier ecrit par des agents doit se relire a l'identique.
- * Une chaine qui revient en booleen ou en flottant corrompt l'etat en silence :
- * on ne le decouvre qu'a la reprise suivante.
- */
+import { describe, it } from "bun:test";
+import { parseYaml, stringifyStrict } from "../../src/adapters/yaml.ts";
 
 describe("serialiseur strict", () => {
   const nasty = {
@@ -21,15 +15,13 @@ describe("serialiseur strict", () => {
     nul: "null",
     sharp: "# pas un commentaire",
     deuxPoints: "cle: valeur",
-    // Les vraies valeurs typees doivent rester typees.
     vraiNombre: 3,
     vraiBooleen: true,
     vraiNull: null,
   };
 
   it("relit a l'identique tout ce qui pourrait se coercer", () => {
-    const text = stringifyStrict(nasty);
-    assert.deepEqual(parseYaml(text), nasty);
+    assert.deepEqual(parseYaml(stringifyStrict(nasty)), nasty);
   });
 
   it("quote les chaines et laisse les scalaires nus", () => {
@@ -41,14 +33,13 @@ describe("serialiseur strict", () => {
     assert.match(text, /vraiNull: null$/m);
   });
 
-  it("garde le multiligne en bloc, pour que le plan reste relisible a la main", () => {
+  it("garde le multiligne en bloc, pour que le ledger reste relisible a la main", () => {
     const text = stringifyStrict({ plan: "Repo 1 : design-system\nRepo 2 : web-app\n" });
     assert.match(text, /plan: \|/);
     assert.deepEqual(parseYaml(text), { plan: "Repo 1 : design-system\nRepo 2 : web-app\n" });
   });
 
   it("retombe sur le quoting quand le bloc ne saurait pas representer la chaine", () => {
-    // Une espace en fin de ligne disparaitrait dans un bloc litteral.
     const value = { texte: "ligne avec espace \nsuite" };
     const text = stringifyStrict(value);
     assert.doesNotMatch(text, /texte: \|/);
@@ -56,12 +47,7 @@ describe("serialiseur strict", () => {
   });
 
   it("relit les listes et les objets imbriques", () => {
-    const value = {
-      scope: [
-        { name: "design-system", level: 2, commits: ["a1b2c3d"], publication: { tag: "v2.4.0-FT-1025-1", n: 1 } },
-        { name: "web-app", level: 4, commits: [] as string[] },
-      ],
-    };
+    const value = { scope: [{ name: "design-system", level: 2, commits: ["a1b2c3d"], release: { tag: "v2.4.0-FT-1025-1" } }] };
     assert.deepEqual(parseYaml(stringifyStrict(value)), value);
   });
 
