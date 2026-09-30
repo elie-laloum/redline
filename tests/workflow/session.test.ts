@@ -120,6 +120,15 @@ describe("une session redline", () => {
     assert.doesNotMatch(git(core, "branch", "--list"), /FT-1/);
   });
 
+  it("nettoie quand meme un ticket dont la publication ne se relit plus", async () => {
+    world = await createWorld({ issues: [ISSUE], script: {} });
+    world.ledger("FT-1", { phase: "done", publication: { mergeRequests: "fixture-core" } });
+
+    const done = await clearTicket(world.app, "FT-1", { force: false, dryRun: false });
+    assert.ok(done.remote.some((entry) => entry.startsWith("publication illisible")));
+    assert.equal(readLedger(world.app.paths, "FT-1"), null);
+  });
+
   it("escalade un checkpoint ecrit par d'autres briefs, et repart proprement avec --fresh", async () => {
     world = await createWorld({ issues: [ISSUE], script: { "functional-grill": [{ reply: functionalAsk }, { reply: functionalAsk }] } as Script });
     world.ledger("FT-1");

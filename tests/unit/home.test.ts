@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, it } from "bun:test";
 import { commitHome, ensureHome, redirectTmpdir } from "../../src/app/home.ts";
-import { newLedger, readLedger, recordEvent, updateLedger, writeLedger } from "../../src/app/ledger.ts";
+import { approvedOf, deliveredOf, newLedger, readLedger, recordEvent, updateLedger, writeLedger } from "../../src/app/ledger.ts";
 import { acquireLock, readLock } from "../../src/app/lock.ts";
 import { migrateHome } from "../../src/app/migrate.ts";
 import { lockFile, pathsOf, ticketFile } from "../../src/app/paths.ts";
@@ -72,6 +72,14 @@ describe("le ledger", () => {
   it("refuse un ledger corrompu plutot que de repartir de travers", () => {
     writeFileSync(ticketFile(paths, "FT-2"), "key: FT-2\nphase: nulle-part\n");
     assert.throws(() => readLedger(paths, "FT-2"), /Ledger illisible/);
+  });
+
+  it("refuse de passer a une phase la sortie de la precedente qu'elle ne sait pas relire", () => {
+    writeLedger(paths, { ...newLedger({ ...base, key: "FT-3" }), phase: "closing", approved: { decision: "approve", note: null } });
+    const ledger = readLedger(paths, "FT-3");
+    assert.ok(ledger);
+    assert.throws(() => approvedOf(ledger), (error: Error & { hint?: string }) => /Ledger illisible : FT-3, champ approved/.test(error.message) && /^ticket : /m.test(error.hint ?? ""));
+    assert.throws(() => deliveredOf(ledger), /champ delivered/);
   });
 
   it("n'existe pas avant le premier start", () => {

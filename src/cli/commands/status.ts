@@ -1,8 +1,8 @@
 import { readdirSync } from "node:fs";
 import * as clack from "@clack/prompts";
 import { createContext } from "../../app/context.ts";
-import { readLedger } from "../../app/ledger.ts";
-import { renderPlan, type Plan } from "../../domain/plan.ts";
+import { approvedOf, readLedger } from "../../app/ledger.ts";
+import { renderPlan } from "../../domain/plan.ts";
 import { normalizeKey } from "../../domain/ticket.ts";
 
 export function statusCommand(input: string | undefined, options: { plan?: boolean }): number {
@@ -26,8 +26,7 @@ export function statusCommand(input: string | undefined, options: { plan?: boole
   clack.log.info(`Phase : ${ledger.phase}${ledger.active ? ` (en cours, pid ${ledger.active.pid})` : ""}`);
   if (ledger.escalation) clack.log.error(`Escalade ${ledger.escalation.kind} sur ${ledger.escalation.task} :\n${ledger.escalation.detail}`);
   clack.log.message(ledger.history.map((entry) => `${entry.at.slice(0, 16).replace("T", " ")}  ${entry.event}`).join("\n"));
-  const approved = ledger.approved as { plan?: Plan } | null;
-  if (options.plan && approved?.plan) clack.log.message(renderPlan(approved.plan));
+  if (options.plan && ledger.approved !== null) clack.log.message(renderPlan(approvedOf(ledger).plan));
   clack.outro(ledger.url);
   return 0;
 }

@@ -5,12 +5,81 @@ import { writeYamlAtomic } from "../adapters/yaml.ts";
 import { SettingsSchema } from "../domain/config.ts";
 import { ESCALATION_KINDS } from "../domain/escalation.ts";
 import { fail } from "../domain/failure.ts";
+import { PlanSchema } from "../domain/plan.ts";
+import type { Publication } from "../phases/closing/workflow.ts";
+import type { DeliveredRepo } from "../phases/delivery/summary.ts";
+import type { FramingOutcome } from "../phases/framing/workflow.ts";
 import { type Paths, ticketFile } from "./paths.ts";
 
 export const PHASES = ["framing", "delivery", "closing", "done", "escalated"] as const;
 export const REOPEN_TARGETS = ["functional", "technical", "plan"] as const;
 
 const json = v.unknown();
+
+const ContradictionSchema = v.object({ note: v.string(), claim: v.string(), evidence: v.string(), raisedBy: v.string() });
+const ArbitrageSchema = v.object({ question: v.string(), answer: v.string(), why: v.string() });
+const GrillOutcomeSchema = v.object({ arbitrages: v.array(ArbitrageSchema), contradictions: v.array(ContradictionSchema) });
+const TicketReferenceSchema = v.object({ key: v.string(), relation: v.string() });
+
+const FramingOutcomeSchema: v.GenericSchema<unknown, FramingOutcome> = v.object({
+  decision: v.picklist(["approve", "amend", "reject-functional", "reject-technical"]),
+  note: v.nullable(v.string()),
+  ticket: v.object({
+    key: v.string(),
+    squad: v.string(),
+    title: v.string(),
+    description: v.string(),
+    criteria: v.array(v.object({ id: v.string(), text: v.string() })),
+    issueType: v.string(),
+    status: v.string(),
+    url: v.string(),
+    labels: v.array(v.string()),
+    links: v.array(v.string()),
+    references: v.array(TicketReferenceSchema),
+    related: v.array(
+      v.union([
+        v.object({ ...TicketReferenceSchema.entries, title: v.string(), issueType: v.string(), status: v.string(), url: v.string(), description: v.string() }),
+        v.object({ ...TicketReferenceSchema.entries, unavailable: v.string() }),
+      ]),
+    ),
+  }),
+  figma: v.object({
+    frames: v.array(v.object({ url: v.string(), name: v.string(), outline: v.string(), image: v.nullable(v.string()) })),
+    skipped: v.array(v.string()),
+  }),
+  functional: GrillOutcomeSchema,
+  technical: GrillOutcomeSchema,
+  scope: v.object({
+    impacted: v.array(v.object({ repo: v.string(), level: v.number(), area: v.string(), evidence: v.array(v.string()) })),
+    excluded: v.array(v.object({ repo: v.string(), reason: v.string() })),
+  }),
+  plan: PlanSchema,
+  contradictions: v.array(ContradictionSchema),
+});
+
+const DeliveredSchema: v.GenericSchema<unknown, DeliveredRepo[]> = v.array(
+  v.object({
+    repo: v.string(),
+    branch: v.string(),
+    directory: v.string(),
+    base: v.string(),
+    baseBranch: v.string(),
+    project: v.string(),
+    commits: v.array(v.string()),
+    release: v.nullable(v.object({ tag: v.string(), version: v.string() })),
+    contradictions: v.array(ContradictionSchema),
+  }),
+);
+
+const PublicationSchema: v.GenericSchema<unknown, Publication> = v.object({
+  memory: v.object({
+    operations: v.array(v.object({ action: v.string(), path: v.string(), why: v.string() })),
+    commit: v.nullable(v.string()),
+  }),
+  mergeRequests: v.array(v.object({ repo: v.string(), project: v.string(), iid: v.number(), url: v.string() })),
+  slack: v.object({ channel: v.object({ id: v.string(), name: v.string() }), invited: v.array(v.string()), unknown: v.array(v.string()) }),
+  jira: v.object({ transition: v.nullable(v.string()), commented: v.boolean() }),
+});
 
 export const LedgerSchema = v.object({
   key: v.string(),
@@ -46,6 +115,28 @@ export function readLedger(paths: Paths, key: string): Ledger | null {
   if (!existsSync(file)) return null;
   const result = v.safeParse(LedgerSchema, parse(readFileSync(file, "utf8")));
   if (!result.success) fail(`Ledger illisible : ${file}.`, result.issues.map((issue) => `${v.getDotPath(issue)} : ${issue.message}`).join("\n"));
+  return result.output;
+}
+
+/**
+ * What one phase hands the next is checked when read, not in readLedger: a run written by an
+ * incompatible redline stops at the phase that needs it, and clear still reads the rest.
+ */
+export function approvedOf(ledger: Ledger): FramingOutcome {
+  return handover(ledger, "approved", FramingOutcomeSchema);
+}
+
+export function deliveredOf(ledger: Ledger): DeliveredRepo[] {
+  return handover(ledger, "delivered", DeliveredSchema);
+}
+
+export function publicationOf(ledger: Ledger): Publication {
+  return handover(ledger, "publication", PublicationSchema);
+}
+
+function handover<T>(ledger: Ledger, field: "approved" | "delivered" | "publication", schema: v.GenericSchema<unknown, T>): T {
+  const result = v.safeParse(schema, ledger[field]);
+  if (!result.success) fail(`Ledger illisible : ${ledger.key}, champ ${field}.`, result.issues.map((issue) => `${v.getDotPath(issue) ?? field} : ${issue.message}`).join("\n"));
   return result.output;
 }
 

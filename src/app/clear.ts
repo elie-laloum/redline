@@ -3,7 +3,7 @@ import { gitAllowFailure, workingChanges } from "../adapters/git.ts";
 import { fail } from "../domain/failure.ts";
 import type { Publication } from "../phases/closing/workflow.ts";
 import type { AppContext } from "./context.ts";
-import { readLedger } from "./ledger.ts";
+import { publicationOf, readLedger } from "./ledger.ts";
 import { isAlive, readLock } from "./lock.ts";
 import { expandTilde, figmaDirectory, lockFile, logDirectory, runDirectory, ticketFile } from "./paths.ts";
 
@@ -23,10 +23,10 @@ interface Worktree {
 export async function clearTicket(app: AppContext, key: string, options: { force: boolean; dryRun: boolean }): Promise<ClearReport> {
   const holder = readLock(app.paths, key);
   if (holder && holder.pid !== process.pid && isAlive(holder.pid)) fail(`${key} tourne encore (pid ${holder.pid}) : arrete-le avant de nettoyer.`);
-  const publication = readLedger(app.paths, key)?.publication as Publication | null | undefined;
   const removed: string[] = [];
   const blocked: string[] = [];
   const remote: string[] = [];
+  const publication = publicationFor(app, key, remote);
 
   for (const worktree of await worktreesOf(app, key)) {
     const risk = await riskOf(worktree);
@@ -55,6 +55,18 @@ export async function clearTicket(app: AppContext, key: string, options: { force
     for (const tag of tags.stdout.split("\n").filter(Boolean)) remote.push(`tag ${tag} (${repo.name})`);
   }
   return { removed, blocked, remote };
+}
+
+/** A publication that no longer reads must not block the cleanup: its remote traces are then left to check by hand. */
+function publicationFor(app: AppContext, key: string, remote: string[]): Publication | null {
+  const ledger = readLedger(app.paths, key);
+  if (!ledger?.publication) return null;
+  try {
+    return publicationOf(ledger);
+  } catch {
+    remote.push("publication illisible dans le ledger : verifie a la main les MR, le canal Slack et la transition Jira");
+    return null;
+  }
 }
 
 async function worktreesOf(app: AppContext, key: string): Promise<Worktree[]> {

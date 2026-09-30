@@ -4,12 +4,11 @@ import { describeError } from "../domain/failure.ts";
 import type { RoleName } from "../domain/roles.ts";
 import type { ClosingContext } from "../phases/closing/context.ts";
 import { defineClosing, type Publication } from "../phases/closing/workflow.ts";
-import type { DeliveredRepo } from "../phases/delivery/summary.ts";
 import { defineDelivery } from "../phases/delivery/workflow.ts";
 import { defineFraming, type FramingOutcome } from "../phases/framing/workflow.ts";
 import type { RunContext } from "../phases/run.ts";
 import type { AppContext } from "./context.ts";
-import { type Ledger, readLedger, recordEvent, REOPEN_TARGETS, writeLedger } from "./ledger.ts";
+import { approvedOf, deliveredOf, type Ledger, publicationOf, readLedger, recordEvent, REOPEN_TARGETS, writeLedger } from "./ledger.ts";
 import { storageFor } from "./storage.ts";
 import { checkpointVersion } from "./version.ts";
 
@@ -70,7 +69,7 @@ async function step(app: AppContext, ledger: Ledger, answers: readonly WorkflowA
   };
   switch (ledger.phase) {
     case "done":
-      return { outcome: { status: "done", publication: ledger.publication as Publication } };
+      return { outcome: { status: "done", publication: publicationOf(ledger) } };
     case "escalated":
       return { outcome: { status: "escalated", escalation: ledger.escalation ?? unknownEscalation() } };
     case "framing": {
@@ -82,14 +81,14 @@ async function step(app: AppContext, ledger: Ledger, answers: readonly WorkflowA
       return { ledger: save(app, outcome.decision === "approve" ? approve(ledger, outcome) : reopen(ledger, outcome)) };
     }
     case "delivery": {
-      const delivery = defineDelivery({ ...run, framing: ledger.approved as FramingOutcome });
+      const delivery = defineDelivery({ ...run, framing: approvedOf(ledger) });
       const result = await start(app, ledger, delivery.workflow, `${key}/delivery/${ledger.delivery.generation}`, undefined, options);
       const halted = await halt(app, ledger, "delivery", result);
       if (halted) return halted;
       return { ledger: save(app, recordEvent({ ...ledger, phase: "closing", delivered: delivery.outcome(result) }, "livraison terminee")) };
     }
     case "closing": {
-      const context: ClosingContext = { ...run, framing: ledger.approved as FramingOutcome, delivered: ledger.delivered as DeliveredRepo[] };
+      const context: ClosingContext = { ...run, framing: approvedOf(ledger), delivered: deliveredOf(ledger) };
       const closing = defineClosing(context);
       const result = await start(app, ledger, closing.workflow, `${key}/closing/${ledger.closing.attempt}`, undefined, options);
       const halted = await halt(app, ledger, "closing", result);
