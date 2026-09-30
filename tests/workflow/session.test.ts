@@ -91,6 +91,9 @@ describe("une session redline", () => {
       events.flatMap((event) => (event.type === "publication" ? [event.action] : [])),
       ["push", "merge-request", "slack", "jira", "jira"],
     );
+    const outputs = new Map(events.flatMap((event) => (event.type === "output" ? [[event.task, event.value] as const] : [])));
+    assert.equal((outputs.get("ticket") as { key?: string } | undefined)?.key, "FT-1");
+    assert.equal((outputs.get("merge-requests") as unknown[] | undefined)?.length, 1);
   });
 
   it("refuse de lancer un ticket deja en cours", async () => {
@@ -131,8 +134,13 @@ describe("une session redline", () => {
     assert.equal(escalated.status, "escalated");
     assert.equal(escalated.status === "escalated" ? escalated.escalation.task : "", "fixture-core.code/adversaire");
 
-    const resumed = await runSession(world.app, "FT-1", { resume: true, fresh: { note: "Garde la signature de clamp" } }, { prompter: scripted([]), progress: silentProgress });
+    const events: RunEvent[] = [];
+    const resumed = await runSession(world.app, "FT-1", { resume: true, fresh: { note: "Garde la signature de clamp" } }, { prompter: scripted([]), progress: { event: (event) => events.push(event), pause: () => {} } });
     assert.equal(resumed.status, "done");
+    const past = events.find((event) => event.type === "past");
+    assert.equal(past?.type === "past" ? past.phase : null, "framing");
+    assert.ok(past?.type === "past" && past.tasks.every((task) => task.status === "done"));
+    assert.ok(events.some((event) => event.type === "output" && event.task === "plan"));
     assert.match(world.agents.prompts.developer?.at(-1) ?? "", /Garde la signature de clamp/);
     assert.equal(world.agents.prompts["test-writer"]?.length, 1);
     assert.equal(readLedger(world.app.paths, "FT-1")?.delivery.generation, 2);

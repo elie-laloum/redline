@@ -64,16 +64,37 @@ describe("le modele du tableau de bord", () => {
     assert.equal(state.journal.filter((entry) => entry.text === "— Cadrage —").length, 1);
   });
 
-  it("repart d'un etat propre a la phase suivante, sans perdre le journal", () => {
+  it("garde les phases finies a l'ecran, avec ce que leurs agents ont dit et fait", () => {
     const state = play([
       phase("framing", { plan: "waiting" }),
+      workflow("loop", "plan", T0, { round: 2 }),
       agent("plan", "developer", { kind: "text", text: "plan" }),
       { type: "gate", task: "plan", gate: "validite", round: 1, verdict: "pass", spent: 0, budget: 2, text: null },
       phase("delivery", DELIVERY, ["core", "app"]),
     ]);
-    assert.deepEqual(state.lanes, []);
-    assert.deepEqual(state.gates, {});
+    assert.deepEqual(state.tasks.map((row) => `${row.phase}:${row.key}`).slice(0, 2), ["framing:plan", "delivery:core.workspace"]);
+    assert.equal(lanesOf(state, "plan").length, 1);
+    assert.equal(state.gates.plan?.length, 1);
+    assert.equal(state.loop, null);
+    assert.deepEqual(progressOf(state), { done: 0, total: 6 });
     assert.ok(state.journal.some((entry) => entry.text === "✓ Plan · validite"));
+  });
+
+  it("remet a sa place une phase relue depuis son checkpoint, sans toucher a la phase en cours", () => {
+    const past = (name: RunPhase, tasks: Record<string, TaskStatus>): RunEvent => ({ type: "past", phase: name, tasks: (phase(name, tasks) as Extract<RunEvent, { type: "phase" }>).tasks });
+    const state = play([
+      phase("closing", { prose: "active" }),
+      past("delivery", { "core.summary": "done" }),
+      past("framing", { ticket: "done", plan: "done" }),
+      past("closing", { prose: "done" }),
+      { type: "output", task: "ticket", value: { key: "FT-1" } },
+    ]);
+    assert.deepEqual(
+      state.tasks.map((row) => `${row.phase}:${row.key}:${row.status}`),
+      ["framing:ticket:done", "framing:plan:done", "delivery:core.summary:done", "closing:prose:active"],
+    );
+    assert.deepEqual(state.outputs.ticket, { key: "FT-1" });
+    assert.deepEqual(progressOf(state), { done: 0, total: 1 });
   });
 
   it("suit la tache active et note la duree de celles qui finissent", () => {

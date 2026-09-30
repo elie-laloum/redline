@@ -5,9 +5,10 @@ behind it and the constraints it has to respect.
 
 ## Scope
 
-- `start` and `resume` open the interface as soon as they are launched, pre-flight included
-  (ticket fetch, authentication check, agent image confirmation and build). A home screen on a
-  bare `redline` (runs list, new run, resume) comes later; `status` stays plain text.
+- `start` and `resume` open the interface once pre-flight has passed (ticket fetch,
+  authentication check, agent image confirmation and build); bringing pre-flight inside the
+  interface is slice 4. A home screen on a bare `redline` (runs list, new run, resume) comes
+  later; `status` stays plain text.
 - The interface is the default when stdout is a TTY. `--plain`, a pipe, CI or `nohup` keep the
   current clack output, which stays the reference fallback.
 - The interface lives in the run's process. Closing it stops the run the way `Ctrl-C` does;
@@ -56,10 +57,15 @@ tokens in a single file.
 ├ footer ─ key bindings ───────────────────────────────────────────────────┤
 ```
 
-- The table lists every task of the current phase from the start, pending ones included. The
-  selection follows the active task until the human navigates; `f` sticks it back.
-- The inspector shows the selected task's agents. Parallel agents inside one task (the scope
-  scouts) appear as separate lanes, one per repository.
+- The table lists every task seen, phase by phase under a heading each, the current phase's
+  pending tasks included. Finished phases stay: on `resume` they are read back from their
+  checkpoints. The selection follows the active task until the human navigates; `f` sticks it
+  back.
+- The inspector shows the selected task's result first — what it handed the next tasks, laid out
+  for its kind of step (ticket, grill arbitrages, scope, plan, tests, commits, merge requests…),
+  YAML for any other — then its gates, commands and agents. What agents said stays after their
+  phase ends. Parallel agents inside one task (the scope scouts) appear as separate lanes, one per
+  repository.
 - The usage card shows the ticket's total tokens, with the current phase's underneath. The phase's
   are restored from its checkpoint when it starts, then counted from the workflow's usage events;
   every workflow run records what it spent in the ledger (`usage`, by run id), which gives the
@@ -78,12 +84,16 @@ Questions are panels that appear and disappear, not overlays:
 
 - A grill question replaces the lower half of the screen, across the full width: title
   (`Grill fonctionnel · 2/5`), text, choices, and `Autre réponse…` which opens a multi-line text
-  area. Header, banner and cards stay visible.
-- The plan review takes the whole body under the header and banner: the plan as scrollable
-  Markdown on the left, Approve / Amend / Reject and the note on the right. The dashboard comes
-  back once the decision is sent.
-- A panel takes focus when it appears; `Tab` moves to the table, inspector and journal to reread
-  what the agents did, then back.
+  area. Header, banner, cards and a shortened task table stay visible.
+- The plan review takes the whole body under the header and banner: scope and plan on the left,
+  scrollable, and the decision on the right. The plan is indented plain text, not Markdown, so it
+  is shown as such with its headings highlighted. A decision other than approval opens the note
+  in the same column; the review's follow-up question receives that note without a second form.
+- A panel takes focus when it appears. `Tab` gives the whole screen back to the dashboard to
+  reread what the agents did — the banner says `Tab pour repondre` — and cycles back to the
+  question. While the question has focus, the keys belong to it: only `Tab`, `PgUp` / `PgDn`,
+  `Esc` and `Ctrl-C` stay global.
+- A first `Ctrl-C` drops a pending question: the run ends as cancelled and `resume` asks it again.
 - A pending question rings the terminal bell (BEL) and turns the banner on. No OS notification.
 
 ### Keys
@@ -91,12 +101,13 @@ Questions are panels that appear and disappear, not overlays:
 | Key | Action |
 |---|---|
 | `↑` `↓` / `j` `k` | select a task |
-| `Tab` | cycle focus: tasks → inspector → journal → question panel |
-| `PgUp` `PgDn` | scroll the focused panel |
+| `Tab` | cycle focus: tasks → inspector → journal, and the question panel while one waits |
+| `PgUp` `PgDn` | scroll the focused panel; in a question, its text or the plan |
 | `f` | follow the active task again |
 | `Enter` | confirm a choice |
-| `Ctrl+Shift+Enter`, `Ctrl-S` | send a text area. The first only works where the terminal reports it (kitty keyboard protocol); `Ctrl-S` always does. |
-| `Esc` | leave `Autre réponse…` |
+| `Enter` in a text area | send the answer |
+| `Shift+Enter`, `Alt+Enter`, `Ctrl-J` | new line in a text area. `Shift+Enter` only where the terminal reports it (kitty keyboard protocol); the other two work everywhere. |
+| `Esc` | from the text area back to the choices |
 | `q` | quit; during a run it asks for confirmation in the banner, then behaves like a first `Ctrl-C` |
 | `Ctrl-C` | first press stops cleanly, second kills the commands |
 
@@ -111,12 +122,14 @@ listens; clack ignores what it cannot show.
 | Event | Emitted by | Carries |
 |---|---|---|
 | `phase` | driver, before each workflow starts | phase, every task key, repositories in scope |
+| `past` | driver, at each drive | a finished phase's tasks, read back from its checkpoint |
+| `output` | driver, on each checkpoint write | a finished task's value, as its checkpoint keeps it |
 | `workflow` | outpost, through the driver | the raw `WorkflowEvent` (task status, loop round, usage, cache, input request…) |
 | `agent` | `ask()` | `{ task, lane? }`, role, the raw `AgentObservation` |
 | `gate` | `converge`, after each verdict | task, gate, round, verdict, spent / budget, feedback text |
 | `command` | registry checks and dependency installs | task, label, command, start / progress / end, exit code, log path |
 | `publication` | release and closing | tag, pipeline, push, merge request, Slack, Jira — with a link when there is one |
-| `preflight` | `start` and `resume` (slice 4) | step, status, detail |
+| `preflight` | `start` and `resume` — planned, slice 4 | step, status, detail |
 
 Agent observations carry the task that asked explicitly: `ask()` gets its source from the
 session it runs in, so parallel agents are never attributed by guesswork.
@@ -129,9 +142,10 @@ only mirror its state.
 
 ## Slices
 
+Slices 1 to 3 are in place; slice 4 is not.
+
 1. `RunEvent` channel, agent attribution, gate / command / publication events, view model.
    Clack output unchanged.
-2. Read-only dashboard for `start` and `resume`, `--plain`, TTY detection. Until slice 3, a
-   question suspends the dashboard and is asked through clack, then the dashboard comes back.
+2. Read-only dashboard for `start` and `resume`, `--plain`, TTY detection.
 3. Question panels, plan review, bell.
 4. Pre-flight inside the interface, agent image build output piped into the journal.

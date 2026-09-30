@@ -1,6 +1,6 @@
 import type { AgentObservation, TaskStatus, WorkflowEvent } from "@elie-laloum/outpost";
 import type { RoleName } from "../../domain/roles.ts";
-import { type AgentSource, addTokens, NO_TOKENS, type RunEvent, type RunPhase, type Tokens } from "../../domain/run-events.ts";
+import { type AgentSource, addTokens, NO_TOKENS, type PhaseTask, type RunEvent, type RunPhase, type Tokens } from "../../domain/run-events.ts";
 import { labelOf } from "../labels.ts";
 import { describeTool, formatDuration } from "./format.ts";
 
@@ -8,6 +8,7 @@ export const LIMITS = { journal: 400, laneText: 6000, tools: 12, minutes: 30 } a
 
 export interface TaskRow {
   readonly key: string;
+  readonly phase: RunPhase;
   readonly label: string;
   readonly repo: string | null;
   readonly status: TaskStatus;
@@ -68,7 +69,10 @@ export interface Dashboard {
   readonly startedAt: number;
   readonly now: number;
   readonly phase: RunPhase | null;
+  /** Every task seen, phase by phase in run order: finished phases stay on screen. */
   readonly tasks: readonly TaskRow[];
+  /** What each finished task handed the next ones, by task key. */
+  readonly outputs: Readonly<Record<string, unknown>>;
   readonly repos: readonly string[];
   /** The task whose agents the human last saw start: what the inspector follows. */
   readonly active: string | null;
@@ -88,6 +92,7 @@ export interface Dashboard {
 }
 
 const PHASES: Record<RunPhase, string> = { framing: "Cadrage", delivery: "Livraison", closing: "Cloture" };
+const ORDER: readonly RunPhase[] = ["framing", "delivery", "closing"];
 const PER_REPO = /^(.+)\.(workspace|tests|code(?:-\d+)?|release|summary)$/;
 
 export function phaseLabel(phase: RunPhase): string {
@@ -106,6 +111,7 @@ export function createDashboard(ticket: { readonly key: string; readonly title: 
     now,
     phase: null,
     tasks: [],
+    outputs: {},
     repos: [],
     active: null,
     loop: null,
@@ -130,6 +136,10 @@ export function reduce(state: Dashboard, event: RunEvent, now: number): Dashboar
   switch (event.type) {
     case "phase":
       return onPhase(next, event);
+    case "past":
+      return event.phase === state.phase ? next : { ...next, tasks: place(state.tasks, event.phase, event.tasks) };
+    case "output":
+      return { ...next, outputs: { ...state.outputs, [event.task]: event.value } };
     case "workflow":
       return onWorkflow(next, event.event, now);
     case "agent":
@@ -152,27 +162,34 @@ export function reduce(state: Dashboard, event: RunEvent, now: number): Dashboar
 }
 
 function onPhase(state: Dashboard, { phase, tasks, repos, usage, earlier }: Extract<RunEvent, { type: "phase" }>): Dashboard {
-  const same = state.phase === phase;
-  const previous = new Map(state.tasks.map((row) => [row.key, row]));
-  const rows = tasks.map((task): TaskRow => {
-    const known = same ? previous.get(task.key) : undefined;
+  const rows = place(state.tasks, phase, tasks);
+  if (state.phase === phase) return { ...state, tasks: rows, repos, usage, earlier };
+  // Gates, lanes and commands stay: a finished task keeps what its agents said.
+  const fresh = { ...state, phase, tasks: rows, repos, usage, earlier, minutes: [], active: null, loop: null, waiting: null };
+  return log(fresh, state.now, "info", null, `— ${phaseLabel(phase)} —`);
+}
+
+/** Replaces one phase's rows, keeping what was counted live for tasks already known, and keeps phases in run order. */
+function place(rows: readonly TaskRow[], phase: RunPhase, tasks: readonly PhaseTask[]): TaskRow[] {
+  const known = new Map(rows.filter((row) => row.phase === phase).map((row) => [row.key, row]));
+  const placed = tasks.map((task): TaskRow => {
+    const seen = known.get(task.key);
     return {
       key: task.key,
+      phase,
       label: labelOf(task.key),
       repo: repoOf(task.key),
       status: task.status,
       attempts: task.attempts,
-      round: known?.round ?? null,
+      round: seen?.round ?? null,
       startedAt: task.startedAt ? Date.parse(task.startedAt) : null,
       finishedAt: task.finishedAt ? Date.parse(task.finishedAt) : null,
-      tokens: known?.tokens ?? 0,
+      tokens: seen?.tokens ?? 0,
       cached: task.cached,
-      error: known?.error ?? null,
+      error: seen?.error ?? null,
     };
   });
-  if (same) return { ...state, tasks: rows, repos, usage, earlier };
-  const fresh = { ...state, phase, tasks: rows, repos, usage, earlier, minutes: [], active: null, loop: null, gates: {}, lanes: [], commands: {}, waiting: null };
-  return log(fresh, state.now, "info", null, `— ${phaseLabel(phase)} —`);
+  return ORDER.flatMap((entry) => (entry === phase ? placed : rows.filter((row) => row.phase === entry)));
 }
 
 function onWorkflow(state: Dashboard, event: WorkflowEvent, now: number): Dashboard {
@@ -300,7 +317,8 @@ function clip(text: string): string {
 // Selectors: what the cards and panels read, derived from the state alone.
 
 export function progressOf(state: Dashboard): { readonly done: number; readonly total: number } {
-  return { done: state.tasks.filter((row) => row.status === "done" || row.status === "skipped").length, total: state.tasks.length };
+  const current = state.tasks.filter((row) => row.phase === state.phase);
+  return { done: current.filter((row) => row.status === "done" || row.status === "skipped").length, total: current.length };
 }
 
 /** Tokens of the whole ticket: every earlier workflow run plus the current one. */

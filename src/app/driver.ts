@@ -9,7 +9,7 @@ import { defineFraming, type FramingOutcome } from "../phases/framing/workflow.t
 import type { RunContext } from "../phases/run.ts";
 import type { AppContext } from "./context.ts";
 import { approvedOf, deliveredOf, type Ledger, publicationOf, readLedger, recordEvent, REOPEN_TARGETS, writeLedger } from "./ledger.ts";
-import { storageFor } from "./storage.ts";
+import { readCheckpoint, storageFor } from "./storage.ts";
 import { checkpointVersion } from "./version.ts";
 
 export interface DriveRequest {
@@ -37,6 +37,7 @@ const REOPEN = { amend: "plan", "reject-functional": "functional", "reject-techn
 export async function drive(app: AppContext, key: string, request: DriveRequest, options: DriveOptions = {}): Promise<DriveOutcome> {
   let ledger = readLedger(app.paths, key) ?? failMissing(key);
   let answers = request.answers;
+  if (options.events) await recall(app, ledger, options.events);
   if (ledger.phase === "escalated") {
     if (!request.resume) return { status: "escalated", escalation: ledger.escalation ?? unknownEscalation() };
     ledger = save(app, reopenAfterEscalation(ledger, request.fresh ?? null));
@@ -115,7 +116,7 @@ async function start(app: AppContext, ledger: Ledger, workflow: Workflow, stage:
   let spent: Tokens | null = null;
   try {
     const result = await workflow.start({
-      checkpoint: { store: events ? announcing(checkpoints, (checkpoint) => events(phaseEvent(workflow, stage, checkpoint, earlier))) : checkpoints, runId, version: options.version ?? checkpointVersion(), resume: "retry-incomplete" },
+      checkpoint: { store: events ? announcing(checkpoints, (checkpoint) => events(phaseEvent(workflow, stage, checkpoint, earlier)), events) : checkpoints, runId, version: options.version ?? checkpointVersion(), resume: "retry-incomplete" },
       onQuota: { action: "pause" },
       ...(answers?.length ? { answers } : {}),
       ...(options.signal ? { signal: options.signal } : {}),
@@ -135,23 +136,68 @@ function latest(app: AppContext, ledger: Ledger): Ledger {
   return readLedger(app.paths, ledger.key) ?? ledger;
 }
 
-/** Outpost writes the whole checkpoint once before running any task: the phase is announced from it, restored tasks included. */
-function announcing(store: WorkflowCheckpointStore, announce: (checkpoint: WorkflowCheckpoint) => void): WorkflowCheckpointStore {
+/**
+ * Outpost writes the whole checkpoint once before running any task: the phase is announced from
+ * it, restored tasks included. Every later write may carry a finished task's value.
+ */
+function announcing(store: WorkflowCheckpointStore, announce: (checkpoint: WorkflowCheckpoint) => void, events: RunObserver): WorkflowCheckpointStore {
   return {
     async acquire(runId) {
       const lease = await store.acquire(runId);
       let announced = false;
+      const seen = new Set<string>();
       return {
         read: () => lease.read(),
         release: () => lease.release(),
         async write(checkpoint) {
           await lease.write(checkpoint);
-          if (announced) return;
-          announced = true;
-          announce(checkpoint);
+          if (!announced) {
+            announced = true;
+            announce(checkpoint);
+          }
+          for (const event of outputsOf(checkpoint, seen)) events(event);
         },
       };
     },
+  };
+}
+
+function outputsOf(checkpoint: WorkflowCheckpoint, seen: Set<string>): RunEvent[] {
+  return Object.entries(checkpoint.values).flatMap(([task, saved]) => {
+    if (seen.has(task)) return [];
+    seen.add(task);
+    return [{ type: "output" as const, task, value: saved.kind === "json" ? saved.value : null }];
+  });
+}
+
+const ORDER = ["framing", "delivery", "closing"] as const;
+
+/** Phases finished before this drive, read back from their checkpoints so the screen keeps them. */
+async function recall(app: AppContext, ledger: Ledger, events: RunObserver): Promise<void> {
+  const current = ledger.phase === "done" ? null : ledger.phase === "escalated" ? (ledger.resumePhase ?? "framing") : ledger.phase;
+  const finished = current === null ? ORDER : ORDER.slice(0, ORDER.indexOf(current));
+  const storage = storageFor(app.paths, ledger.key);
+  for (const phase of finished) {
+    const checkpoint = await readCheckpoint(storage, runIdOf(ledger, phase)).catch(() => null);
+    if (!checkpoint) continue;
+    events({ type: "past", phase, tasks: checkpoint.records.map(phaseTask) });
+    for (const event of outputsOf(checkpoint, new Set())) events(event);
+  }
+}
+
+function runIdOf(ledger: Ledger, phase: RunPhase): string {
+  const attempt = phase === "framing" ? ledger.framing.attempt : phase === "delivery" ? ledger.delivery.generation : ledger.closing.attempt;
+  return `${ledger.key}/${phase}/${attempt}`;
+}
+
+function phaseTask(record: WorkflowCheckpoint["records"][number]): PhaseTask {
+  return {
+    key: record.key,
+    status: record.status,
+    attempts: record.attempts,
+    startedAt: record.startedAt ?? null,
+    finishedAt: record.finishedAt ?? null,
+    cached: record.cacheHit === true,
   };
 }
 
@@ -159,14 +205,7 @@ function phaseEvent(workflow: Workflow, stage: Stage, checkpoint: WorkflowCheckp
   const records = new Map(checkpoint.records.map((record) => [record.key, record]));
   const tasks = workflow.tasks.map((task): PhaseTask => {
     const record = records.get(task.key);
-    return {
-      key: task.key,
-      status: record?.status ?? "waiting",
-      attempts: record?.attempts ?? 0,
-      startedAt: record?.startedAt ?? null,
-      finishedAt: record?.finishedAt ?? null,
-      cached: record?.cacheHit === true,
-    };
+    return record ? phaseTask(record) : { key: task.key, status: "waiting", attempts: 0, startedAt: null, finishedAt: null, cached: false };
   });
   const { input, cached, output } = checkpoint.usage.tokens;
   return { type: "phase", phase: stage.phase, tasks, repos: stage.repos, usage: { input, cached, output }, earlier };

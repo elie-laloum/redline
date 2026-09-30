@@ -44,6 +44,10 @@ export type RunEvent =
       /** Tokens every earlier workflow run of the ticket spent. */
       readonly earlier: Tokens;
     }
+  /** A phase already finished, read back from its checkpoint so its tasks stay on screen. */
+  | { readonly type: "past"; readonly phase: RunPhase; readonly tasks: readonly PhaseTask[] }
+  /** What a finished task handed the next ones, as its checkpoint keeps it. */
+  | { readonly type: "output"; readonly task: string; readonly value: unknown }
   | { readonly type: "workflow"; readonly event: WorkflowEvent }
   | { readonly type: "agent"; readonly source: AgentSource; readonly role: RoleName; readonly event: AgentObservation }
   | {

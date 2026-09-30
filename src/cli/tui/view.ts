@@ -14,22 +14,30 @@ import {
   usageSeries,
 } from "../dashboard/model.ts";
 import { formatDuration, formatTokens } from "../dashboard/format.ts";
+import { describeOutput, type OutputTone } from "../dashboard/outputs.ts";
+import type { RunPhase } from "../../domain/run-events.ts";
 import { labelOf } from "../labels.ts";
 import { badge, bar, fit, type Line, span, sparkline, styled, wrap } from "./text.ts";
 import { THEME, type ThemeColor } from "./theme.ts";
 
-export type Focus = "tasks" | "inspector" | "journal";
+export type Focus = "tasks" | "inspector" | "journal" | "question";
+
+/** The dashboard, or the whole body given to a question while it has the focus. */
+export type Layout = "dashboard" | "question" | "review";
 
 /** What only the screen knows: selection, focus, and the banner the controller wants shown. */
 export interface Screen {
   readonly selected: string | null;
   readonly follow: boolean;
   readonly focus: Focus;
+  readonly layout: Layout;
   readonly notice: { readonly tone: Tone; readonly text: string } | null;
   readonly ended: boolean;
 }
 
 export interface DashboardView {
+  /** Where the question panels put their widgets. */
+  readonly slots: { readonly question: BoxRenderable; readonly review: BoxRenderable };
   update(state: Dashboard, screen: Screen): void;
   scroll(focus: Focus, pages: number): void;
   /** Rows the task table can show; the controller keeps the selection inside them. */
@@ -49,10 +57,13 @@ const STATUS: Record<TaskStatus, { readonly icon: string; readonly color: ThemeC
 };
 
 const TONES: Record<Tone, ThemeColor> = { info: "text", success: "success", warning: "warning", error: "danger" };
+const OUTPUT_TONES: Record<OutputTone, ThemeColor> = { title: "text", text: "text", muted: "muted", success: "success", warning: "warning", danger: "danger", info: "info" };
+const PHASE_ORDER: readonly RunPhase[] = ["framing", "delivery", "closing"];
 const JOURNAL_LINES = 200;
 const FOOTER = "↑↓ tache · Tab panneau · PgUp/PgDn defiler · f suivre l'active · q quitter · Ctrl-C arreter";
+const QUESTION_FOOTER = "Entree envoyer · Shift/Alt+Entree nouvelle ligne · Esc revenir aux choix · Tab relire le tableau de bord · Ctrl-C arreter";
 
-export function createDashboardView(renderer: CliRenderer, onSelect: (index: number) => void): DashboardView {
+export function createDashboardView(renderer: CliRenderer, onSelect: (task: string) => void): DashboardView {
   const panel = (id: string, title: string, options: ConstructorParameters<typeof BoxRenderable>[1] = {}) =>
     new BoxRenderable(renderer, { id, title, border: true, borderStyle: "rounded", borderColor: THEME.border, titleColor: THEME.muted, backgroundColor: THEME.panel, paddingX: 1, ...options });
   const text = (id: string) => new TextRenderable(renderer, { id, content: "", fg: THEME.text, wrapMode: "none" });
@@ -115,22 +126,41 @@ export function createDashboardView(renderer: CliRenderer, onSelect: (index: num
   const journalText = new TextRenderable(renderer, { id: "journal-text", content: "", fg: THEME.text, wrapMode: "word" });
   journal.add(journalText);
 
-  const footer = new TextRenderable(renderer, { id: "footer", content: styled([[span(` ${FOOTER}`, "muted")]]), height: 1, bg: THEME.background });
+  const questionSlot = panel("question", " Question ", { flexGrow: 1, flexDirection: "column", visible: false, borderColor: THEME.focus });
+  const reviewSlot = new BoxRenderable(renderer, { id: "review", flexGrow: 1, flexDirection: "row", visible: false, backgroundColor: THEME.background });
 
-  for (const child of [header, banner, cards, main, journal, footer]) root.add(child);
+  const footer = new TextRenderable(renderer, { id: "footer", content: "", height: 1, bg: THEME.background });
+
+  for (const child of [header, banner, cards, main, journal, questionSlot, reviewSlot, footer]) root.add(child);
   renderer.root.add(root);
 
-  let offset = 0;
+  /** The task under each visible table line; phase headings have none. */
+  let shown: readonly (string | null)[] = [];
   let inspected: string | null = null;
   const tableRows = () => Math.max(1, (tasks.height || Math.floor(renderer.height / 2)) - 3);
 
   tasksText.onMouse = (event: MouseEvent) => {
     if (event.type !== "down") return;
-    const row = event.y - tasksText.y - 1;
-    if (row >= 0) onSelect(offset + row);
+    const task = shown[event.y - tasksText.y - 1];
+    if (task) onSelect(task);
+  };
+
+  let layout: Layout | null = null;
+  const arrange = (next: Layout) => {
+    if (next === layout) return;
+    layout = next;
+    cards.visible = next !== "review";
+    main.visible = next !== "review";
+    main.flexGrow = next === "dashboard" ? 1 : 0;
+    tasks.width = next === "question" ? "100%" : "58%";
+    inspector.visible = next === "dashboard";
+    journal.visible = next === "dashboard";
+    questionSlot.visible = next === "question";
+    reviewSlot.visible = next === "review";
   };
 
   return {
+    slots: { question: questionSlot, review: reviewSlot },
     get taskRows() {
       return tableRows();
     },
@@ -139,7 +169,10 @@ export function createDashboardView(renderer: CliRenderer, onSelect: (index: num
       if (box) box.scrollBy(pages * Math.max(1, box.height - 3));
     },
     update(state, screen) {
+      arrange(screen.layout);
+      main.height = screen.layout === "question" ? Math.max(4, Math.min(state.tasks.length + 3, Math.floor(renderer.height * 0.3))) : "auto";
       const width = renderer.width;
+      footer.content = styled([[span(` ${screen.layout === "dashboard" ? FOOTER : QUESTION_FOOTER}`, "muted")]]);
       const progress = progressOf(state);
       const selected = state.tasks.find((row) => row.key === screen.selected) ?? null;
 
@@ -151,7 +184,8 @@ export function createDashboardView(renderer: CliRenderer, onSelect: (index: num
         ],
       ]);
 
-      const notice = screen.notice ?? (state.waiting ? { tone: "warning" as const, text: `EN ATTENTE DE TOI — ${labelOf(state.waiting)}` } : null);
+      const waiting = state.waiting ? `EN ATTENTE DE TOI — ${labelOf(state.waiting)}${screen.layout === "dashboard" ? " · Tab pour repondre" : ""}` : null;
+      const notice = screen.notice ?? (waiting ? { tone: "warning" as const, text: waiting } : null);
       banner.visible = notice !== null;
       if (notice) {
         const lines = wrap(notice.text, Math.max(20, width - 6)).slice(0, 4);
@@ -192,14 +226,24 @@ export function createDashboardView(renderer: CliRenderer, onSelect: (index: num
       ]);
 
       const available = tableRows();
-      const index = state.tasks.findIndex((row) => row.key === screen.selected);
-      offset = Math.max(0, Math.min(index - Math.floor(available / 2), state.tasks.length - available));
       const tableWidth = Math.max(30, (tasks.width || Math.floor(width * 0.58)) - 4);
       const columns = tableWidth >= 70 ? COLUMNS : COLUMNS.filter((column) => column.title === "duree");
       const columnsWidth = columns.reduce((total, column) => total + column.width, 0);
+      const table = PHASE_ORDER.flatMap((phase) => {
+        const rows = state.tasks.filter((row) => row.phase === phase);
+        if (rows.length === 0) return [];
+        return [
+          { task: null, line: phaseHeading(phase, phase === state.phase, rows, tableWidth) },
+          ...rows.map((row) => ({ task: row.key, line: taskLine(row, state.now, tableWidth, columns, row.key === screen.selected) })),
+        ];
+      });
+      const index = table.findIndex((entry) => entry.task === screen.selected);
+      const offset = Math.max(0, Math.min(index - Math.floor(available / 2), table.length - available));
+      const visible = table.slice(offset, offset + available);
+      shown = visible.map((entry) => entry.task);
       tasksText.content = styled([
         [span(fit(`   ${"Tache".padEnd(tableWidth - 3 - columnsWidth)}${columns.map((column) => column.title.padStart(column.width)).join("")}`, tableWidth), "muted", { bold: true })],
-        ...state.tasks.slice(offset, offset + available).map((row) => taskLine(row, state.now, tableWidth, columns, row.key === screen.selected)),
+        ...visible.map((entry) => entry.line),
       ]);
 
       const inspectorWidth = Math.max(20, (inspector.width || Math.floor(width * 0.42)) - 4);
@@ -274,10 +318,26 @@ function taskLine(row: TaskRow, now: number, width: number, columns: readonly Co
   ];
 }
 
+function phaseHeading(phase: RunPhase, current: boolean, rows: readonly TaskRow[], width: number): Line {
+  const done = rows.filter((row) => row.status === "done" || row.status === "skipped").length;
+  const title = `── ${phaseLabel(phase)} · ${current ? "en cours" : "terminee"} · ${done}/${rows.length} `;
+  return [span(title.padEnd(width, "─"), current ? "accent" : "faint", { bold: current })];
+}
+
 function inspect(state: Dashboard, row: TaskRow, width: number): Line[] {
   const status = STATUS[row.status];
   const lines: Line[] = [[span(row.label, "text", { bold: true }), span(`  ${status.icon} ${row.status}`, status.color)]];
   if (row.error) lines.push(...wrap(row.error, width).map((line): Line => [span(line, "danger")]));
+
+  const output = describeOutput(row.key, state.outputs[row.key]);
+  if (output.length) {
+    lines.push([], [span("Resultat", "muted", { bold: true })]);
+    for (const entry of output) {
+      const indent = " ".repeat(entry.indent);
+      const wrapped = entry.text ? wrap(entry.text, Math.max(10, width - entry.indent)) : [""];
+      lines.push(...wrapped.map((part): Line => [span(`${indent}${part}`, OUTPUT_TONES[entry.tone], { bold: entry.tone === "title" })]));
+    }
+  }
 
   const gates = gatesOf(state, row.key);
   if (gates.length) {
