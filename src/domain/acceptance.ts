@@ -2,7 +2,8 @@ import type { Criterion } from "./ticket.ts";
 
 type AdfNode = { readonly type?: string; readonly text?: string; readonly content?: unknown; readonly attrs?: Record<string, unknown>; readonly marks?: readonly { type?: string; attrs?: { href?: string } }[] };
 
-const BLOCKS = new Set(["paragraph", "heading", "listItem", "codeBlock", "blockquote", "tableRow"]);
+const BLOCKS = new Set(["paragraph", "heading", "codeBlock", "blockquote", "tableRow"]);
+const LISTS = new Set(["bulletList", "orderedList"]);
 
 export function flattenDocument(node: unknown): string {
   if (node == null) return "";
@@ -16,6 +17,9 @@ export function flattenDocument(node: unknown): string {
   if (record.type === "hardBreak") return "\n";
   if (record.type === "inlineCard" || record.type === "blockCard") return String(record.attrs?.url ?? "");
   const inner = flattenDocument(record.content);
+  // One line per item, and a blank line after the list: the criteria section ends there.
+  if (record.type === "listItem") return `- ${inner.replace(/\n+$/, "")}\n`;
+  if (LISTS.has(record.type ?? "")) return `${inner}\n`;
   return BLOCKS.has(record.type ?? "") ? `${inner}\n` : inner;
 }
 

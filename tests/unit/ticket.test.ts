@@ -25,6 +25,19 @@ describe("lecture d'un ticket Jira", () => {
     assert.ok(flat.includes("https://figma.com/design/ABC"));
   });
 
+  it("garde chaque puce d'une liste de criteres, et s'arrete a la fin de la liste", () => {
+    const paragraph = (text: string) => ({ type: "paragraph", content: [{ type: "text", text }] });
+    const item = (text: string) => ({ type: "listItem", content: [paragraph(text)] });
+    const description = flattenDocument({
+      type: "doc",
+      content: [paragraph("Critères d'acceptation"), { type: "bulletList", content: [item("premier"), item("second"), item("troisieme")] }, paragraph("Hors perimetre : l'export.")],
+    });
+    assert.deepEqual(
+      splitCriteria(extractAcceptanceCriteria(description), "Titre").map((criterion) => criterion.text),
+      ["premier", "second", "troisieme"],
+    );
+  });
+
   it("extrait les criteres d'acceptation, ou null au lieu d'en inventer", () => {
     assert.equal(extractAcceptanceCriteria("Contexte.\n\nCriteres d'acceptation :\nLe filtre renvoie le mois\n\nAutre."), "Le filtre renvoie le mois");
     assert.equal(extractAcceptanceCriteria("Juste une description."), null);
