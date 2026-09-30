@@ -9,7 +9,7 @@ const ROOT = resolve(import.meta.dir, "..", "..", "..");
 function outpost(args: readonly string[]): Promise<number> {
   const cli = join(dirname(fileURLToPath(import.meta.resolve("@elie-laloum/outpost"))), "cli", "main.js");
   return new Promise((done) => {
-    const child = spawn(process.execPath, [cli, ...args], { stdio: "inherit", cwd: ROOT });
+    const child = spawn(process.execPath, ["--no-env-file", cli, ...args], { stdio: "inherit", cwd: ROOT });
     child.on("exit", (code) => done(code ?? 1));
   });
 }

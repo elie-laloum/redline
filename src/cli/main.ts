@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env -S bun --no-env-file
 import { Command } from "commander";
 import packageJson from "../../package.json" with { type: "json" };
 import { benchCommand } from "./commands/bench.ts";

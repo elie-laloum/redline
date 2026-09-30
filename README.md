@@ -111,6 +111,10 @@ redline/
 └── figma/<KEY>/            rendered mockups, disposable
 ```
 
+Tokens come from `~/.redline/.env`; a variable exported in the shell overrides its line there.
+The `.env` of the directory you launch redline from is never read, although Bun would load it
+by default.
+
 It is a git repository, but everything in it is ignored except `memory/` and `tickets/`. Any
 file missing from it falls back to its template, which is what lets a fresh clone run its test
 suite before anything is configured. Scouts, grills and the planner read in a sandbox over this
