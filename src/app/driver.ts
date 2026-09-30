@@ -1,5 +1,6 @@
 import type { AgentObservation, Logging, Workflow, WorkflowAnswer, WorkflowEvent, WorkflowInputRequest, WorkflowResult } from "@elie-laloum/outpost";
 import { type EscalationRecord, parseEscalation } from "../domain/escalation.ts";
+import { describeError } from "../domain/failure.ts";
 import type { RoleName } from "../domain/roles.ts";
 import type { ClosingContext } from "../phases/closing/context.ts";
 import { defineClosing, type Publication } from "../phases/closing/workflow.ts";
@@ -134,14 +135,15 @@ function escalate(app: AppContext, ledger: Ledger, phase: "framing" | "delivery"
   return { status: "escalated", escalation };
 }
 
-function escalationOf(result: WorkflowResult, phase: string): EscalationRecord {
+export function escalationOf(result: Pick<WorkflowResult, "errors" | "tasks">, phase: string): EscalationRecord {
   const messages = [...result.errors.map((error) => (error instanceof Error ? error.message : String(error))), ...result.tasks.flatMap((task) => task.error ?? [])];
   for (const message of messages) {
     const parsed = parseEscalation(message);
     if (parsed) return parsed;
   }
   const failed = result.tasks.find((task) => task.status === "failed");
-  return { kind: "environment", task: failed?.key ?? phase, detail: messages[0] ?? "echec sans message", at: new Date().toISOString() };
+  const detail = result.errors.length > 0 ? describeError(result.errors[0]) : messages[0];
+  return { kind: "environment", task: failed?.key ?? phase, detail: detail ?? "echec sans message", at: new Date().toISOString() };
 }
 
 function approve(ledger: Ledger, outcome: FramingOutcome): Ledger {

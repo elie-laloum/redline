@@ -56,6 +56,8 @@ export interface FakeJira extends FakeService {
   readonly transitions: { key: string; to: string }[];
   /** Statuts accessibles depuis l'etat courant. Scriptable par scenario. */
   available: string[];
+  /** Comme Jira Cloud avec un jeton revoque : /myself en 401, les tickets en 404. */
+  rejectCredentials: boolean;
 }
 
 export async function fakeJira(
@@ -75,12 +77,15 @@ export async function fakeJira(
   );
   const comments: { key: string; body: string; document: unknown }[] = [];
   const transitions: { key: string; to: string }[] = [];
-  const state = { available: ["VALIDATION", "En cours"] };
+  const state = { available: ["VALIDATION", "En cours"], rejectCredentials: false };
 
   const service = await serve((method, path, _query, body) => {
+    if (path === "/rest/api/3/myself") {
+      return state.rejectCredentials ? { status: 401, body: { message: "Client must be authenticated" } } : { body: { accountId: "compte-1", emailAddress: "moi@test" } };
+    }
     const issueMatch = /^\/rest\/api\/3\/issue\/([^/]+)$/.exec(path);
     if (issueMatch && method === "GET") {
-      const issue = issues.get(decodeURIComponent(issueMatch[1] ?? ""));
+      const issue = state.rejectCredentials ? undefined : issues.get(decodeURIComponent(issueMatch[1] ?? ""));
       if (!issue) return { status: 404, body: { errorMessages: ["Issue does not exist"] } };
       return {
         body: {
@@ -123,7 +128,16 @@ export async function fakeJira(
     return undefined;
   });
 
-  return { ...service, issues, comments, transitions, get available() { return state.available; }, set available(value: string[]) { state.available = value; } };
+  return {
+    ...service,
+    issues,
+    comments,
+    transitions,
+    get available() { return state.available; },
+    set available(value: string[]) { state.available = value; },
+    get rejectCredentials() { return state.rejectCredentials; },
+    set rejectCredentials(value: boolean) { state.rejectCredentials = value; },
+  };
 }
 
 // ----------------------------------------------------------------- Slack ----

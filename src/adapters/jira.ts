@@ -1,7 +1,7 @@
 import { collectUrls, extractAcceptanceCriteria, flattenDocument, splitCriteria, toDocument } from "../domain/acceptance.ts";
 import { fail } from "../domain/failure.ts";
 import { squadOf } from "../domain/ticket.ts";
-import type { Tracker } from "../ports/tracker.ts";
+import type { Tracker, TrackerIdentity } from "../ports/tracker.ts";
 import { request } from "./http.ts";
 
 export interface JiraCredentials {
@@ -33,13 +33,31 @@ export function createJira(credentials: JiraCredentials): Tracker {
     return (data?.transitions ?? []).map((t) => ({ id: t.id, name: t.to?.name ?? "" }));
   };
 
+  const whoami = async (): Promise<TrackerIdentity | null> => {
+    const { status, data } = await request<{ accountId?: string; emailAddress?: string }>(`${base}/myself`, { headers, allow: [401, 403] });
+    if (status !== 200 || !data?.accountId) return null;
+    return { accountId: data.accountId, email: data.emailAddress ?? credentials.email };
+  };
+
+  // Jira Cloud answers 404 both for a missing issue and for credentials it silently treats as
+  // anonymous: /myself tells the two apart.
+  const unreachable = async (key: string, status: number): Promise<never> => {
+    const identity = status === 401 ? null : await whoami();
+    if (!identity) {
+      fail(`Jira refuse les identifiants de ${credentials.email}.`, "Verifie JIRA_EMAIL et JIRA_API_TOKEN dans le .env de redline : le jeton est peut-etre expire ou revoque.");
+    }
+    return fail(`Ticket Jira ${key} introuvable, ou invisible pour ${identity.email}.`, "Verifie la cle, et que ce compte a acces au projet.");
+  };
+
   return {
+    whoami,
+
     async getTicket(key) {
       const { status, data } = await request<IssuePayload>(
         issue(key, "?fields=summary,description,status,issuetype,labels,attachment"),
-        { headers, allow: [404] },
+        { headers, allow: [401, 403, 404] },
       );
-      if (status === 404 || !data?.key) fail(`Ticket Jira introuvable ou inaccessible : ${key}.`, "Verifie la cle et les droits du jeton.");
+      if (status !== 200 || !data?.key) return unreachable(key, status);
       const title = data.fields?.summary ?? "";
       const description = flattenDocument(data.fields?.description);
       return {

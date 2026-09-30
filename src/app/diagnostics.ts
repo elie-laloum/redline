@@ -1,9 +1,9 @@
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { run } from "../adapters/exec.ts";
+import { inspectImage, runtimeStatus } from "../adapters/container-runtime.ts";
 import { gitAllowFailure } from "../adapters/git.ts";
-import { runtimeStatus } from "../adapters/container-runtime.ts";
+import { describeError } from "../domain/failure.ts";
 import type { AppContext } from "./context.ts";
 import { expandTilde } from "./paths.ts";
 
@@ -17,7 +17,7 @@ export interface Finding {
 }
 
 export async function diagnose(app: AppContext): Promise<Finding[]> {
-  return [...configuration(app), ...secrets(app), ...(await containers(app)), claude(), ...(await repositories(app))];
+  return [...configuration(app), ...secrets(app), ...(await tracker(app)), ...(await containers(app)), claude(), ...(await repositories(app))];
 }
 
 function configuration(app: AppContext): Finding[] {
@@ -43,14 +43,26 @@ async function containers(app: AppContext): Promise<Finding[]> {
   const findings: Finding[] = [{ section: "conteneurs", label: "runtime", status: status.available ? "ok" : "fail", detail: status.detail }];
   if (!status.available || !status.cli) return findings;
   const image = app.configuration.settings.sandbox.image;
-  const inspected = await run(`${status.cli} image inspect ${image}`, { cwd: app.paths.home, timeoutMs: 20_000, silenceMs: 20_000 });
+  const inspected = await inspectImage(app.paths.home, status.cli, image);
+  const details = { present: image, absent: `${image} absente : bun redline image build` };
   findings.push({
     section: "conteneurs",
     label: "image des agents",
-    status: inspected.exitCode === 0 ? "ok" : "fail",
-    detail: inspected.exitCode === 0 ? image : `${image} absente : bun redline image build`,
+    status: inspected.state === "present" ? "ok" : "fail",
+    detail: inspected.state === "error" ? `${image} illisible : ${inspected.detail}` : details[inspected.state],
   });
   return findings;
+}
+
+async function tracker(app: AppContext): Promise<Finding[]> {
+  if (!app.secrets.get("JIRA_SITE_URL") || !app.secrets.get("JIRA_EMAIL") || !app.secrets.get("JIRA_API_TOKEN")) return [];
+  const finding = (status: FindingStatus, detail: string): Finding => ({ section: "secrets", label: "connexion Jira", status, detail });
+  try {
+    const identity = await app.services.tracker.whoami();
+    return [identity ? finding("ok", `connecte en tant que ${identity.email}`) : finding("fail", "identifiants refuses : verifie JIRA_EMAIL et JIRA_API_TOKEN")];
+  } catch (error) {
+    return [finding("fail", describeError(error))];
+  }
 }
 
 function claude(): Finding {

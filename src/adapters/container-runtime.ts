@@ -14,6 +14,8 @@ export interface ImageReport {
   readonly error: string | null;
 }
 
+export type ImageState = { readonly state: "present" } | { readonly state: "absent" } | { readonly state: "error"; readonly detail: string };
+
 const PROBE_MS = 20_000;
 const IMAGE = /^[A-Za-z0-9._\-/:@]+$/;
 
@@ -45,6 +47,16 @@ export async function startRuntime(cwd: string, timeoutMs: number): Promise<Runt
   return runtimeStatus(cwd);
 }
 
+/** Tells a missing image apart from a daemon that cannot answer, and keeps what the daemon said. */
+export async function inspectImage(cwd: string, cli: string, image: string): Promise<ImageState> {
+  if (!IMAGE.test(image)) return { state: "error", detail: `nom d'image refuse : ${image}` };
+  const inspected = await probe(`${cli} image inspect ${image}`, cwd, 15_000);
+  if (inspected.exitCode === 0) return { state: "present" };
+  const output = (inspected.stderr || inspected.stdout).trim();
+  if (/no such image|image not known/i.test(output)) return { state: "absent" };
+  return { state: "error", detail: output.slice(-400) || `${cli} image inspect a echoue (code ${inspected.exitCode})` };
+}
+
 export async function ensureImages(cwd: string, cli: string, images: readonly string[], timeoutMs: number): Promise<ImageReport[]> {
   const reports: ImageReport[] = [];
   for (const image of images) {
@@ -52,7 +64,7 @@ export async function ensureImages(cwd: string, cli: string, images: readonly st
       reports.push({ image, present: false, pulled: false, error: "nom d'image refuse" });
       continue;
     }
-    if ((await probe(`${cli} image inspect ${image}`, cwd, 15_000)).exitCode === 0) {
+    if ((await inspectImage(cwd, cli, image)).state === "present") {
       reports.push({ image, present: true, pulled: false, error: null });
       continue;
     }
