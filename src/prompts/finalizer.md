@@ -29,8 +29,8 @@ Profil calibre : {{CALIBRATED}}.
 
 ## Ce que tu ecris
 
-- Pour chaque repo, `summary` : la section « Ce que fait ce changement » de la merge request,
-  en markdown, factuelle, sans reprendre les arbitrages ni les liens (redline les ajoute).
+- Pour chaque repo, `summary` : le corps de la section « Ce que fait ce changement » de la merge
+  request, sans titre, factuel, sans reprendre les arbitrages ni les liens (redline les ajoute).
 - `slack` : le message d'ouverture du canal, dans la voix ci-dessus. Pas de titre, pas de liste
   dans un message court. Redline ajoute les liens des merge requests a la fin.
 - `jira` : le commentaire du ticket, qui reprend les decisions fonctionnelles prises pendant le

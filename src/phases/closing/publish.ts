@@ -45,7 +45,8 @@ export function pushTask(run: ClosingContext, after: readonly Task[]): Task<read
 export function description(run: ClosingContext, summary: string, others: readonly OpenedMergeRequest[]): string {
   const decisions = arbitrages([...run.framing.functional.arbitrages, ...run.framing.technical.arbitrages]);
   const links = others.length ? ["", "## Les autres MR de ce ticket", ...others.map((other) => `- ${other.repo} — ${other.url}`)] : [];
-  return ["## Ce que fait ce changement", summary.trim(), "", "## Arbitrages", decisions, ...links, "", `Refs: ${run.ledger.key}`].join("\n");
+  const body = summary.trim().replace(/^(#+ [^\n]*\n+)+/, "");
+  return ["## Ce que fait ce changement", body, "", "## Arbitrages", decisions, ...links, "", `Refs: ${run.ledger.key}`].join("\n");
 }
 
 export function mergeRequestsTask(run: ClosingContext, prose: Task<Converged<Prose>>, push: Task<readonly string[]>): Task<readonly OpenedMergeRequest[]> {

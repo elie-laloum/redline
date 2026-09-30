@@ -47,7 +47,7 @@ declare-la dans `uncoverable` avec la raison.
 ## Ta reponse
 
 `files` associe chaque fichier ecrit aux identifiants de checklist qu'il couvre. `commit` decrit
-ton travail en conventional commit, sujet en anglais a l'imperatif.
+ton travail en conventional commit, sujet en anglais a l'imperatif, 50 caracteres au plus.
 
 Une ligne non couvrable porte `id` et `reason`.
 

@@ -23,10 +23,12 @@ describe("message de commit", () => {
     assert.equal(buildCommitMessage({ type: "feat", scope: "lab", subject: "Add the period filter." }, "FT-1"), "feat(lab): add the period filter\n\nRefs: FT-1");
   });
 
-  it("raccourcit un sujet trop long sur un mot, sans jamais depasser 72", () => {
-    const header = buildCommitMessage({ type: "fix", subject: "handle the case where the sheet list is empty and the period filter is set to a past month" }, "FT-1").split("\n")[0] ?? "";
+  it("raccourcit un sujet trop long sur un mot entier, et garde le sujet complet dans le corps", () => {
+    const subject = "handle the case where the sheet list is empty and the period filter is set to a past month";
+    const [header = "", , body] = buildCommitMessage({ type: "fix", subject }, "FT-1").split("\n");
     assert.ok(header.length <= 72, header);
-    assert.ok(!header.endsWith(" "));
+    assert.match(header, /^fix: handle the case .*\w$/);
+    assert.equal(body, `${subject}.`);
   });
 });
 

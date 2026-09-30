@@ -51,7 +51,7 @@ rappele. Si une note de la memoire contredit le code, signale-la dans `contradic
 
 ## Ta reponse
 
-`commit` decrit ton travail en conventional commit, sujet en anglais a l'imperatif ; `null` si
+`commit` decrit ton travail en conventional commit, sujet en anglais a l'imperatif, 50 caracteres au plus ; `null` si
 tu n'as rien change.
 
 Un recours porte `kind` (`zone-non-couverte` ou `test-conteste`), `test` (identifiant ou nom du

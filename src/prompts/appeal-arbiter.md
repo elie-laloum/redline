@@ -28,7 +28,8 @@ developpeur peut suivre : « non » ne suffit pas.
 
 ## Ta reponse
 
-`commit` decrit le changement de test quand tu acceptes, et vaut `null` quand tu refuses.
+`commit` decrit le changement de test quand tu acceptes (sujet en anglais a l'imperatif, 50
+caracteres au plus), et vaut `null` quand tu refuses.
 
 Termine par un unique bloc JSON. Un refus :
 

@@ -103,4 +103,4 @@ export async function close(world: World, ledger: Ledger, framing: FramingOutcom
 }
 
 export const memoryReply = { operations: [{ action: "create", path: "features/periode/filtre.md", why: "etat consolide du filtre", frontmatter: { type: "knowledge", scope: "feature", last_verified: "2026-09-30", repos: ["fixture-core"], source: { ticket: "FT-1" } }, body: "La periode par defaut est le mois en cours." }], decisions: [] };
-export const proseReply = (repos: string[], slack = "Salut, le filtre par periode est pret a relire.") => ({ mergeRequests: repos.map((repo) => ({ repo, summary: `Le repo ${repo} filtre par periode.` })), slack, jira: "Decisions du cadrage : la periode par defaut est le mois en cours." });
+export const proseReply = (repos: string[], slack = "Salut, le filtre par periode est pret a relire.") => ({ mergeRequests: repos.map((repo) => ({ repo, summary: `## Ce que fait ce changement\n\nLe repo ${repo} filtre par periode.` })), slack, jira: "Decisions du cadrage : la periode par defaut est le mois en cours." });
