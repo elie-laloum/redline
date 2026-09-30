@@ -1,3 +1,4 @@
+import { authenticationProblem } from "../adapters/claude-agents.ts";
 import { inspectImage, runtimeStatus, startRuntime } from "../adapters/container-runtime.ts";
 import { fail } from "../domain/failure.ts";
 import type { AppContext } from "./context.ts";
@@ -16,4 +17,10 @@ export async function sandboxPreflight(app: AppContext, options: { build?: (imag
   const inspected = await inspectImage(app.paths.home, status.cli, image);
   if (inspected.state === "error") fail(`Image des agents ${image} illisible : ${inspected.detail}`, "Le daemon de conteneurs a repondu en erreur : repare-le, puis relance.");
   if (inspected.state === "absent" && !(await options.build?.(image))) fail(`Image des agents ${image} absente.`, "Construis-la avec : bun redline image build");
+}
+
+/** A missing credential stops the run here rather than in its first agent task. */
+export function authenticationPreflight(app: AppContext): void {
+  const problem = authenticationProblem(app.authentication, app.secrets);
+  if (problem) fail(`Les agents ne peuvent pas s'authentifier en mode ${app.authentication}.`, problem);
 }

@@ -132,8 +132,11 @@ repository, with every registry repository mounted read-only under `/repos/<name
 - **Docker** — agents run in containers built from the outpost agent image; tests and builds
   run on your machine, in the worktree the agent edits. Colima works as is: it shares only
   `$HOME` with its VM, so redline points `TMPDIR` at `~/.redline/tmp` rather than `/var/folders`.
-- **Claude Code credentials** — agents use your account (`~/.claude/.credentials.json`, or
-  `claude setup-token`).
+- **Claude Code credentials** — by default agents use the account logged in on the machine
+  (`~/.claude/.credentials.json`). `bun redline auth oauth` switches to a `claude setup-token`
+  token, `bun redline auth key` to an API key billed by usage; the token goes into
+  `~/.redline/.env`, the mode into `redline.yaml`. `start` and `resume` take `--auth <mode>` to
+  override it for one run, and `bun redline auth` shows the active mode.
 - **Jira Cloud**, **GitLab**, **Slack** — with a personal access token for each.
 - **Figma** is optional. Without a token the run continues without mockups.
 

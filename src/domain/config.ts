@@ -57,6 +57,10 @@ export const RegistrySchema = v.object({
   evalOnly: v.optional(v.object({ repos: v.array(text), jiraProjects: v.array(text) }), { repos: [], jiraProjects: [] }),
 });
 
+/** account: the host's Claude login file; oauth: a claude setup-token token; key: an API key, billed to the API. */
+export const AUTH_MODES = ["account", "oauth", "key"] as const;
+export type AuthMode = (typeof AUTH_MODES)[number];
+
 const AgentModelSchema = v.object({
   model: text,
   reasoning: v.optional(v.picklist(["low", "medium", "high", "xhigh", "max"])),
@@ -111,6 +115,7 @@ export const SettingsSchema = v.object({
   agents: v.object({
     default: AgentModelSchema,
     byRole: v.optional(v.record(v.picklist(ROLE_NAMES), AgentModelSchema), {}),
+    authentication: v.optional(v.picklist(AUTH_MODES), "account"),
   }),
   sandbox: v.object({
     image: text,

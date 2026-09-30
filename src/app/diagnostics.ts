@@ -1,6 +1,5 @@
 import { existsSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
+import { AUTH_LABELS, authenticationProblem } from "../adapters/claude-agents.ts";
 import { inspectImage, runtimeStatus } from "../adapters/container-runtime.ts";
 import { gitAllowFailure } from "../adapters/git.ts";
 import { describeError } from "../domain/failure.ts";
@@ -17,7 +16,7 @@ export interface Finding {
 }
 
 export async function diagnose(app: AppContext): Promise<Finding[]> {
-  return [...configuration(app), ...secrets(app), ...(await tracker(app)), ...(await containers(app)), claude(), ...(await repositories(app))];
+  return [...configuration(app), ...secrets(app), ...(await tracker(app)), ...(await containers(app)), claude(app), ...(await repositories(app))];
 }
 
 function configuration(app: AppContext): Finding[] {
@@ -65,10 +64,9 @@ async function tracker(app: AppContext): Promise<Finding[]> {
   }
 }
 
-function claude(): Finding {
-  const file = join(homedir(), ".claude", ".credentials.json");
-  const present = existsSync(file) || Boolean(process.env.CLAUDE_CODE_OAUTH_TOKEN);
-  return { section: "agents", label: "identifiants Claude", status: present ? "ok" : "fail", detail: present ? "compte disponible" : `${file} absent : claude setup-token` };
+function claude(app: AppContext): Finding {
+  const problem = authenticationProblem(app.authentication, app.secrets);
+  return { section: "agents", label: `identifiants Claude (${app.authentication})`, status: problem ? "fail" : "ok", detail: problem ?? AUTH_LABELS[app.authentication] };
 }
 
 async function repositories(app: AppContext): Promise<Finding[]> {

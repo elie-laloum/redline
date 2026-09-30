@@ -1,5 +1,5 @@
 import { createCheckRunner } from "../adapters/checks.ts";
-import { createClaudeAgents } from "../adapters/claude-agents.ts";
+import { authenticationFor, createClaudeAgents } from "../adapters/claude-agents.ts";
 import { createFigma } from "../adapters/figma.ts";
 import { createGitlab } from "../adapters/gitlab.ts";
 import { createJira } from "../adapters/jira.ts";
@@ -7,6 +7,7 @@ import { createMemoryStore, type MemoryStore } from "../adapters/memory-store.ts
 import { createOutpostSandboxes } from "../adapters/outpost-sandboxes.ts";
 import { loadSecrets, type Secrets } from "../adapters/secrets.ts";
 import { createSlack } from "../adapters/slack.ts";
+import type { AuthMode } from "../domain/config.ts";
 import type { AgentFactory } from "../ports/agents.ts";
 import type { Chat } from "../ports/chat.ts";
 import type { CheckRunner } from "../ports/checks.ts";
@@ -30,6 +31,8 @@ export interface AppContext {
   readonly paths: Paths;
   readonly configuration: Configuration;
   readonly secrets: Secrets;
+  /** The settings' mode, unless the command line overrides it for this run. */
+  readonly authentication: AuthMode;
   readonly services: Services;
   memory(): MemoryStore;
   checks(key: string): CheckRunner;
@@ -38,6 +41,7 @@ export interface AppContext {
 export interface ContextOptions {
   readonly home?: string;
   readonly env?: Readonly<Record<string, string | undefined>>;
+  readonly authentication?: AuthMode;
   readonly templates?: string;
   readonly services?: Partial<Services>;
 }
@@ -48,8 +52,9 @@ export function createContext(options: ContextOptions = {}): AppContext {
   const configuration = loadConfiguration(paths, options.templates);
   const secrets = loadSecrets(paths.env, env);
   const { settings } = configuration;
+  const authentication = options.authentication ?? settings.agents.authentication;
   const services = lazyServices(secrets, options.services ?? {}, {
-    agents: () => createClaudeAgents(settings),
+    agents: () => createClaudeAgents(settings, authenticationFor(authentication, secrets)),
     sandboxes: () => createOutpostSandboxes({ settings, registry: configuration.registry, home: paths.home, resolvePath: expandTilde, isolation: "docker" }),
   });
 
@@ -57,6 +62,7 @@ export function createContext(options: ContextOptions = {}): AppContext {
     paths,
     configuration,
     secrets,
+    authentication,
     services,
     memory: () => createMemoryStore(paths.memory, settings.memory.maxNoteLines),
     checks: (key) =>

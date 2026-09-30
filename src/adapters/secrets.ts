@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import { fail } from "../domain/failure.ts";
 
 export const SECRET_KEYS = [
@@ -11,10 +12,14 @@ export const SECRET_KEYS = [
   "FIGMA_TOKEN",
   "SLACK_API_BASE",
   "FIGMA_API_BASE",
+  "CLAUDE_CODE_OAUTH_TOKEN",
+  "ANTHROPIC_API_KEY",
 ] as const;
 export type SecretKey = (typeof SECRET_KEYS)[number];
 
 const OPTIONAL: readonly SecretKey[] = ["FIGMA_TOKEN", "GITLAB_HOST", "SLACK_API_BASE", "FIGMA_API_BASE"];
+/** Required by one authentication mode only: check reports them with the agents' credentials. */
+const AGENT_KEYS: readonly SecretKey[] = ["CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY"];
 
 export interface Secrets {
   get(key: SecretKey): string | null;
@@ -51,6 +56,20 @@ export function loadSecrets(file: string | null, env: Readonly<Record<string, st
   return {
     get: (key) => values.get(key) ?? null,
     require: (key) => values.get(key) ?? fail(`Secret manquant : ${key}.`, `Renseigne-le dans ${file ?? "l'environnement"}, puis relance.`),
-    describe: () => SECRET_KEYS.map((key) => ({ key, present: values.has(key), required: !OPTIONAL.includes(key) })),
+    describe: () => SECRET_KEYS.filter((key) => !AGENT_KEYS.includes(key)).map((key) => ({ key, present: values.has(key), required: !OPTIONAL.includes(key) })),
   };
+}
+
+/** Sets one line of the .env, keeping every other line, and leaves the file readable by its owner only. */
+export function writeSecret(file: string, key: SecretKey, value: string): void {
+  const lines = existsSync(file) ? readFileSync(file, "utf8").replace(/\n$/, "").split("\n") : [];
+  const line = `${key}=${value}`;
+  const index = lines.findIndex((existing) => existing.trim().startsWith(`${key}=`));
+  if (index >= 0) lines[index] = line;
+  else lines.push(line);
+  mkdirSync(dirname(file), { recursive: true });
+  const temporary = `${file}.${process.pid}.tmp`;
+  writeFileSync(temporary, `${lines.join("\n")}\n`, { encoding: "utf8", mode: 0o600 });
+  chmodSync(temporary, 0o600);
+  renameSync(temporary, file);
 }

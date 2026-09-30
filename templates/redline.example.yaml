@@ -75,6 +75,7 @@ slack:
         - second.dev@example.com
 
 agents:
+  authentication: account            # account | oauth | key — bun redline auth <mode>
   default:
     model: sonnet
   byRole:
