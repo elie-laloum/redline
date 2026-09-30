@@ -74,7 +74,7 @@ bun redline resume <KEY> --fresh --note "…"     # reopen the escalated task wi
 ```
 redline/
 ├── src/
-│   ├── cli/          commander + clack: start, resume, status, clear, check, migrate-home
+│   ├── cli/          commander + clack: start, resume, status, clear, check, bench, image, migrate-home
 │   ├── app/          composition root, phase driver, ledger, lock, settings, home
 │   ├── phases/       framing/, delivery/, closing/ — one outpost workflow each
 │   ├── workflow/     converge (loops with per-gate budgets), durable interview, memo
@@ -138,6 +138,10 @@ bun redline check
 the registry, reports missing tokens, checks Docker, the agent image and your Claude
 credentials, and warns about registry checkouts that are dirty or off their base branch —
 scouts read them as they are.
+
+`bun redline bench [repo…] [--kinds ut,lint]` runs the registry commands in each checkout and
+reports their duration and their longest silence — the number that calibrates
+`commandSilenceSeconds`, beyond which a silent command is treated as an infrastructure wait.
 
 Coming from the former plugin, `bun redline migrate-home` copies `~/.autopilot/memory` over and
 archives its ticket files.

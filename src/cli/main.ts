@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { Command } from "commander";
 import packageJson from "../../package.json" with { type: "json" };
+import { benchCommand } from "./commands/bench.ts";
 import { check } from "./commands/check.ts";
 import { clearCommand } from "./commands/clear.ts";
 import { imageBuildCommand, imageDoctorCommand } from "./commands/image.ts";
@@ -48,6 +49,13 @@ program
   .command("check")
   .description("Verifie reglages, registre, secrets, conteneurs et identifiants")
   .action(() => guarded(check));
+
+program
+  .command("bench")
+  .description("Chronometre les commandes du registre et mesure leur plus long silence")
+  .argument("[repos...]", "repos a mesurer, tous par defaut")
+  .option("--kinds <liste>", "types de commande, par exemple ut,lint")
+  .action((repos: string[], options: { kinds?: string }) => guarded(() => benchCommand(repos, options)));
 
 program
   .command("migrate-home")

@@ -25,6 +25,7 @@ export interface CheckResult {
   readonly stoppedBy: "exit" | "timeout" | "silence" | "abort";
   readonly stopReason: string | null;
   readonly durationMs: number;
+  readonly maxSilentMs: number;
   readonly stdout: string;
   readonly stderr: string;
   readonly truncated: boolean;
