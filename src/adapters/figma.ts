@@ -19,6 +19,12 @@ export function createFigma(credentials: FigmaCredentials): Design {
   return {
     configured: Boolean(credentials.token),
 
+    async whoami() {
+      if (!credentials.token) return null;
+      const { status, data } = await request<{ handle?: string; email?: string }>(`${base}/me`, { headers, allow: [401, 403] });
+      return status === 200 && data?.handle ? { handle: data.handle, email: data.email ?? "" } : null;
+    },
+
     async nodes(ref, depth = 3) {
       const query = ref.nodeId ? `?ids=${encodeURIComponent(ref.nodeId)}&depth=${depth}` : `?depth=${depth}`;
       const { data } = await request<FilePayload>(`${base}/files/${ref.fileKey}${query}`, { headers });

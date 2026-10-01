@@ -3,7 +3,15 @@ export interface Channel {
   readonly name: string;
 }
 
+export interface ChatIdentity {
+  readonly user: string;
+  readonly team: string;
+  readonly scopes: readonly string[] | null;
+}
+
 export interface Chat {
+  /** Null when the chat refuses the token. */
+  whoami(): Promise<ChatIdentity | null>;
   findChannel(name: string): Promise<Channel | null>;
   createChannel(name: string, isPrivate: boolean): Promise<Channel>;
   lookupByEmail(email: string): Promise<string | null>;

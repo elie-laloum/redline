@@ -203,7 +203,7 @@ their scopes, authentication modes, the registry, the settings and your writing 
 | `show [ticket]` | opens a run's dashboard read-only — finished, or followed live while it runs in another terminal; without a ticket, the list of runs |
 | `clear <ticket> [--force] [--dry-run]` | removes a ticket's local state: worktrees, local branches, run, ledger, logs; lists the remote traces it leaves |
 | `auth [account\|oauth\|key]` | shows or changes how agents authenticate to Claude |
-| `check` | validates settings and registry, tokens, the Jira login, Docker, the agent image, Claude credentials and the registry checkouts |
+| `check` | validates settings and registry, tokens and their scopes against Jira, GitLab, Slack and Figma, Docker, the agent image, Claude credentials and the registry checkouts |
 | `bench [repo…] [--kinds ut,lint]` | times the registry commands and measures their longest silence |
 | `image build` · `image doctor` | builds the agent image declared in `sandbox.image`; checks that Claude answers inside it |
 | `migrate-home [--from ~/.autopilot]` | copies the memory of a former autopilot installation |

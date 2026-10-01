@@ -2,7 +2,8 @@ import { existsSync } from "node:fs";
 import { AUTH_LABELS, authenticationProblem } from "../adapters/claude-agents.ts";
 import { inspectImage, runtimeStatus } from "../adapters/container-runtime.ts";
 import { gitAllowFailure } from "../adapters/git.ts";
-import { describeError } from "../domain/failure.ts";
+import type { SecretKey } from "../adapters/secrets.ts";
+import { type Connection, testChat, testDesign, testForge, testTracker } from "./connections.ts";
 import type { AppContext } from "./context.ts";
 import { expandTilde } from "./paths.ts";
 
@@ -16,7 +17,7 @@ export interface Finding {
 }
 
 export async function diagnose(app: AppContext): Promise<Finding[]> {
-  return [...configuration(app), ...secrets(app), ...(await tracker(app)), ...(await containers(app)), claude(app), ...(await repositories(app))];
+  return [...configuration(app), ...secrets(app), ...(await connections(app)), ...(await containers(app)), claude(app), ...(await repositories(app))];
 }
 
 function configuration(app: AppContext): Finding[] {
@@ -54,15 +55,17 @@ async function containers(app: AppContext): Promise<Finding[]> {
   return findings;
 }
 
-async function tracker(app: AppContext): Promise<Finding[]> {
-  if (!app.secrets.get("JIRA_SITE_URL") || !app.secrets.get("JIRA_EMAIL") || !app.secrets.get("JIRA_API_TOKEN")) return [];
-  const finding = (status: FindingStatus, detail: string): Finding => ({ section: "secrets", label: "connexion Jira", status, detail });
-  try {
-    const identity = await app.services.tracker.whoami();
-    return [identity ? finding("ok", `connecte en tant que ${identity.email}`) : finding("fail", "identifiants refuses : verifie JIRA_EMAIL et JIRA_API_TOKEN")];
-  } catch (error) {
-    return [finding("fail", describeError(error))];
-  }
+/** Each service whose tokens are there, and that is on, is asked who the tokens belong to. */
+async function connections(app: AppContext): Promise<Finding[]> {
+  const { services } = app.configuration.settings;
+  const token = (key: SecretKey) => app.secrets.get(key);
+  const probes: (readonly [string, () => Promise<Connection>])[] = [
+    ...(token("JIRA_SITE_URL") && token("JIRA_EMAIL") && token("JIRA_API_TOKEN") ? [["Jira", () => testTracker(app.services.tracker)] as const] : []),
+    ...(token("GITLAB_TOKEN") ? [["GitLab", () => testForge(app.services.forge)] as const] : []),
+    ...(services.slack && token("SLACK_USER_TOKEN") ? [["Slack", () => testChat(app.services.chat, token("SLACK_USER_TOKEN") ?? "")] as const] : []),
+    ...(services.figma && token("FIGMA_TOKEN") ? [["Figma", () => testDesign(app.services.design)] as const] : []),
+  ];
+  return Promise.all(probes.map(async ([label, test]): Promise<Finding> => ({ section: "connexions", label, ...(await test()) })));
 }
 
 function claude(app: AppContext): Finding {

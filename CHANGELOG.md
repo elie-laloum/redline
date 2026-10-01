@@ -32,6 +32,8 @@ releases are tagged `v<version>` and published to npm as
 - `services.slack`, `services.figma` and `services.jiraWrites` in `redline.yaml` switch off the
   Slack channel and message, the mockups, or the Jira transition and comment. The finalizer then
   writes no text for a channel that is off.
+- `check` asks GitLab, Slack and Figma who each token belongs to, as it already asked Jira, and
+  fails on a missing GitLab or Slack scope or a Slack bot token.
 - `CHANGELOG.md`.
 
 ### Changed

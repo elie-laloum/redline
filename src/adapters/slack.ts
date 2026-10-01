@@ -32,6 +32,13 @@ export function createSlack(credentials: SlackCredentials): Chat {
   };
 
   return {
+    async whoami() {
+      const { data, headers: answer } = await request<{ ok: boolean; user?: string; team?: string }>(`${base}/auth.test`, { method: "POST", headers, body: {} });
+      if (!data?.ok) return null;
+      const scopes = answer.get("x-oauth-scopes");
+      return { user: data.user ?? "?", team: data.team ?? "?", scopes: scopes === null ? null : scopes.split(",").map((scope) => scope.trim()).filter(Boolean) };
+    },
+
     findChannel,
 
     async createChannel(name, isPrivate) {

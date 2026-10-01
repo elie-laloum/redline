@@ -33,6 +33,14 @@ export function createGitlab(credentials: GitlabCredentials): Forge {
   };
 
   return {
+    async whoami() {
+      const { status, data } = await request<{ username?: string }>(`${base}/user`, { headers, allow: [401, 403] });
+      if (status !== 200 || !data?.username) return null;
+      // Only a personal access token describes itself; any other token keeps its scopes unknown.
+      const self = await request<{ scopes?: string[] }>(`${base}/personal_access_tokens/self`, { headers, allow: [401, 403, 404] });
+      return { username: data.username, scopes: self.status === 200 && Array.isArray(self.data?.scopes) ? self.data.scopes : null };
+    },
+
     async findMergeRequest(path, sourceBranch) {
       const { data } = await request<MergeRequestPayload[]>(
         `${project(path)}/merge_requests?state=opened&source_branch=${encodeURIComponent(sourceBranch)}`,

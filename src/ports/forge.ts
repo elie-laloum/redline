@@ -14,7 +14,15 @@ export interface PipelineWatch {
   readonly waitedSeconds: number;
 }
 
+/** The account behind a token, with the scopes the forge reports for it when it does. */
+export interface ForgeIdentity {
+  readonly username: string;
+  readonly scopes: readonly string[] | null;
+}
+
 export interface Forge {
+  /** Null when the forge refuses the token. */
+  whoami(): Promise<ForgeIdentity | null>;
   findMergeRequest(project: string, sourceBranch: string): Promise<MergeRequest | null>;
   createMergeRequest(input: {
     readonly project: string;

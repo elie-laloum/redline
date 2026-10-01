@@ -195,10 +195,12 @@ publish something you would not have written.
 bun redline check
 ```
 
-Run it after any change. It says whether the settings and the registry are yours or the
-templates, reports missing tokens, logs in to Jira, checks Docker, the agent image and your
-Claude credentials, and warns about registry checkouts that are missing, dirty or off their base
-branch — the scouts read them as they are. It exits non-zero while anything blocks a run.
+Run it after any change. It says which settings override the defaults and whether a registry
+exists, reports missing tokens, and asks Jira, GitLab, Slack and Figma who each token belongs
+to — refusing a missing GitLab or Slack scope, and a Slack bot token. Services that are off are
+skipped. It checks Docker, the agent image and your Claude credentials, and warns about registry
+checkouts that are missing, dirty or off their base branch — the scouts read them as they are. It
+exits non-zero while anything blocks a run.
 
 ## 10. Coming from autopilot
 

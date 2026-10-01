@@ -1,6 +1,6 @@
 import { createServer, type Server } from "node:http";
 
-// Faux Jira, GitLab et Slack, sur des ports locaux. Git, lui, n'est jamais simule :
+// Faux Jira, GitLab, Slack et Figma, sur des ports locaux. Git, lui, n'est jamais simule :
 // les repos de fixture sont de vrais depots avec un vrai remote bare.
 
 export interface FakeService {
@@ -13,7 +13,7 @@ type Handler = (
   path: string,
   query: URLSearchParams,
   body: any,
-) => { status?: number; body: unknown } | undefined;
+) => { status?: number; body: unknown; headers?: Record<string, string> } | undefined;
 
 async function serve(handler: Handler): Promise<FakeService & { server: Server }> {
   const server = createServer((request, response) => {
@@ -32,7 +32,7 @@ async function serve(handler: Handler): Promise<FakeService & { server: Server }
       }
       const result = handler(request.method ?? "GET", url.pathname, url.searchParams, body);
       const status = result?.status ?? (result ? 200 : 404);
-      response.writeHead(status, { "content-type": "application/json" });
+      response.writeHead(status, { "content-type": "application/json", ...result?.headers });
       response.end(JSON.stringify(result?.body ?? { error: `pas de route pour ${request.method} ${url.pathname}` }));
     });
   });
@@ -165,6 +165,8 @@ export interface FakeSlack extends FakeService {
   readonly bookmarks: { channel: string; title: string; link: string }[];
   /** Adresses connues de Slack. Une adresse absente n'a pas de compte. */
   readonly knownUsers: Map<string, string>;
+  /** Portees que le jeton annonce dans l'en-tete x-oauth-scopes. */
+  scopes: string[];
 }
 
 export async function fakeSlack(knownUsers: Record<string, string> = {}): Promise<FakeSlack> {
@@ -173,9 +175,12 @@ export async function fakeSlack(knownUsers: Record<string, string> = {}): Promis
   const messages: { channel: string; text: string }[] = [];
   const bookmarks: { channel: string; title: string; link: string }[] = [];
   const users = new Map(Object.entries(knownUsers));
+  const state = { scopes: ["groups:write", "groups:write.invites", "bookmarks:write", "chat:write", "users:read.email"] };
 
   const service = await serve((method, path, query, body) => {
     switch (path) {
+      case "/auth.test":
+        return { body: { ok: true, user: "moi", team: "equipe" }, headers: { "x-oauth-scopes": state.scopes.join(",") } };
       case "/conversations.list":
         return { body: { ok: true, channels } };
       case "/conversations.create": {
@@ -209,7 +214,20 @@ export async function fakeSlack(knownUsers: Record<string, string> = {}): Promis
     }
   });
 
-  return { ...service, channels, invited, messages, bookmarks, knownUsers: users };
+  return {
+    ...service,
+    channels,
+    invited,
+    messages,
+    bookmarks,
+    knownUsers: users,
+    get scopes() {
+      return state.scopes;
+    },
+    set scopes(value) {
+      state.scopes = value;
+    },
+  };
 }
 
 // ---------------------------------------------------------------- GitLab ----
@@ -222,6 +240,8 @@ export interface FakeGitLab extends FakeService {
   readonly pipelineVerdicts: Map<string, { jobs: { name: string; status: string }[] }>;
   /** Nombre d'appels au suivi de pipeline : sert a verifier qu'on a attendu. */
   pipelinePolls: number;
+  /** Portees du jeton personnel ; null quand ce n'en est pas un. */
+  scopes: string[] | null;
 }
 
 export async function fakeGitLab(): Promise<FakeGitLab> {
@@ -230,8 +250,11 @@ export async function fakeGitLab(): Promise<FakeGitLab> {
   const tags = new Map<string, string[]>();
   const pipelineVerdicts = new Map<string, { jobs: { name: string; status: string }[] }>();
   const counters = { polls: 0 };
+  const state: { scopes: string[] | null } = { scopes: ["api", "write_repository"] };
 
   const service = await serve((method, path, query, body) => {
+    if (path === "/api/v4/user") return { body: { username: "moi" } };
+    if (path === "/api/v4/personal_access_tokens/self") return state.scopes ? { body: { scopes: state.scopes } } : { status: 404, body: { message: "404 Not Found" } };
     const projectMatch = /^\/api\/v4\/projects\/([^/]+)(\/.*)?$/.exec(path);
     if (!projectMatch) return undefined;
     const project = decodeURIComponent(projectMatch[1] ?? "");
@@ -320,6 +343,32 @@ export async function fakeGitLab(): Promise<FakeGitLab> {
     },
     set pipelinePolls(value: number) {
       counters.polls = value;
+    },
+    get scopes() {
+      return state.scopes;
+    },
+    set scopes(value) {
+      state.scopes = value;
+    },
+  };
+}
+
+// ----------------------------------------------------------------- Figma ----
+
+/** Juste de quoi dire a qui appartient le jeton : `accepted` a false, il est refuse. */
+export async function fakeFigma(): Promise<FakeService & { accepted: boolean }> {
+  const state = { accepted: true };
+  const service = await serve((_method, path) => {
+    if (path !== "/v1/me") return undefined;
+    return state.accepted ? { body: { handle: "moi", email: "moi@test" } } : { status: 403, body: { status: 403, err: "Invalid token" } };
+  });
+  return {
+    ...service,
+    get accepted() {
+      return state.accepted;
+    },
+    set accepted(value) {
+      state.accepted = value;
     },
   };
 }

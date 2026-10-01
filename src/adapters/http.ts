@@ -11,6 +11,7 @@ export interface HttpOptions {
 export interface HttpResponse<T> {
   readonly status: number;
   readonly data: T;
+  readonly headers: Headers;
 }
 
 const ATTEMPTS = 3;
@@ -22,7 +23,7 @@ export async function request<T>(url: string, options: HttpOptions = {}): Promis
       const response = await fetch(url, init(options));
       const text = await response.text();
       const data = parseBody<T>(text, response.headers.get("content-type"));
-      if (response.ok || options.allow?.includes(response.status)) return { status: response.status, data };
+      if (response.ok || options.allow?.includes(response.status)) return { status: response.status, data, headers: response.headers };
       if ((response.status === 429 || response.status >= 500) && attempt < ATTEMPTS) {
         await wait(backoffMs(attempt, response.headers.get("retry-after")));
         continue;
