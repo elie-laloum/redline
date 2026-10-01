@@ -1,4 +1,4 @@
-import type { AgentObservation, TaskStatus, WorkflowEvent } from "@elie-laloum/outpost";
+import type { AgentObservation, TaskStatus, WorkflowEvent, WorkflowInputRequest } from "@elie-laloum/outpost";
 import type { RoleName } from "../../domain/roles.ts";
 import { type AgentSource, addTokens, NO_TOKENS, type PhaseTask, type RunEvent, type RunPhase, type Tokens } from "../../domain/run-events.ts";
 import { labelOf } from "../labels.ts";
@@ -26,7 +26,7 @@ export interface GateState {
   readonly round: number;
   readonly verdict: "pass" | "feedback";
   readonly spent: number;
-  readonly budget: number;
+  readonly budget: number | null;
   readonly text: string | null;
 }
 
@@ -88,6 +88,8 @@ export interface Dashboard {
   readonly commands: Readonly<Record<string, readonly CommandRun[]>>;
   readonly journal: readonly JournalEntry[];
   readonly waiting: string | null;
+  /** The question the waiting task put, as asked. */
+  readonly asked: WorkflowInputRequest | null;
   readonly sequence: number;
 }
 
@@ -123,6 +125,7 @@ export function createDashboard(ticket: { readonly key: string; readonly title: 
     commands: {},
     journal: [],
     waiting: null,
+    asked: null,
     sequence: 0,
   };
 }
@@ -131,17 +134,30 @@ export function tick(state: Dashboard, now: number): Dashboard {
   return { ...state, now };
 }
 
+/** A new session of the run starts: nobody waits on an answer any more, and the clock starts again. */
+export function begin(state: Dashboard, at: number): Dashboard {
+  return { ...state, startedAt: at, now: at, waiting: null, asked: null, active: null };
+}
+
+/** The run's process died without ending its tasks: those it was running are shown interrupted. */
+export function interrupt(state: Dashboard, at: number): Dashboard {
+  const open = (row: TaskRow) => row.status === "active" || row.status === "waiting-input";
+  if (!state.tasks.some(open)) return { ...state, waiting: null, asked: null };
+  const tasks = state.tasks.map((row): TaskRow => (open(row) ? { ...row, status: "cancelled", finishedAt: at } : row));
+  return { ...state, tasks, waiting: null, asked: null, active: null };
+}
+
 export function reduce(state: Dashboard, event: RunEvent, now: number): Dashboard {
   const next = { ...state, now };
   switch (event.type) {
     case "phase":
       return onPhase(next, event);
-    case "past":
-      return event.phase === state.phase ? next : { ...next, tasks: place(state.tasks, event.phase, event.tasks) };
     case "output":
       return { ...next, outputs: { ...state.outputs, [event.task]: event.value } };
     case "workflow":
       return onWorkflow(next, event.event, now);
+    case "question":
+      return { ...next, asked: event.request };
     case "agent":
       return onAgent(next, event.source, event.role, event.event, now);
     case "gate": {
@@ -151,7 +167,7 @@ export function reduce(state: Dashboard, event: RunEvent, now: number): Dashboar
       const journaled =
         event.verdict === "pass"
           ? log(next, now, "success", event.task, `✓ ${where}`)
-          : log(next, now, event.spent > event.budget ? "error" : "warning", event.task, `✗ ${where} refuse (${event.spent}/${event.budget})`);
+          : log(next, now, exhausted(event) ? "error" : "warning", event.task, `✗ ${where} refuse (${spentOf(event)})`);
       return { ...journaled, gates: { ...state.gates, [event.task]: [...gates, gate] } };
     }
     case "command":
@@ -244,7 +260,7 @@ function onWorkflow(state: Dashboard, event: WorkflowEvent, now: number): Dashbo
     case "input-request":
       return log({ ...state, waiting: key }, at, "warning", key, `? ${label} attend ta reponse`);
     case "input-answer":
-      return { ...state, waiting: state.waiting === key ? null : state.waiting };
+      return { ...state, waiting: state.waiting === key ? null : state.waiting, asked: state.asked?.key === key ? null : state.asked };
     default:
       return state;
   }
@@ -291,6 +307,16 @@ function onCommand(state: Dashboard, event: Extract<RunEvent, { type: "command" 
       return log(ended, now, passed ? "success" : "error", event.task, outcome);
     }
   }
+}
+
+/** A gate went over its budget: the loop escalates. */
+export function exhausted(gate: { readonly spent: number; readonly budget: number | null }): boolean {
+  return gate.budget !== null && gate.spent > gate.budget;
+}
+
+/** What a gate spent, out of its budget when known. */
+export function spentOf(gate: { readonly spent: number; readonly budget: number | null }): string {
+  return gate.budget === null ? `${gate.spent} refus` : `${gate.spent}/${gate.budget}`;
 }
 
 function patch(state: Dashboard, key: string, change: (row: TaskRow) => TaskRow): Dashboard {

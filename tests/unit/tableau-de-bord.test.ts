@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "bun:test";
 import type { AgentObservation, TaskStatus, WorkflowEvent } from "@elie-laloum/outpost";
-import { createDashboard, type Dashboard, LIMITS, lanesOf, progressOf, reduce, repoProgress, runUsage, usageSeries } from "../../src/cli/dashboard/model.ts";
+import { begin, createDashboard, type Dashboard, interrupt, LIMITS, lanesOf, progressOf, reduce, repoProgress, runUsage, usageSeries } from "../../src/cli/dashboard/model.ts";
 import type { RunEvent, RunPhase } from "../../src/domain/run-events.ts";
 
 const T0 = Date.parse("2026-09-30T10:00:00Z");
@@ -80,14 +80,12 @@ describe("le modele du tableau de bord", () => {
     assert.ok(state.journal.some((entry) => entry.text === "✓ Plan · validite"));
   });
 
-  it("remet a sa place une phase relue depuis son checkpoint, sans toucher a la phase en cours", () => {
-    const past = (name: RunPhase, tasks: Record<string, TaskStatus>): RunEvent => ({ type: "past", phase: name, tasks: (phase(name, tasks) as Extract<RunEvent, { type: "phase" }>).tasks });
+  it("garde chaque phase a sa place quand un run est rejoue de bout en bout", () => {
     const state = play([
-      phase("closing", { prose: "active" }),
-      past("delivery", { "core.summary": "done" }),
-      past("framing", { ticket: "done", plan: "done" }),
-      past("closing", { prose: "done" }),
+      phase("framing", { ticket: "done", plan: "done" }),
       { type: "output", task: "ticket", value: { key: "FT-1" } },
+      phase("delivery", { "core.summary": "done" }, ["core"]),
+      phase("closing", { prose: "active" }, ["core"]),
     ]);
     assert.deepEqual(
       state.tasks.map((row) => `${row.phase}:${row.key}:${row.status}`),
@@ -95,6 +93,24 @@ describe("le modele du tableau de bord", () => {
     );
     assert.deepEqual(state.outputs.ticket, { key: "FT-1" });
     assert.deepEqual(progressOf(state), { done: 0, total: 1 });
+  });
+
+  it("repart d'une nouvelle session sans question en attente, l'horloge remise a son debut", () => {
+    const request = { id: "r1", executionId: "x", key: "functional", requestedAt: "", question: "Grill fonctionnel — 1/2\nQuelle periode ?", choices: ["Mois en cours"] };
+    const asked = play([phase("framing", { functional: "active" }), workflow("input-request", "functional", T0), { type: "question", request }]);
+    assert.equal(asked.asked?.question, request.question);
+    const resumed = begin(asked, T0 + 3_600_000);
+    assert.deepEqual([resumed.waiting, resumed.asked, resumed.startedAt, resumed.now], [null, null, T0 + 3_600_000, T0 + 3_600_000]);
+    assert.equal(resumed.tasks.length, 1);
+  });
+
+  it("montre interrompues les taches qu'un process mort a laissees en cours", () => {
+    const state = play([phase("delivery", { ...DELIVERY, "core.workspace": "done" }), workflow("task", "core.tests", T0, { status: "active" })]);
+    const stopped = interrupt(state, T0 + 90_000);
+    const tests = stopped.tasks.find((row) => row.key === "core.tests");
+    assert.deepEqual([tests?.status, tests?.finishedAt], ["cancelled", T0 + 90_000]);
+    assert.equal(stopped.tasks.find((row) => row.key === "core.workspace")?.status, "done");
+    assert.equal(stopped.active, null);
   });
 
   it("suit la tache active et note la duree de celles qui finissent", () => {
@@ -152,7 +168,8 @@ describe("le modele du tableau de bord", () => {
     const asked = play([phase("framing", { functional: "active" }), workflow("input-request", "functional", T0)]);
     assert.equal(asked.waiting, "functional");
     assert.deepEqual([asked.journal.at(-1)?.tone, asked.journal.at(-1)?.text], ["warning", "? Grill fonctionnel attend ta reponse"]);
-    assert.equal(reduce(asked, workflow("input-answer", "functional", T0), T0).waiting, null);
+    const answered = reduce(reduce(asked, { type: "question", request: { id: "r1", executionId: "x", key: "functional", requestedAt: "", question: "Quelle periode ?" } }, T0), workflow("input-answer", "functional", T0), T0);
+    assert.deepEqual([answered.waiting, answered.asked], [null, null]);
   });
 
   it("donne a chaque agent sa voie, les eclaireurs paralleles chacun la leur", () => {
@@ -204,6 +221,11 @@ describe("le modele du tableau de bord", () => {
         ["error", "✗ core — convergence du code · adversaire refuse (2/1)"],
       ],
     );
+  });
+
+  it("dit un refus sans budget quand le checkpoint relu ne le garde pas", () => {
+    const state = play([phase("delivery", DELIVERY), { type: "gate", task: "core.code", gate: "adversaire", round: 3, verdict: "feedback", spent: 3, budget: null, text: "C1 non tenu" }]);
+    assert.deepEqual([state.journal.at(-1)?.tone, state.journal.at(-1)?.text], ["warning", "✗ core — convergence du code · adversaire refuse (3 refus)"]);
   });
 
   it("fait vivre une commande dans une seule ligne du journal, puis note son issue", () => {

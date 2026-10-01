@@ -46,6 +46,7 @@ export function pathsOf(home: string): Paths {
 
 export const ticketFile = (paths: Paths, key: string) => join(paths.tickets, `${key}.yaml`);
 export const runDirectory = (paths: Paths, key: string) => join(paths.runs, key);
+export const journalFile = (paths: Paths, key: string) => join(paths.runs, key, "events.jsonl");
 export const lockFile = (paths: Paths, key: string) => join(paths.locks, `${key}.json`);
 export const figmaDirectory = (paths: Paths, key: string) => join(paths.figma, key);
 export const logDirectory = (paths: Paths, key: string) => join(paths.logs, key);

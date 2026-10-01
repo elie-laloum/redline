@@ -60,9 +60,8 @@ tokens in a single file.
 ```
 
 - The table lists every task seen, phase by phase under a heading each, the current phase's
-  pending tasks included. Finished phases stay: on `resume` they are read back from their
-  checkpoints. The selection follows the active task until the human navigates; `f` sticks it
-  back.
+  pending tasks included. Finished phases stay: on `resume` the event journal replays them. The
+  selection follows the active task until the human navigates; `f` sticks it back.
 - The inspector shows the selected task's result first — what it handed the next tasks, laid out
   for its kind of step (ticket, grill arbitrages, scope, plan, tests, commits, merge requests…),
   YAML for any other — then its gates, commands and agents. What agents said stays after their
@@ -124,11 +123,11 @@ listens; clack ignores what it cannot show.
 | Event | Emitted by | Carries |
 |---|---|---|
 | `phase` | driver, before each workflow starts | phase, every task key, repositories in scope |
-| `past` | driver, at each drive | a finished phase's tasks, read back from its checkpoint |
 | `output` | driver, on each checkpoint write | a finished task's value, as its checkpoint keeps it |
 | `workflow` | outpost, through the driver | the raw `WorkflowEvent` (task status, loop round, usage, cache, input request…) |
+| `question` | the session, before asking the human | the request as asked: outpost's input request event does not carry it |
 | `agent` | `ask()` | `{ task, lane? }`, role, the raw `AgentObservation` |
-| `gate` | `converge`, after each verdict | task, gate, round, verdict, spent / budget, feedback text |
+| `gate` | `converge`, after each verdict | task, gate, round, verdict, spent / budget, feedback text; the budget is null when rebuilt from a checkpoint |
 | `command` | registry checks and dependency installs | task, label, command, start / progress / end, exit code, log path |
 | `publication` | release and closing | tag, pipeline, push, merge request, Slack, Jira — with a link when there is one |
 | `preflight` | `start` and `resume` — planned, slice 5 | step, status, detail |
@@ -138,52 +137,71 @@ session it runs in, so parallel agents are never attributed by guesswork.
 
 ## Event journal
 
-Nothing a run emits survives its process today: agent text, registry commands and the journal
-are gone once it exits, and checkpoints keep only task statuses, values, refused gate feedback
-and the phase's total tokens. The journal keeps the rest.
+A run's process used to take everything it emitted with it: agent text, registry commands and the
+journal were gone once it exited, and checkpoints keep only task statuses, values, refused gate
+feedback and the phase's total tokens. The event journal keeps the rest
+(`src/app/event-journal.ts`).
 
-- Every run appends each `RunEvent` to `runs/<KEY>/events.jsonl`, one line per event with its
-  time, all phases and resumes in sequence, with the dashboard or `--plain` alike. Agent text
-  deltas are coalesced over about 250 ms to keep the file small. The journal is not tracked in
-  the home's git repository, and `clear` deletes it with the rest of the run.
+- Every session appends to `runs/<KEY>/events.jsonl`, with the dashboard or `--plain` alike: a
+  line when it starts, with its pid; one line per `RunEvent`, with its time; a line with its
+  outcome when it ends. All phases and resumes follow one another in the one file.
+- Only what the screen shows is kept. Agent text deltas are joined over 250 ms, flushed before
+  any other event so nothing overtakes them; reasoning, raw output and tool output are dropped;
+  a tool call keeps its string arguments, cut at 400 characters. A task value outpost hands
+  again at each start of the workflow is written once.
+- Writing the journal never fails a run: after a first error, the session stops writing it.
+- It is not tracked in the home's git repository, and `clear` deletes it with the rest of the
+  run.
 - The reducer takes each event's time from its line, so a replay shows the durations the live
   screen showed.
-- `resume` replays the journal for the phases already finished, instead of reading them back
-  from their checkpoints.
+- The dashboard of `start` and `resume` replays the journal before its session starts, then
+  clears any question an earlier session left pending.
+- A run from before the journal has its history rebuilt from its ledger and checkpoints
+  (`src/app/run-history.ts`): every phase with its tasks and their durations on disk, what they
+  handed on, their errors, the gate feedback of refused rounds — without the budget, which the
+  checkpoint does not keep — and the public actions their values record. The first session that
+  resumes such a run writes that history at the head of the journal.
 
 ## Viewing a run: `show`
 
 `redline show [ticket]` opens the same screen, read-only, on a run that is finished, escalated,
-interrupted, or running in another terminal.
+interrupted, or running in another terminal (`src/cli/commands/show.ts`).
 
 - It is a separate process that drives nothing: it never calls the driver, never takes the
-  ticket's lock and writes nothing. `q` and `Ctrl-C` close the viewer at once and never touch the
-  run.
-- It replays the journal, then follows it: a watch on the directory, with a 500 ms poll as a
-  fallback, since inotify is unreliable on `/mnt/c` under WSL. A run is running while the pid in
-  `locks/<KEY>.json` is alive; `ledger.active` is null while a run waits for an answer, so it
-  cannot tell. If a `resume` starts elsewhere while `show` is open, `show` follows it. A process
-  that died without ending cleanly turns the banner into `interrompu, reprends avec resume`.
-- A question pending in the other terminal is shown without its controls; the banner says it
-  waits in the other terminal, with its pid.
-- Without a ticket, it lists the runs — running ones first, then by date — with their phase,
-  escalation and age; typing filters the list, `Enter` opens a run, and `q` from a run goes back
-  to the list.
-- A run from before the journal is rebuilt from its ledger and checkpoints: phase, durations from
-  the timestamps on disk rather than from the moment `show` opened, tasks left running by a dead
-  process marked interrupted, task errors and refused gate feedback, publications. The banner
-  says that agent text and the journal are not there.
+  ticket's lock and writes nothing. It reads only the home's paths, never the settings or the
+  tokens. `q`, `Esc` and `Ctrl-C` close the viewer at once and never touch the run.
+- It replays the journal, then follows it: a watch on the run's directory, with a 500 ms poll as
+  a fallback, since inotify is unreliable on `/mnt/c` under WSL. A run is running while the pid
+  in `locks/<KEY>.json` is alive; `ledger.active` is null while a run waits for an answer, so it
+  cannot tell. A session line starts the screen again, so a `resume` launched elsewhere while
+  `show` is open is followed.
+- How a run ended comes from the last session's outcome line, said as the run's own dashboard
+  says it. A session without one whose process is gone died: the banner says so with its pid,
+  the tasks it was running are shown interrupted, and the next step is `resume`.
+- A question pending in the other terminal is shown in the inspector of its task, without
+  controls; the banner says it waits in the other terminal, with its pid. The header carries a
+  `LECTURE SEULE` badge.
+- Without a ticket, it lists the runs — running ones first, then the most recently touched —
+  with their state and age, refreshed every two seconds. Typing filters the list, `Enter` opens a
+  run, `q` from a run goes back to the list, and `Esc` or `q` on an empty filter leaves.
+- A run from before the journal is shown rebuilt, as above; the banner says that agent text and
+  the journal are not there, and the clock counts from the ledger's start.
 - Without a TTY, `show` refuses and points at `status <ticket>`, which stays plain text.
 
 ## View model
 
 `src/cli/dashboard/model.ts` is a pure reducer: `RunEvent` in, dashboard state out, with the
-time passed in. It holds no OpenTUI types and is the only part under unit tests. Renderables
-only mirror its state.
+time passed in. It holds no OpenTUI types and is the only part under unit tests, with
+`src/cli/dashboard/watch.ts`, which tells `show` whether a run is running and how it ended.
+Renderables only mirror its state.
+
+`src/cli/tui/board.ts` holds what the run's dashboard and `show` share: the state, the screen,
+the navigation keys and the clock. `dashboard.ts` adds the question panels and the run's stop
+keys; `viewer.ts` adds only the keys that leave.
 
 ## Slices
 
-Slices 1 to 3 are in place; the others are not.
+Slices 1 to 4 are in place; slice 5 is not.
 
 1. `RunEvent` channel, agent attribution, gate / command / publication events, view model.
    Clack output unchanged.

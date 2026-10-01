@@ -3,12 +3,14 @@ import type { TaskStatus } from "@elie-laloum/outpost";
 import {
   commandsOf,
   type Dashboard,
+  exhausted,
   gatesOf,
   lanesOf,
   phaseLabel,
   progressOf,
   repoProgress,
   runUsage,
+  spentOf,
   type TaskRow,
   type Tone,
   usageSeries,
@@ -33,6 +35,8 @@ export interface Screen {
   readonly layout: Layout;
   readonly notice: { readonly tone: Tone; readonly text: string } | null;
   readonly ended: boolean;
+  /** Set when the screen only watches a run that another process drives. */
+  readonly watching: { readonly pid: number | null; readonly back: boolean } | null;
 }
 
 export interface DashboardView {
@@ -42,6 +46,8 @@ export interface DashboardView {
   scroll(focus: Focus, pages: number): void;
   /** Rows the task table can show; the controller keeps the selection inside them. */
   readonly taskRows: number;
+  /** Takes the screen's widgets off the renderer, which stays open. */
+  destroy(): void;
 }
 
 const STATUS: Record<TaskStatus, { readonly icon: string; readonly color: ThemeColor }> = {
@@ -61,6 +67,7 @@ const OUTPUT_TONES: Record<OutputTone, ThemeColor> = { title: "text", text: "tex
 const PHASE_ORDER: readonly RunPhase[] = ["framing", "delivery", "closing"];
 const JOURNAL_LINES = 200;
 const FOOTER = "↑↓ tache · Tab panneau · PgUp/PgDn defiler · f suivre l'active · q quitter · Ctrl-C arreter";
+const WATCH_FOOTER = "↑↓ tache · Tab panneau · PgUp/PgDn defiler · f suivre l'active";
 const QUESTION_FOOTER = "Entree envoyer · Shift/Alt+Entree nouvelle ligne · Esc revenir aux choix · Tab relire le tableau de bord · Ctrl-C arreter";
 
 export function createDashboardView(renderer: CliRenderer, onSelect: (task: string) => void): DashboardView {
@@ -164,6 +171,9 @@ export function createDashboardView(renderer: CliRenderer, onSelect: (task: stri
     get taskRows() {
       return tableRows();
     },
+    destroy() {
+      root.destroyRecursively();
+    },
     scroll(focus, pages) {
       const box = focus === "journal" ? journal : focus === "inspector" ? inspector : null;
       if (box) box.scrollBy(pages * Math.max(1, box.height - 3));
@@ -172,19 +182,29 @@ export function createDashboardView(renderer: CliRenderer, onSelect: (task: stri
       arrange(screen.layout);
       main.height = screen.layout === "question" ? Math.max(4, Math.min(state.tasks.length + 3, Math.floor(renderer.height * 0.3))) : "auto";
       const width = renderer.width;
-      footer.content = styled([[span(` ${screen.layout === "dashboard" ? FOOTER : QUESTION_FOOTER}`, "muted")]]);
+      const keys = screen.watching ? `${WATCH_FOOTER} · q ${screen.watching.back ? "revenir a la liste" : "fermer"}` : screen.layout === "dashboard" ? FOOTER : QUESTION_FOOTER;
+      footer.content = styled([[span(` ${keys}`, "muted")]]);
       const progress = progressOf(state);
       const selected = state.tasks.find((row) => row.key === screen.selected) ?? null;
 
       headerLeft.content = styled([[badge("REDLINE", "accent"), span("  "), span(state.key, "text", { bold: true }), span("  "), span(fit(state.title, Math.max(10, width - 60)).trim(), "muted")]]);
       headerRight.content = styled([
         [
+          ...(screen.watching ? [badge("LECTURE SEULE", "info"), span(" ")] : []),
           ...(state.phase ? [badge(phaseLabel(state.phase).toUpperCase(), "warning"), span(" ")] : []),
-          screen.ended ? span("■ termine", "muted") : state.waiting ? span("● en attente", "warning") : span("● en cours", "success"),
+          screen.ended
+            ? span("■ termine", "muted")
+            : state.waiting
+              ? span("● en attente", "warning")
+              : span(`● en cours${screen.watching?.pid ? ` · pid ${screen.watching.pid}` : ""}`, "success"),
         ],
       ]);
 
-      const waiting = state.waiting ? `EN ATTENTE DE TOI — ${labelOf(state.waiting)}${screen.layout === "dashboard" ? " · Tab pour repondre" : ""}` : null;
+      const waiting = !state.waiting
+        ? null
+        : screen.watching
+          ? `EN ATTENTE DE REPONSE dans l'autre terminal${screen.watching.pid ? ` (pid ${screen.watching.pid})` : ""} — ${labelOf(state.waiting)}`
+          : `EN ATTENTE DE TOI — ${labelOf(state.waiting)}${screen.layout === "dashboard" ? " · Tab pour repondre" : ""}`;
       const notice = screen.notice ?? (waiting ? { tone: "warning" as const, text: waiting } : null);
       banner.visible = notice !== null;
       if (notice) {
@@ -233,7 +253,7 @@ export function createDashboardView(renderer: CliRenderer, onSelect: (task: stri
         const rows = state.tasks.filter((row) => row.phase === phase);
         if (rows.length === 0) return [];
         return [
-          { task: null, line: phaseHeading(phase, phase === state.phase, rows, tableWidth) },
+          { task: null, line: phaseHeading(phase, phase === state.phase && !screen.ended, rows, tableWidth) },
           ...rows.map((row) => ({ task: row.key, line: taskLine(row, state.now, tableWidth, columns, row.key === screen.selected) })),
         ];
       });
@@ -275,7 +295,7 @@ export function createDashboardView(renderer: CliRenderer, onSelect: (task: stri
 
 function gateLines(gates: ReturnType<typeof gatesOf>, width: number): Line[] {
   if (gates.length === 0) return [[span("pas encore de verdict", "muted")]];
-  const cells = gates.map((gate) => ({ text: `${gate.gate} ${gate.spent}/${gate.budget}`, color: (gate.spent > gate.budget ? "danger" : gate.verdict === "pass" ? "success" : "warning") as ThemeColor }));
+  const cells = gates.map((gate) => ({ text: `${gate.gate} ${spentOf(gate)}`, color: (exhausted(gate) ? "danger" : gate.verdict === "pass" ? "success" : "warning") as ThemeColor }));
   const lines: Line[] = [];
   let line: ReturnType<typeof span>[] = [];
   let used = 0;
@@ -320,7 +340,7 @@ function taskLine(row: TaskRow, now: number, width: number, columns: readonly Co
 
 function phaseHeading(phase: RunPhase, current: boolean, rows: readonly TaskRow[], width: number): Line {
   const done = rows.filter((row) => row.status === "done" || row.status === "skipped").length;
-  const title = `── ${phaseLabel(phase)} · ${current ? "en cours" : "terminee"} · ${done}/${rows.length} `;
+  const title = `── ${phaseLabel(phase)} · ${current ? "en cours" : done === rows.length ? "terminee" : "arretee"} · ${done}/${rows.length} `;
   return [span(title.padEnd(width, "─"), current ? "accent" : "faint", { bold: current })];
 }
 
@@ -328,6 +348,12 @@ function inspect(state: Dashboard, row: TaskRow, width: number): Line[] {
   const status = STATUS[row.status];
   const lines: Line[] = [[span(row.label, "text", { bold: true }), span(`  ${status.icon} ${row.status}`, status.color)]];
   if (row.error) lines.push(...wrap(row.error, width).map((line): Line => [span(line, "danger")]));
+
+  if (state.waiting === row.key && state.asked?.key === row.key) {
+    lines.push([], [span("Question en attente", "warning", { bold: true })]);
+    lines.push(...wrap(state.asked.question, width).map((line): Line => [span(line)]));
+    for (const choice of state.asked.choices ?? []) lines.push(...wrap(`· ${choice}`, width).map((line): Line => [span(line, "muted")]));
+  }
 
   const output = describeOutput(row.key, state.outputs[row.key]);
   if (output.length) {
@@ -343,8 +369,8 @@ function inspect(state: Dashboard, row: TaskRow, width: number): Line[] {
   if (gates.length) {
     lines.push([], [span("Juges", "muted", { bold: true })]);
     for (const gate of gates) {
-      const color: ThemeColor = gate.spent > gate.budget ? "danger" : gate.verdict === "pass" ? "success" : "warning";
-      lines.push([span(`${gate.verdict === "pass" ? "✓" : "✗"} ${gate.gate}`, color), span(`  tour ${gate.round} · ${gate.spent}/${gate.budget}`, "muted")]);
+      const color: ThemeColor = exhausted(gate) ? "danger" : gate.verdict === "pass" ? "success" : "warning";
+      lines.push([span(`${gate.verdict === "pass" ? "✓" : "✗"} ${gate.gate}`, color), span(`  tour ${gate.round} · ${spentOf(gate)}`, "muted")]);
       if (gate.text) lines.push(...wrap(gate.text, width - 2).slice(0, 6).map((line): Line => [span(`  ${line}`, "muted")]));
     }
   }

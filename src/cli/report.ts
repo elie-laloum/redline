@@ -1,5 +1,6 @@
 import * as clack from "@clack/prompts";
 import type { DriveOutcome } from "../app/driver.ts";
+import type { Tone } from "./dashboard/model.ts";
 
 const NEXT: Readonly<Record<string, string>> = {
   convergence: "Les agents n'ont pas converge dans leur budget. Lis le dernier retour, puis relance avec une consigne : bun redline resume {KEY} --fresh --note \"...\"",
@@ -36,5 +37,25 @@ export function report(key: string, outcome: DriveOutcome): number {
     case "waiting":
       clack.outro(`Des questions attendent. Reprends avec : bun redline resume ${key}`);
       return 130;
+  }
+}
+
+/** The outcome as the dashboard's banner says it. */
+export function outcomeNotice(key: string, outcome: DriveOutcome): { readonly tone: Tone; readonly text: string } {
+  switch (outcome.status) {
+    case "done": {
+      const requests = outcome.publication.mergeRequests.length;
+      return { tone: "success", text: `${key} publie : ${requests} MR, canal #${outcome.publication.slack.channel.name}.` };
+    }
+    case "escalated": {
+      const { escalation } = outcome;
+      return { tone: "error", text: `Escalade ${escalation.kind} sur ${escalation.task} : ${escalation.detail}\n${nextStep(key, escalation.kind)}` };
+    }
+    case "paused":
+      return { tone: "warning", text: outcome.detail };
+    case "cancelled":
+      return { tone: "warning", text: `Interrompu. Reprends avec : bun redline resume ${key}` };
+    case "waiting":
+      return { tone: "warning", text: `Des questions attendent. Reprends avec : bun redline resume ${key}` };
   }
 }

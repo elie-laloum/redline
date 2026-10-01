@@ -4,9 +4,12 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { afterEach, describe, it } from "bun:test";
 import { clearTicket } from "../../src/app/clear.ts";
 import { drive } from "../../src/app/driver.ts";
-import { readLedger, writeLedger } from "../../src/app/ledger.ts";
+import { readJournal } from "../../src/app/event-journal.ts";
+import { type Ledger, readLedger, writeLedger } from "../../src/app/ledger.ts";
+import { loadHistory, rebuildHistory } from "../../src/app/run-history.ts";
 import { lockFile, runDirectory } from "../../src/app/paths.ts";
 import type { Prompter } from "../../src/cli/ask.ts";
+import { createDashboard, reduce } from "../../src/cli/dashboard/model.ts";
 import { silentProgress } from "../../src/cli/progress.ts";
 import type { RunEvent } from "../../src/domain/run-events.ts";
 import { runSession } from "../../src/cli/session.ts";
@@ -94,6 +97,17 @@ describe("une session redline", () => {
     const outputs = new Map(events.flatMap((event) => (event.type === "output" ? [[event.task, event.value] as const] : [])));
     assert.equal((outputs.get("ticket") as { key?: string } | undefined)?.key, "FT-1");
     assert.equal((outputs.get("merge-requests") as unknown[] | undefined)?.length, 1);
+
+    const journal = readJournal(world.app.paths, "FT-1") ?? [];
+    const [first] = journal;
+    const last = journal.at(-1);
+    assert.equal(first && "session" in first ? first.session.pid : null, process.pid);
+    assert.equal(last && "outcome" in last ? last.outcome.status : null, "done");
+    const written = journal.flatMap((line) => ("event" in line ? [line.event] : []));
+    assert.deepEqual(written.flatMap((event) => (event.type === "question" ? [event.request.key] : [])), ["functional", "review"]);
+    for (const type of ["phase", "gate", "publication"] as const) {
+      assert.equal(written.filter((event) => event.type === type).length, events.filter((event) => event.type === type).length, type);
+    }
   });
 
   it("refuse de lancer un ticket deja en cours", async () => {
@@ -134,17 +148,40 @@ describe("une session redline", () => {
     assert.equal(escalated.status, "escalated");
     assert.equal(escalated.status === "escalated" ? escalated.escalation.task : "", "fixture-core.code/adversaire");
 
-    const events: RunEvent[] = [];
-    const resumed = await runSession(world.app, "FT-1", { resume: true, fresh: { note: "Garde la signature de clamp" } }, { prompter: scripted([]), progress: { event: (event) => events.push(event), pause: () => {} } });
+    const resumed = await runSession(world.app, "FT-1", { resume: true, fresh: { note: "Garde la signature de clamp" } }, { prompter: scripted([]), progress: silentProgress });
     assert.equal(resumed.status, "done");
-    const past = events.find((event) => event.type === "past");
-    assert.equal(past?.type === "past" ? past.phase : null, "framing");
-    assert.ok(past?.type === "past" && past.tasks.every((task) => task.status === "done"));
-    assert.ok(events.some((event) => event.type === "output" && event.task === "plan"));
+    const history = await loadHistory(world.app.paths, readLedger(world.app.paths, "FT-1") as Ledger);
+    assert.ok(history.journaled);
+    assert.equal(history.lines.filter((line) => "session" in line).length, 2);
+    assert.deepEqual(history.lines.flatMap((line) => ("outcome" in line ? [line.outcome.status] : [])), ["escalated", "done"]);
     assert.match(world.agents.prompts.developer?.at(-1) ?? "", /Garde la signature de clamp/);
     assert.equal(world.agents.prompts["test-writer"]?.length, 1);
     assert.equal(readLedger(world.app.paths, "FT-1")?.delivery.generation, 2);
     assert.deepEqual(world.agents.remaining(), {});
+  });
+
+  it("reconstruit depuis ses checkpoints un run qui n'a pas de journal", async () => {
+    world = await createWorld({
+      issues: [ISSUE],
+      script: merge(framing, testsPhase, { developer: [implement, implement, implement, implement], "code-adversary": [1, 2, 3, 4].map(() => ({ reply: codeRefuse(["C1"]) })) }) as Script,
+    });
+    world.ledger("FT-1");
+    await runSession(world.app, "FT-1", {}, { prompter: scripted(["Mois en cours", "Approuver"]), progress: silentProgress });
+
+    const lines = await rebuildHistory(world.app.paths, readLedger(world.app.paths, "FT-1") as Ledger);
+    const replayed = lines.flatMap((line) => ("event" in line ? [line.event] : []));
+    assert.deepEqual(replayed.flatMap((event) => (event.type === "phase" ? [event.phase] : [])), ["framing", "delivery"]);
+    assert.ok(replayed.some((event) => event.type === "output" && event.task === "plan"));
+    const refusals = replayed.flatMap((event) => (event.type === "gate" && event.task === "fixture-core.code" ? [event] : []));
+    assert.ok(refusals.length > 0 && refusals.every((event) => event.gate === "adversaire" && event.budget === null && event.text !== null));
+
+    const state = lines.reduce((current, line) => ("event" in line ? reduce(current, line.event, line.at) : current), createDashboard({ key: "FT-1", title: "" }, 0));
+    assert.equal(state.phase, "delivery");
+    const code = state.tasks.find((row) => row.key === "fixture-core.code");
+    assert.equal(code?.status, "failed");
+    assert.match(code?.error ?? "", /budget/);
+    assert.ok((code?.round ?? 0) > 1);
+    assert.ok(state.tasks.every((row) => row.status !== "done" || (row.startedAt !== null && row.finishedAt !== null)));
   });
 
   it("nettoie l'etat local d'un ticket publie et liste ce qui reste a distance", async () => {

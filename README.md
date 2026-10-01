@@ -200,6 +200,7 @@ their scopes, authentication modes, the registry, the settings and your writing 
 | `start <ticket> [--notes …] [--figma <url>…] [--auth <mode>] [--plain]` | frames, delivers and publishes a ticket; on a ticket that already has a run, resumes it |
 | `resume <ticket> [--fresh] [--note …] [--auth <mode>] [--plain]` | resumes an interrupted, waiting or escalated run; `--fresh` reopens the escalated task with a new budget |
 | `status [ticket] [--plan]` | lists the runs, or shows one run's phase, escalation, history and approved plan |
+| `show [ticket]` | opens a run's dashboard read-only — finished, or followed live while it runs in another terminal; without a ticket, the list of runs |
 | `clear <ticket> [--force] [--dry-run]` | removes a ticket's local state: worktrees, local branches, run, ledger, logs; lists the remote traces it leaves |
 | `auth [account\|oauth\|key]` | shows or changes how agents authenticate to Claude |
 | `check` | validates settings and registry, tokens, the Jira login, Docker, the agent image, Claude credentials and the registry checkouts |
@@ -242,7 +243,7 @@ move it.
 ├── voice.md                your writing voice
 ├── memory/                 the knowledge base, versioned
 ├── tickets/<KEY>.yaml      the ledger of a run, versioned
-├── runs/<KEY>/             checkpoints and cache, disposable
+├── runs/<KEY>/             checkpoints, cache and the event journal, disposable
 ├── logs/<KEY>/             full command output, disposable
 ├── figma/<KEY>/            rendered mockups, disposable
 ├── locks/                  one lock per running ticket

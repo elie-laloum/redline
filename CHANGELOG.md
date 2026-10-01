@@ -16,7 +16,14 @@ releases are tagged `v<version>` and published to npm as
   question rings the terminal bell. A first `Ctrl-C` drops a pending question; `resume` asks it
   again.
 - The inspector shows what each finished task handed the next ones, and phases finished before a
-  `resume` stay on screen, read back from their checkpoints.
+  `resume` stay on screen.
+- `show [ticket]` opens a run's dashboard read-only: a finished, escalated or interrupted run,
+  or one running in another terminal, followed live. Without a ticket, it lists the runs. A
+  question pending in the other terminal is shown without controls, and leaving never touches the
+  run.
+- Every session writes what the run does to `runs/<KEY>/events.jsonl`, with the dashboard or
+  `--plain`: `show` and the next `resume` replay it, agent text, commands and gate feedback
+  included. A run from before the journal is rebuilt from its checkpoints.
 - One typed event channel, `RunEvent`, carries everything a run does: phases, workflow events,
   agent observations attributed to the task and lane that asked, gate verdicts with their budget,
   registry commands with a heartbeat, and public actions with their links.

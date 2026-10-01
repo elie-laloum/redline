@@ -11,6 +11,7 @@ import { clearCommand } from "./commands/clear.ts";
 import { imageBuildCommand, imageDoctorCommand } from "./commands/image.ts";
 import { migrateHomeCommand } from "./commands/migrate-home.ts";
 import { resumeCommand, startCommand } from "./commands/run.ts";
+import { showCommand } from "./commands/show.ts";
 import { statusCommand } from "./commands/status.ts";
 import { guarded } from "./output.ts";
 
@@ -46,6 +47,12 @@ program
   .argument("[ticket]", "cle ou URL du ticket")
   .option("--plan", "affiche le plan approuve")
   .action((ticket: string | undefined, options: { plan?: boolean }) => guarded(async () => statusCommand(ticket, options)));
+
+program
+  .command("show")
+  .description("Ouvre le tableau de bord d'un run en lecture seule, en direct s'il tourne ailleurs")
+  .argument("[ticket]", "cle ou URL du ticket ; sans ticket, la liste des runs")
+  .action((ticket: string | undefined) => guarded(() => showCommand(ticket)));
 
 program
   .command("clear")

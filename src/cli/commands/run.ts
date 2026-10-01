@@ -5,6 +5,7 @@ import type { DriveRequest } from "../../app/driver.ts";
 import { ensureHome } from "../../app/home.ts";
 import { newLedger, readLedger, writeLedger } from "../../app/ledger.ts";
 import { authenticationPreflight, sandboxPreflight } from "../../app/preflight.ts";
+import { loadHistory } from "../../app/run-history.ts";
 import type { AuthMode } from "../../domain/config.ts";
 import { normalizeKey } from "../../domain/ticket.ts";
 import { clackPrompter } from "../ask.ts";
@@ -59,7 +60,9 @@ async function interactive(app: AppContext, key: string, request: DriveRequest, 
   process.on("SIGINT", interrupt);
   try {
     if (!options.plain && process.stdout.isTTY && process.stdin.isTTY) {
-      dashboard = await openDashboard({ key, title: readLedger(app.paths, key)?.title ?? "" }, { interrupt });
+      const ledger = readLedger(app.paths, key);
+      dashboard = await openDashboard({ key, title: ledger?.title ?? "" }, { interrupt });
+      if (ledger) dashboard.replay((await loadHistory(app.paths, ledger)).lines);
     }
     const session = dashboard ?? { prompter: clackPrompter, progress: clackProgress() };
     const outcome = await runSession(app, key, request, { prompter: session.prompter, progress: session.progress, signal: controller.signal });

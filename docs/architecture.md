@@ -18,8 +18,8 @@ the Claude Code harness. Redline owns the process built on top of them.
 ## Layers
 
 ```
-cli/        commands, questions, plain progress, dashboard
-app/        composition root, phase driver, ledger, lock, settings, home, diagnostics
+cli/        commands, questions, plain progress, dashboard, show
+app/        composition root, phase driver, ledger, lock, settings, home, diagnostics, event journal
 phases/     framing, delivery, closing — one outpost workflow each
 workflow/   converge, interview, memo, pool — redline's workflow building blocks
 agents/     one role per file: input, response schema, brief
@@ -172,7 +172,9 @@ applying them as a single commit to the home repository.
 
 Everything a run does is published on one typed channel, `RunEvent` in `domain/run-events.ts`:
 phases, workflow events, agent observations, gate verdicts, registry commands and public actions.
-The plain-text output and the dashboard are two listeners on it. See [tui.md](tui.md).
+The plain-text output and the dashboard are two listeners on it. The session also writes it to
+the run's event journal, which `show` follows from another terminal and the next `resume`
+replays. See [tui.md](tui.md).
 
 ## Tests
 

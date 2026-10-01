@@ -8,8 +8,8 @@ import { defineDelivery } from "../phases/delivery/workflow.ts";
 import { defineFraming, type FramingOutcome } from "../phases/framing/workflow.ts";
 import type { RunContext } from "../phases/run.ts";
 import type { AppContext } from "./context.ts";
-import { approvedOf, deliveredOf, type Ledger, publicationOf, readLedger, recordEvent, REOPEN_TARGETS, writeLedger } from "./ledger.ts";
-import { readCheckpoint, storageFor } from "./storage.ts";
+import { approvedOf, deliveredOf, type Ledger, publicationOf, readLedger, recordEvent, REOPEN_TARGETS, runIdOf, writeLedger } from "./ledger.ts";
+import { storageFor } from "./storage.ts";
 import { checkpointVersion } from "./version.ts";
 
 export interface DriveRequest {
@@ -37,7 +37,6 @@ const REOPEN = { amend: "plan", "reject-functional": "functional", "reject-techn
 export async function drive(app: AppContext, key: string, request: DriveRequest, options: DriveOptions = {}): Promise<DriveOutcome> {
   let ledger = readLedger(app.paths, key) ?? failMissing(key);
   let answers = request.answers;
-  if (options.events) await recall(app, ledger, options.events);
   if (ledger.phase === "escalated") {
     if (!request.resume) return { status: "escalated", escalation: ledger.escalation ?? unknownEscalation() };
     ledger = save(app, reopenAfterEscalation(ledger, request.fresh ?? null));
@@ -74,7 +73,7 @@ async function step(app: AppContext, ledger: Ledger, answers: readonly WorkflowA
       return { outcome: { status: "escalated", escalation: ledger.escalation ?? unknownEscalation() } };
     case "framing": {
       const framing = defineFraming(run);
-      const result = await start(app, ledger, framing.workflow, { phase: "framing", runId: `${key}/framing/${ledger.framing.attempt}`, repos: [] }, answers, options);
+      const result = await start(app, ledger, framing.workflow, { phase: "framing", runId: runIdOf(ledger, "framing"), repos: [] }, answers, options);
       const halted = await halt(app, ledger, "framing", result);
       if (halted) return halted;
       const outcome = framing.outcome(result);
@@ -84,7 +83,7 @@ async function step(app: AppContext, ledger: Ledger, answers: readonly WorkflowA
     case "delivery": {
       const delivery = defineDelivery({ ...run, framing: approvedOf(ledger) });
       const repos = approvedOf(ledger).plan.repos.map((repo) => repo.repo);
-      const result = await start(app, ledger, delivery.workflow, { phase: "delivery", runId: `${key}/delivery/${ledger.delivery.generation}`, repos }, undefined, options);
+      const result = await start(app, ledger, delivery.workflow, { phase: "delivery", runId: runIdOf(ledger, "delivery"), repos }, undefined, options);
       const halted = await halt(app, ledger, "delivery", result);
       if (halted) return halted;
       return { ledger: save(app, recordEvent({ ...latest(app, ledger), phase: "closing", delivered: delivery.outcome(result) }, "livraison terminee")) };
@@ -93,7 +92,7 @@ async function step(app: AppContext, ledger: Ledger, answers: readonly WorkflowA
       const context: ClosingContext = { ...run, framing: approvedOf(ledger), delivered: deliveredOf(ledger) };
       const closing = defineClosing(context);
       const repos = deliveredOf(ledger).map((repo) => repo.repo);
-      const result = await start(app, ledger, closing.workflow, { phase: "closing", runId: `${key}/closing/${ledger.closing.attempt}`, repos }, undefined, options);
+      const result = await start(app, ledger, closing.workflow, { phase: "closing", runId: runIdOf(ledger, "closing"), repos }, undefined, options);
       const halted = await halt(app, ledger, "closing", result);
       if (halted) return halted;
       return { ledger: save(app, recordEvent({ ...latest(app, ledger), phase: "done", publication: closing.outcome(result) }, "publication terminee")) };
@@ -170,27 +169,7 @@ function outputsOf(checkpoint: WorkflowCheckpoint, seen: Set<string>): RunEvent[
   });
 }
 
-const ORDER = ["framing", "delivery", "closing"] as const;
-
-/** Phases finished before this drive, read back from their checkpoints so the screen keeps them. */
-async function recall(app: AppContext, ledger: Ledger, events: RunObserver): Promise<void> {
-  const current = ledger.phase === "done" ? null : ledger.phase === "escalated" ? (ledger.resumePhase ?? "framing") : ledger.phase;
-  const finished = current === null ? ORDER : ORDER.slice(0, ORDER.indexOf(current));
-  const storage = storageFor(app.paths, ledger.key);
-  for (const phase of finished) {
-    const checkpoint = await readCheckpoint(storage, runIdOf(ledger, phase)).catch(() => null);
-    if (!checkpoint) continue;
-    events({ type: "past", phase, tasks: checkpoint.records.map(phaseTask) });
-    for (const event of outputsOf(checkpoint, new Set())) events(event);
-  }
-}
-
-function runIdOf(ledger: Ledger, phase: RunPhase): string {
-  const attempt = phase === "framing" ? ledger.framing.attempt : phase === "delivery" ? ledger.delivery.generation : ledger.closing.attempt;
-  return `${ledger.key}/${phase}/${attempt}`;
-}
-
-function phaseTask(record: WorkflowCheckpoint["records"][number]): PhaseTask {
+export function phaseTask(record: WorkflowCheckpoint["records"][number]): PhaseTask {
   return {
     key: record.key,
     status: record.status,

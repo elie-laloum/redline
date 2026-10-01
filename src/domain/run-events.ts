@@ -1,4 +1,4 @@
-import type { AgentObservation, TaskStatus, WorkflowEvent } from "@elie-laloum/outpost";
+import type { AgentObservation, TaskStatus, WorkflowEvent, WorkflowInputRequest } from "@elie-laloum/outpost";
 import type { RoleName } from "./roles.ts";
 
 export type RunPhase = "framing" | "delivery" | "closing";
@@ -44,11 +44,11 @@ export type RunEvent =
       /** Tokens every earlier workflow run of the ticket spent. */
       readonly earlier: Tokens;
     }
-  /** A phase already finished, read back from its checkpoint so its tasks stay on screen. */
-  | { readonly type: "past"; readonly phase: RunPhase; readonly tasks: readonly PhaseTask[] }
   /** What a finished task handed the next ones, as its checkpoint keeps it. */
   | { readonly type: "output"; readonly task: string; readonly value: unknown }
   | { readonly type: "workflow"; readonly event: WorkflowEvent }
+  /** The question put to the human, as asked: outpost's input-request event does not carry it. */
+  | { readonly type: "question"; readonly request: WorkflowInputRequest }
   | { readonly type: "agent"; readonly source: AgentSource; readonly role: RoleName; readonly event: AgentObservation }
   | {
       readonly type: "gate";
@@ -57,7 +57,8 @@ export type RunEvent =
       readonly round: number;
       readonly verdict: "pass" | "feedback";
       readonly spent: number;
-      readonly budget: number;
+      /** Null when read back from an old checkpoint, which does not keep it. */
+      readonly budget: number | null;
       readonly text: string | null;
     }
   | {

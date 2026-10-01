@@ -20,3 +20,13 @@ export function describeTool(name: string, input: unknown): string {
   const line = target.replace(/\s+/g, " ").trim();
   return `${name} ${line.length > 80 ? `${line.slice(0, 79)}…` : line}`;
 }
+
+/** How long ago something happened, to the unit that matters. */
+export function formatAge(ms: number): string {
+  const minutes = Math.floor(Math.max(0, ms) / 60_000);
+  if (minutes < 1) return "a l'instant";
+  if (minutes < 60) return `il y a ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `il y a ${hours} h`;
+  return `il y a ${Math.floor(hours / 24)} j`;
+}

@@ -154,6 +154,12 @@ export function updateLedger(paths: Paths, key: string, change: (ledger: Ledger)
   return writeLedger(paths, change(current));
 }
 
+/** The outpost run id of a phase's current attempt: its checkpoint is stored under it. */
+export function runIdOf(ledger: Ledger, phase: "framing" | "delivery" | "closing"): string {
+  const attempt = phase === "framing" ? ledger.framing.attempt : phase === "delivery" ? ledger.delivery.generation : ledger.closing.attempt;
+  return `${ledger.key}/${phase}/${attempt}`;
+}
+
 export function recordEvent(ledger: Ledger, event: string): Ledger {
   return { ...ledger, history: [...ledger.history, { at: new Date().toISOString(), event }] };
 }
