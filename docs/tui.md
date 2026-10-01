@@ -92,6 +92,11 @@ Questions are panels that appear and disappear, not overlays:
   scrollable, and the decision on the right. The plan is indented plain text, not Markdown, so it
   is shown as such with its headings highlighted. A decision other than approval opens the note
   in the same column; the review's follow-up question receives that note without a second form.
+- A proposal is wrapped over as many lines as it needs, and the selection is a band over all of
+  them: nothing a question offers is cut at the panel's edge, neither on a narrow terminal nor in
+  the review's decision column. The list takes half the screen at most and scrolls to keep the
+  selected proposal whole. OpenTUI's own select draws one clipped line per option, so the panels
+  have their own list (`src/cli/tui/choices.ts`), with the same keys.
 - A panel takes focus when it appears. `Tab` gives the whole screen back to the dashboard to
   reread what the agents did — the banner says `Tab pour repondre` — and cycles back to the
   question. While the question has focus, the keys belong to it: only `Tab`, `PgUp` / `PgDn`,

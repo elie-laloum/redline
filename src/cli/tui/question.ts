@@ -1,6 +1,7 @@
-import { BoxRenderable, type CliRenderer, ScrollBoxRenderable, SelectRenderable, SelectRenderableEvents, TextareaRenderable, TextRenderable } from "@opentui/core";
+import { BoxRenderable, type CliRenderer, ScrollBoxRenderable, TextareaRenderable, TextRenderable } from "@opentui/core";
 import type { WorkflowInputRequest } from "@elie-laloum/outpost";
 import { CHOICES } from "../../phases/framing/review.ts";
+import { ChoiceList } from "./choices.ts";
 import { type Line, span, styled, wrap } from "./text.ts";
 import { THEME } from "./theme.ts";
 
@@ -53,7 +54,7 @@ export function askedOf(request: WorkflowInputRequest): Asked {
 
 export function createQuestionPanel(renderer: CliRenderer, grillSlot: BoxRenderable, reviewSlot: BoxRenderable): QuestionPanel {
   const grill = {
-    heading: new TextRenderable(renderer, { id: "grill-heading", content: "", fg: THEME.text, height: 1 }),
+    heading: new TextRenderable(renderer, { id: "grill-heading", content: "", fg: THEME.text, wrapMode: "none", height: 1 }),
     body: new ScrollBoxRenderable(renderer, { id: "grill-body", flexGrow: 1, flexShrink: 1, backgroundColor: THEME.panel }),
     bodyText: new TextRenderable(renderer, { id: "grill-body-text", content: "", fg: THEME.text, wrapMode: "none" }),
     form: createForm(renderer, "grill"),
@@ -104,9 +105,12 @@ export function createQuestionPanel(renderer: CliRenderer, grillSlot: BoxRendera
         review.planText.content = styled(planLines(asked.body));
         review.plan.scrollTop = 0;
       } else {
+        const width = Math.max(20, renderer.width - 7);
+        const heading = wrap(asked.header || asked.title, width);
         grillSlot.title = ` ${asked.title} `;
-        grill.heading.content = styled([[span(asked.header || asked.title, "warning", { bold: true })]]);
-        grill.bodyText.content = styled(wrap(asked.body, Math.max(20, renderer.width - 7)).map((line): Line => [span(line)]));
+        grill.heading.content = styled(heading.map((line): Line => [span(line, "warning", { bold: true })]));
+        grill.heading.height = heading.length;
+        grill.bodyText.content = styled(wrap(asked.body, width).map((line): Line => [span(line)]));
         grill.body.scrollTop = 0;
       }
       form.start({
@@ -150,18 +154,7 @@ interface Form {
 /** Choices first, then a text area for a free answer or a note; Enter sends it. */
 function createForm(renderer: CliRenderer, id: string): Form {
   const box = new BoxRenderable(renderer, { id: `${id}-form`, flexDirection: "column", flexShrink: 0, backgroundColor: THEME.panel });
-  const select = new SelectRenderable(renderer, {
-    id: `${id}-select`,
-    options: [],
-    showDescription: false,
-    wrapSelection: true,
-    backgroundColor: THEME.panel,
-    focusedBackgroundColor: THEME.panel,
-    textColor: THEME.text,
-    focusedTextColor: THEME.text,
-    selectedBackgroundColor: THEME.selection,
-    selectedTextColor: THEME.text,
-  });
+  const select = new ChoiceList(renderer, `${id}-select`, (choice) => take(choice));
   const label = new TextRenderable(renderer, { id: `${id}-label`, content: "", fg: THEME.muted, wrapMode: "word", visible: false });
   const textarea = new TextareaRenderable(renderer, {
     id: `${id}-textarea`,
@@ -209,15 +202,14 @@ function createForm(renderer: CliRenderer, id: string): Form {
     showHint(`Entree envoyer · Shift+Entree ou Alt+Entree nouvelle ligne${session?.choices.length ? " · Esc revenir aux choix" : ""}`);
   };
 
-  select.on(SelectRenderableEvents.ITEM_SELECTED, (_index: number, option: { value?: string } | null) => {
-    if (!session || !option?.value) return;
-    const choice = option.value;
+  function take(choice: string) {
+    if (!session) return;
     if (choice === OTHER) return toText("Ta reponse, en clair :");
     const note = session.noteFor(choice);
     if (note === null) return session.answer({ value: choice, note: null });
     session.chosen = choice;
     toText(note);
-  });
+  }
   textarea.onSubmit = () => {
     if (!session) return;
     const text = textarea.plainText.trim();
@@ -230,10 +222,7 @@ function createForm(renderer: CliRenderer, id: string): Form {
     box,
     start({ choices, freeText, noteFor, answer }) {
       session = { choices, noteFor, answer, chosen: null };
-      const options = [...choices, ...(freeText && choices.length ? [OTHER] : [])];
-      select.options = options.map((choice) => ({ name: choice, description: "", value: choice }));
-      select.height = Math.max(1, options.length);
-      select.setSelectedIndex(0);
+      select.start([...choices, ...(freeText && choices.length ? [OTHER] : [])]);
       if (choices.length) toChoices();
       else toText("Ta reponse, en clair :");
     },

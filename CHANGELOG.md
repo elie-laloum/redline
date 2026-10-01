@@ -4,6 +4,17 @@ All notable changes to redline. Versions follow [semantic versioning](https://se
 releases are tagged `v<version>` and published to npm as
 [`@elie-laloum/redline`](https://www.npmjs.com/package/@elie-laloum/redline).
 
+## Unreleased
+
+### Fixed
+
+- A proposed answer longer than the panel is wrapped over as many lines as it needs instead of
+  being cut at its edge: the grill's choices and the plan review's decisions stay readable on a
+  narrow terminal and in the review's decision column, and the list scrolls to keep the selected
+  one whole.
+- The memory pull takes the identity that commits it, so where git has no identity of its own —
+  a CI runner — it no longer fails and leaves the run on stale notes.
+
 ## 4.0.0 — 2026-10-01
 
 ### Breaking
