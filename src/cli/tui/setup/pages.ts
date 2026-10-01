@@ -265,7 +265,7 @@ function memory(context: PageContext): Row[] {
         kind: "action",
         label: "Tirer les notes des autres maintenant",
         async run() {
-          const warning = await pullMemory(current);
+          const warning = await pullMemory(current, snapshot.settings?.git.committer);
           context.reload();
           context.notify(warning ? "warning" : "success", warning ?? "Memoire a jour.");
         },

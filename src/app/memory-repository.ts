@@ -34,10 +34,13 @@ export async function ensureMemory(memory: MemoryRepository): Promise<void> {
   await git(dirname(memory.directory), ["clone", "-q", memory.url, memory.directory], 300_000);
 }
 
-/** Pulls the shared memory before it is read; a failure keeps the local notes and says why. */
-export async function pullMemory(memory: MemoryRepository): Promise<string | null> {
+/**
+ * Pulls the shared memory before it is read; a failure keeps the local notes and says why. The
+ * rebase rewrites the local commits, so it needs the same identity as committing them.
+ */
+export async function pullMemory(memory: MemoryRepository, committer: Committer): Promise<string | null> {
   if (!memory.separate || !(await hasRemote(memory.directory))) return null;
-  const pulled = await gitAllowFailure(memory.directory, ["pull", "--rebase", "--quiet"], 120_000);
+  const pulled = await gitAllowFailure(memory.directory, [...(await identityFor(memory.directory, committer)), "pull", "--rebase", "--quiet"], 120_000);
   if (pulled.ok) return null;
   await gitAllowFailure(memory.directory, ["rebase", "--abort"]);
   return `pull de la memoire impossible, les notes locales servent telles quelles : ${firstLine(pulled.stderr)}`;

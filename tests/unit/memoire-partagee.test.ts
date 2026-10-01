@@ -68,7 +68,7 @@ describe("la memoire dans son propre depot", () => {
     git(teammate, "add", "-A");
     git(teammate, "commit", "-q", "-m", "memory: FT-2");
     git(teammate, "push", "-q");
-    assert.equal(await pullMemory(mine), null);
+    assert.equal(await pullMemory(mine, undefined), null);
     assert.ok(existsSync(join(mine.directory, "features/collegue.md")));
 
     note(teammate, "features/encore.md", "Une autre.");
@@ -79,7 +79,8 @@ describe("la memoire dans son propre depot", () => {
     const committed = await commitMemory(mine, "memory: FT-4", { name: "Ada", email: "ada@x" });
     assert.ok(committed.commit);
     assert.match(committed.warning ?? "", new RegExp(`le commit ${committed.commit} reste local`));
-    assert.equal(await pullMemory(mine), null);
+    // The rebase rewrites the local commit: with no identity in git, redline's own is used.
+    assert.equal(await pullMemory(mine, undefined), null);
     assert.ok(existsSync(join(mine.directory, "features/encore.md")));
   });
 

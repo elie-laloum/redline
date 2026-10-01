@@ -71,7 +71,7 @@ export function memoryApplyTask(run: RunContext, plan: Task<Converged<MemoryPlan
         if (text) emit(run, { type: "warning", task: "memory-apply", text });
       };
       // Someone else's run may have pushed notes since this one started.
-      warn(await pullMemory(memory));
+      warn(await pullMemory(memory, run.app.configuration.settings.git.committer));
       const store = run.app.memory();
       const { operations } = context.value(plan).candidate;
       for (const op of operations) {
