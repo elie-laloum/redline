@@ -4,7 +4,7 @@ All notable changes to redline. Versions follow [semantic versioning](https://se
 releases are tagged `v<version>` and published to npm as
 [`@elie-laloum/redline`](https://www.npmjs.com/package/@elie-laloum/redline).
 
-## Unreleased — 4.0.0
+## 4.0.0 — 2026-10-01
 
 ### Breaking
 
