@@ -24,9 +24,10 @@ export function figmaTask(run: RunContext, ticket: Task<TicketSnapshot>): Task<F
   return defineTask({
     key: "figma",
     after: [ticket],
-    cache: cached(run, [], (context) => refsOf(context.value(ticket)).map((ref) => ref.url)),
+    cache: cached(run, [], (context) => ({ refs: refsOf(context.value(ticket)).map((ref) => ref.url), enabled: run.app.configuration.settings.services.figma })),
     async perform(context) {
       const refs = refsOf(context.value(ticket));
+      if (!run.app.configuration.settings.services.figma) return { frames: [], skipped: refs.map((ref) => `${ref.url} : Figma desactive`) };
       const design = run.app.services.design;
       if (!design.configured) return { frames: [], skipped: refs.map((ref) => `${ref.url} : FIGMA_TOKEN absent`) };
       const frames: FigmaFrame[] = [];

@@ -7,7 +7,8 @@ import { type JiraPublication, jiraTask, mergeRequestsTask, type OpenedMergeRequ
 export interface Publication {
   readonly memory: MemoryApplied;
   readonly mergeRequests: readonly OpenedMergeRequest[];
-  readonly slack: SlackPublication;
+  /** Null when Slack is switched off. */
+  readonly slack: SlackPublication | null;
   readonly jira: JiraPublication;
 }
 

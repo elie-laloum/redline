@@ -124,6 +124,8 @@ export const SettingsSchema = v.object({
     agentChecks: v.optional(v.boolean(), false),
   }),
   scope: v.object({ concurrency: positive }),
+  /** What a run reads and publishes beyond Jira and GitLab, which it always needs. */
+  services: v.object({ slack: v.boolean(), figma: v.boolean(), jiraWrites: v.boolean() }),
 });
 
 export type RepoEntry = v.InferOutput<typeof RepoSchema>;

@@ -82,12 +82,14 @@ export function mergeRequestsTask(run: ClosingContext, prose: Task<Converged<Pro
   });
 }
 
-export function slackTask(run: ClosingContext, prose: Task<Converged<Prose>>, requests: Task<readonly OpenedMergeRequest[]>): Task<SlackPublication> {
+/** Null when Slack is switched off: the task stays in the workflow, so its checkpoint does not change shape. */
+export function slackTask(run: ClosingContext, prose: Task<Converged<Prose>>, requests: Task<readonly OpenedMergeRequest[]>): Task<SlackPublication | null> {
   const { settings } = run.app.configuration;
   return defineTask({
     key: "slack",
     after: [prose, requests],
     async perform(context) {
+      if (!settings.services.slack) return null;
       const chat = run.app.services.chat;
       const opened = context.value(requests);
       const channel = await chat.createChannel(slackChannelName(settings.naming, { ticket: run.ledger.key, title: run.ledger.title }), settings.slack.channelVisibility === "private");
@@ -119,6 +121,7 @@ export function jiraTask(run: ClosingContext, prose: Task<Converged<Prose>>, aft
     key: "jira",
     after: [prose, ...after],
     async perform(context) {
+      if (!settings.services.jiraWrites) return { transition: null, commented: false };
       const tracker = run.app.services.tracker;
       const target = resolveBySquad(settings.jira.transitions, run.framing.ticket.squad).afterMergeRequest;
       const current = (await tracker.getTicket(run.ledger.key)).status;

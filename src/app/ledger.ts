@@ -78,7 +78,7 @@ const PublicationSchema: v.GenericSchema<unknown, Publication> = v.object({
     commit: v.nullable(v.string()),
   }),
   mergeRequests: v.array(v.object({ repo: v.string(), project: v.string(), iid: v.number(), url: v.string() })),
-  slack: v.object({ channel: v.object({ id: v.string(), name: v.string() }), invited: v.array(v.string()), unknown: v.array(v.string()) }),
+  slack: v.nullable(v.object({ channel: v.object({ id: v.string(), name: v.string() }), invited: v.array(v.string()), unknown: v.array(v.string()) })),
   jira: v.object({ transition: v.nullable(v.string()), commented: v.boolean() }),
 });
 

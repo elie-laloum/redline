@@ -50,13 +50,31 @@ describe("la cloture", () => {
     const channel = world.slack.channels[0];
     assert.deepEqual([channel?.name, channel?.isPrivate], ["ft-1-filtrer-la-liste-par-periode", true]);
     assert.deepEqual(world.slack.invited, [{ channel: channel?.id, users: ["U1"] }]);
-    assert.deepEqual(outcome?.slack.unknown, ["second.dev@example.com"]);
+    assert.deepEqual(outcome?.slack?.unknown, ["second.dev@example.com"]);
     assert.match(world.slack.messages[0]?.text ?? "", new RegExp(`fixture-core : ${mr?.url}`));
     assert.equal(world.slack.bookmarks.length, 2);
     assert.deepEqual(world.jira.transitions, [{ key: "FT-1", to: "VALIDATION" }]);
     assert.equal(world.jira.comments.length, 1);
     const coreRepo = world.repos.find((repo) => repo.name === "fixture-core")?.path ?? "";
     assert.match(git(coreRepo, "ls-remote", "--heads", "origin"), /feature\/FT-1-filtrer-la-liste-par-periode/);
+  });
+
+  it("ne publie ni sur Slack ni sur le ticket quand ces services sont coupes, et ne fait pas ecrire leurs textes", async () => {
+    world = await createWorld({
+      issues: [ISSUE],
+      slackUsers: USERS,
+      settings: (template) => template.replace("slack: true ", "slack: false").replace("jiraWrites: true ", "jiraWrites: false"),
+      script: { ...delivery, "memory-planner": [{ reply: memoryReply }], finalizer: [{ reply: { ...proseReply(["fixture-core"]), slack: "", jira: "" } }] } as Script,
+    });
+    const { ledger, framing, repos } = await delivered(world);
+    const { result, outcome } = await close(world, ledger, framing, repos);
+    result.unwrap();
+
+    assert.equal(world.gitlab.mergeRequests.length, 1);
+    assert.equal(outcome?.slack, null);
+    assert.deepEqual(outcome?.jira, { transition: null, commented: false });
+    assert.deepEqual([world.slack.channels.length, world.slack.messages.length, world.jira.transitions.length, world.jira.comments.length], [0, 0, 0, 0]);
+    assert.match(world.agents.prompts.finalizer?.[0] ?? "", /une chaine vide : Slack est desactive/);
   });
 
   it("transmet les notes du lancement a chaque agent de la livraison et de la cloture", async () => {

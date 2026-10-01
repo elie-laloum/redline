@@ -1,4 +1,5 @@
 import { authenticationProblem } from "../adapters/claude-agents.ts";
+import { requiredSecrets } from "../adapters/secrets.ts";
 import { inspectImage, runtimeStatus, startRuntime } from "../adapters/container-runtime.ts";
 import { fail } from "../domain/failure.ts";
 import type { AppContext } from "./context.ts";
@@ -22,6 +23,17 @@ export async function sandboxPreflight(app: AppContext, options: { build?: (imag
 /** Without a registry no repository can be in scope: the run would escalate after framing. */
 export function registryPreflight(app: AppContext): void {
   if (!app.configuration.sources.registry) fail(`Aucun registre de repos dans ${app.paths.registry}.`, "Declare tes repos avec : bun redline init");
+}
+
+/**
+ * The tokens of the services that are on, checked before anything runs: a missing Slack token
+ * used to fail the run after its merge requests were open, before the Jira transition.
+ */
+export function servicesPreflight(app: AppContext): void {
+  const missing = requiredSecrets(app.configuration.settings.services).filter((key) => !app.secrets.get(key));
+  if (missing.length > 0) {
+    fail(`Jetons manquants dans ${app.paths.env} : ${missing.join(", ")}.`, "Renseigne-les, ou desactive le service qui en a besoin, avec : bun redline init");
+  }
 }
 
 /** A missing credential stops the run here rather than in its first agent task. */

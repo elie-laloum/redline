@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterAll, describe, it } from "bun:test";
 import { parse } from "yaml";
 import { authenticationFor, authenticationProblem } from "../../src/adapters/claude-agents.ts";
-import { loadSecrets, writeSecret } from "../../src/adapters/secrets.ts";
+import { loadSecrets, requiredSecrets, writeSecret } from "../../src/adapters/secrets.ts";
 import { pathsOf } from "../../src/app/paths.ts";
 import { loadConfiguration, resetSetting, writeSetting } from "../../src/app/settings.ts";
 import { temporaryDirectory } from "../helpers.ts";
@@ -55,6 +55,16 @@ describe("le .env de redline", () => {
     writeFileSync(template, "# Claude\n# CLAUDE_CODE_OAUTH_TOKEN=\n# ANTHROPIC_API_KEY=\n");
     writeSecret(template, "CLAUDE_CODE_OAUTH_TOKEN", "jeton");
     assert.equal(readFileSync(template, "utf8"), "# Claude\nCLAUDE_CODE_OAUTH_TOKEN=jeton\n# ANTHROPIC_API_KEY=\n");
+  });
+
+  it("n'exige les jetons de Slack et de Figma que s'ils sont actifs, Jira et GitLab toujours", () => {
+    assert.deepEqual(requiredSecrets({ slack: false, figma: false }), ["JIRA_SITE_URL", "JIRA_EMAIL", "JIRA_API_TOKEN", "GITLAB_TOKEN"]);
+    assert.deepEqual(requiredSecrets({ slack: true, figma: true }).slice(-2), ["SLACK_USER_TOKEN", "FIGMA_TOKEN"]);
+    const states = loadSecrets(null, {}).describe({ slack: false, figma: true });
+    const slack = states.find((state) => state.key === "SLACK_USER_TOKEN");
+    assert.deepEqual([slack?.required, slack?.unused], [false, true]);
+    assert.equal(states.find((state) => state.key === "FIGMA_TOKEN")?.required, true);
+    assert.equal(states.some((state) => state.key === "SLACK_API_BASE"), false);
   });
 
   it("cede a une variable exportee dans le shell", () => {

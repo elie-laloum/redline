@@ -17,7 +17,8 @@ export function report(key: string, outcome: DriveOutcome): number {
     case "done": {
       const { publication } = outcome;
       clack.log.success(publication.mergeRequests.map((request) => `${request.repo} : ${request.url}`).join("\n") || "Aucune MR.");
-      clack.log.info(`Canal #${publication.slack.channel.name}${publication.jira.transition ? ` — ticket passe en ${publication.jira.transition}` : ""}`);
+      const published = [publication.slack ? `Canal #${publication.slack.channel.name}` : "", publication.jira.transition ? `ticket passe en ${publication.jira.transition}` : ""].filter(Boolean);
+      if (published.length) clack.log.info(published.join(" — "));
       if (publication.memory.commit) clack.log.info(`Memoire : commit ${publication.memory.commit}`);
       clack.outro(`${key} publie.`);
       return 0;
@@ -45,7 +46,8 @@ export function outcomeNotice(key: string, outcome: DriveOutcome): { readonly to
   switch (outcome.status) {
     case "done": {
       const requests = outcome.publication.mergeRequests.length;
-      return { tone: "success", text: `${key} publie : ${requests} MR, canal #${outcome.publication.slack.channel.name}.` };
+      const channel = outcome.publication.slack ? `, canal #${outcome.publication.slack.channel.name}` : "";
+      return { tone: "success", text: `${key} publie : ${requests} MR${channel}.` };
     }
     case "escalated": {
       const { escalation } = outcome;

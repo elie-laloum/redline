@@ -4,9 +4,10 @@ import { type AppContext, createContext } from "../../app/context.ts";
 import type { DriveRequest } from "../../app/driver.ts";
 import { ensureHome } from "../../app/home.ts";
 import { newLedger, readLedger, writeLedger } from "../../app/ledger.ts";
-import { authenticationPreflight, registryPreflight, sandboxPreflight } from "../../app/preflight.ts";
+import { authenticationPreflight, registryPreflight, sandboxPreflight, servicesPreflight } from "../../app/preflight.ts";
 import { loadHistory } from "../../app/run-history.ts";
 import type { AuthMode } from "../../domain/config.ts";
+import { fail } from "../../domain/failure.ts";
 import { normalizeKey } from "../../domain/ticket.ts";
 import { clackPrompter } from "../ask.ts";
 import { offerImageBuild } from "./image.ts";
@@ -18,6 +19,7 @@ import { type DashboardSession, openDashboard } from "../tui/dashboard.ts";
 export async function startCommand(input: string, options: { notes?: string; figma?: string[]; auth?: AuthMode; plain?: boolean }): Promise<number> {
   const key = normalizeKey(input);
   const app = createContext(options.auth ? { authentication: options.auth } : {});
+  if (options.figma?.length && !app.configuration.settings.services.figma) fail("Figma est desactive : --figma n'aurait aucun effet.", "Active-le avec : bun redline init");
   await ensureHome(app.paths);
   clack.intro(`redline ${key}`);
   await preflight(app);
@@ -41,6 +43,7 @@ export async function resumeCommand(input: string, options: { fresh?: boolean; n
 
 async function preflight(app: AppContext): Promise<void> {
   registryPreflight(app);
+  servicesPreflight(app);
   authenticationPreflight(app);
   await sandboxPreflight(app, { build: offerImageBuild });
 }

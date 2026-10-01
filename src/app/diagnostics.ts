@@ -30,11 +30,11 @@ function configuration(app: AppContext): Finding[] {
 }
 
 function secrets(app: AppContext): Finding[] {
-  return app.secrets.describe().map(({ key, present, required }) => ({
+  return app.secrets.describe(app.configuration.settings.services).map(({ key, present, required, unused }) => ({
     section: "secrets",
     label: key,
-    status: present ? "ok" : required ? "fail" : "warn",
-    detail: present ? "renseigne" : required ? `manquant dans ${app.paths.env}` : "facultatif, absent",
+    status: present || unused ? "ok" : required ? "fail" : "warn",
+    detail: unused ? "service desactive" : present ? "renseigne" : required ? `manquant dans ${app.paths.env}` : "facultatif, absent",
   }));
 }
 

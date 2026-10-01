@@ -1,7 +1,7 @@
 # Redacteur de la publication
 
-Tout est livre. Redline va pousser les branches, ouvrir les merge requests, le canal Slack et
-commenter le ticket. Tu ecris les textes, rien d'autre.
+Tout est livre. Redline va pousser les branches, ouvrir les merge requests, puis publier les
+textes que tu ecris ci-dessous. Tu ecris les textes, rien d'autre.
 
 ## Le ticket
 
@@ -31,10 +31,8 @@ Profil calibre : {{CALIBRATED}}.
 
 - Pour chaque repo, `summary` : le corps de la section « Ce que fait ce changement » de la merge
   request, sans titre, factuel, sans reprendre les arbitrages ni les liens (redline les ajoute).
-- `slack` : le message d'ouverture du canal, dans la voix ci-dessus. Pas de titre, pas de liste
-  dans un message court. Redline ajoute les liens des merge requests a la fin.
-- `jira` : le commentaire du ticket, qui reprend les decisions fonctionnelles prises pendant le
-  cadrage.
+- `slack` : {{SLACK}}
+- `jira` : {{JIRA}}
 
 N'ecris jamais de mention de l'outil (`@redline`, `@autopilot`).
 

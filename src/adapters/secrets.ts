@@ -17,14 +17,33 @@ export const SECRET_KEYS = [
 ] as const;
 export type SecretKey = (typeof SECRET_KEYS)[number];
 
-const OPTIONAL: readonly SecretKey[] = ["FIGMA_TOKEN", "GITLAB_HOST", "SLACK_API_BASE", "FIGMA_API_BASE"];
 /** Required by one authentication mode only: check reports them with the agents' credentials. */
 const AGENT_KEYS: readonly SecretKey[] = ["CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY"];
+/** Hooks for the tests' fake services: nobody sets them by hand. */
+const TEST_KEYS: readonly SecretKey[] = ["SLACK_API_BASE", "FIGMA_API_BASE"];
+
+export interface SecretState {
+  readonly key: SecretKey;
+  readonly present: boolean;
+  readonly required: boolean;
+  /** The key belongs to a service that is switched off. */
+  readonly unused: boolean;
+}
 
 export interface Secrets {
   get(key: SecretKey): string | null;
   require(key: SecretKey): string;
-  describe(): { readonly key: SecretKey; readonly present: boolean; readonly required: boolean }[];
+  describe(services: ServiceSwitches): SecretState[];
+}
+
+export interface ServiceSwitches {
+  readonly slack: boolean;
+  readonly figma: boolean;
+}
+
+/** The tokens a run needs before it starts: Jira and GitLab always, Slack and Figma while they are on. */
+export function requiredSecrets(services: ServiceSwitches): SecretKey[] {
+  return ["JIRA_SITE_URL", "JIRA_EMAIL", "JIRA_API_TOKEN", "GITLAB_TOKEN", ...(services.slack ? (["SLACK_USER_TOKEN"] as const) : []), ...(services.figma ? (["FIGMA_TOKEN"] as const) : [])];
 }
 
 export function parseEnvFile(raw: string): Map<string, string> {
@@ -56,7 +75,11 @@ export function loadSecrets(file: string | null, env: Readonly<Record<string, st
   return {
     get: (key) => values.get(key) ?? null,
     require: (key) => values.get(key) ?? fail(`Secret manquant : ${key}.`, `Renseigne-le dans ${file ?? "l'environnement"}, puis relance.`),
-    describe: () => SECRET_KEYS.filter((key) => !AGENT_KEYS.includes(key)).map((key) => ({ key, present: values.has(key), required: !OPTIONAL.includes(key) })),
+    describe: (services) => {
+      const required = requiredSecrets(services);
+      const unused: readonly SecretKey[] = [...(services.slack ? [] : (["SLACK_USER_TOKEN"] as const)), ...(services.figma ? [] : (["FIGMA_TOKEN"] as const))];
+      return SECRET_KEYS.filter((key) => !AGENT_KEYS.includes(key) && !TEST_KEYS.includes(key)).map((key) => ({ key, present: values.has(key), required: required.includes(key), unused: unused.includes(key) }));
+    },
   };
 }
 

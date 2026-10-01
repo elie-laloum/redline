@@ -29,6 +29,9 @@ releases are tagged `v<version>` and published to npm as
   registry commands with a heartbeat, and public actions with their links.
 - The ledger records the tokens each workflow run spent, so the ticket's total survives a
   `resume`.
+- `services.slack`, `services.figma` and `services.jiraWrites` in `redline.yaml` switch off the
+  Slack channel and message, the mockups, or the Jira transition and comment. The finalizer then
+  writes no text for a channel that is off.
 - `CHANGELOG.md`.
 
 ### Changed
@@ -40,11 +43,16 @@ releases are tagged `v<version>` and published to npm as
   image, and the original is kept as `redline.yaml.3.bak`.
 - The package's defaults invite nobody to Slack and set no Jira transition per squad: the
   examples the template carried are comments now.
+- `start` and `resume` check the tokens of the services that are on before anything runs:
+  Jira and GitLab always, Slack and Figma while they are on. `FIGMA_TOKEN` is required while
+  Figma is on; without it, switch Figma off. `check` ignores the services that are off.
 - Without `~/.redline/repositories.yaml`, `start` and `resume` refuse to run and `check` fails;
   the demo registry is no longer a silent fallback.
 
 ### Fixed
 
+- A missing Slack token no longer fails a run after its merge requests are open, leaving the
+  Jira transition undone: pre-flight reports it before anything runs.
 - What one phase hands the next — the approved framing, the delivered repositories, the
   publication — is validated against a schema when the ledger is read back, and a mismatch names
   the field and path instead of failing deep inside a phase.

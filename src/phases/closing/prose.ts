@@ -25,10 +25,12 @@ export function voiceOf(run: ClosingContext): { rules: string; calibrated: boole
 
 export function proseTask(run: ClosingContext, after: readonly Task[]): Task<Converged<Prose>> {
   const voice = voiceOf(run);
+  const { services } = run.app.configuration.settings;
+  const channels = { slack: services.slack, jira: services.jiraWrites };
   return converge<Prose>({
     key: "prose",
     after,
-    cache: cached(run, ["finalizer"], () => digest({ framing: run.framing, delivered: run.delivered, voice })),
+    cache: cached(run, ["finalizer"], () => digest({ framing: run.framing, delivered: run.delivered, voice, channels })),
     ...(run.events ? { events: run.events } : {}),
     make: (context, carry) =>
       withReader(run, "finalizer", { task: "prose" }, (session) =>
@@ -40,6 +42,7 @@ export function proseTask(run: ClosingContext, after: readonly Task[]): Task<Con
           repos: run.delivered.map((repo) => ({ repo: repo.repo, commits: repo.commits })),
           voice: voice.rules,
           calibrated: voice.calibrated,
+          channels,
           feedback: carry.feedback?.text ?? null,
         }),
       ),
@@ -49,8 +52,8 @@ export function proseTask(run: ClosingContext, after: readonly Task[]): Task<Con
         budget: run.ledger.budgets.proseRepairs,
         async judge(_context, prose) {
           const problems = [
-            ...publishableProblems(prose.slack).map((problem) => `message Slack : ${problem}`),
-            ...publishableProblems(prose.jira).map((problem) => `commentaire Jira : ${problem}`),
+            ...(channels.slack ? publishableProblems(prose.slack).map((problem) => `message Slack : ${problem}`) : []),
+            ...(channels.jira ? publishableProblems(prose.jira).map((problem) => `commentaire Jira : ${problem}`) : []),
             ...prose.mergeRequests.flatMap((entry) => publishableProblems(entry.summary).map((problem) => `MR ${entry.repo} : ${problem}`)),
           ];
           return problems.length === 0 ? { kind: "pass" } : { kind: "feedback", text: `Ces textes ne peuvent pas partir tels quels :\n${bullets(problems)}` };

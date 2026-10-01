@@ -49,8 +49,8 @@ modes, which the agent's container needs to authenticate.
 | `JIRA_SITE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN` | yes | an Atlassian API token. Jira Cloud authenticates in Basic, with the e-mail and the token. |
 | `GITLAB_TOKEN` | yes | a personal access token with the `api` and `write_repository` scopes |
 | `GITLAB_HOST` | no | defaults to `https://gitlab.com` |
-| `SLACK_USER_TOKEN` | yes | a **user** token (`xoxp-`) with the user scopes `groups:write`, `groups:write.invites`, `bookmarks:write`, `chat:write`, `users:read.email` |
-| `FIGMA_TOKEN` | no | a read-only personal token. Without it the run continues without mockups. |
+| `SLACK_USER_TOKEN` | while `services.slack` is on | a **user** token (`xoxp-`) with the user scopes `groups:write`, `groups:write.invites`, `bookmarks:write`, `chat:write`, `users:read.email` |
+| `FIGMA_TOKEN` | while `services.figma` is on | a read-only personal token |
 | `CLAUDE_CODE_OAUTH_TOKEN` | `oauth` mode | the token `claude setup-token` prints |
 | `ANTHROPIC_API_KEY` | `key` mode | an Anthropic API key, billed by usage |
 
@@ -137,6 +137,7 @@ land on them, and a ticket from those projects touches no production repository.
 | `agents` | the authentication mode, and the model and reasoning effort by default and per role |
 | `sandbox` | the agent image, container limits, `agentChecks` |
 | `scope.concurrency` | how many scope scouts run in parallel |
+| `services` | `slack`, `figma`, `jiraWrites`: switch off the Slack channel and message, the mockups, or the Jira transition and comment. The ticket is always read, and GitLab always used. `start` and `resume` check the tokens of the services that are on before anything runs. |
 
 `commandSilenceSeconds` deserves a measurement rather than a guess: beyond it, a silent command
 is treated as waiting on infrastructure and escalates as `environment`.
