@@ -188,5 +188,5 @@ Enter, to be copied into the field by hand.
 ## Order
 
 The event journal and `show` came first, as slice 4 of the interface ([tui.md](tui.md)), then
-`init` as slice 5. Bringing the pre-flight of `start` and `resume` inside their dashboard, from
-`init`'s image and check sections, is still to do.
+`init` as slice 5, with the pre-flight of `start` and `resume` brought inside their dashboard:
+the same checks, each a journal line, and the image built there when it is missing.

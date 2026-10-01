@@ -5,10 +5,12 @@ behind it and the constraints it has to respect.
 
 ## Scope
 
-- `start` and `resume` open the interface once pre-flight has passed (ticket fetch,
-  authentication check, agent image confirmation and build); bringing pre-flight inside the
-  interface is slice 5, with `init`. A home screen on a bare `redline` (runs list, new run,
-  resume) comes later; `status` stays plain text.
+- `start` and `resume` open the interface at once, and pre-flight runs inside it: the memory, the
+  registry, the tokens, Claude's credential, the container runtime, the agent image, then the
+  ticket. Each step is a journal line. A missing image is asked about in a question panel and
+  built with its output in the journal. A failure freezes the screen on its cause, and is printed
+  again once the terminal is back, so it stays in the scrollback. A home screen on a bare
+  `redline` (runs list, new run, resume) comes later; `status` stays plain text.
 - The interface is the default when stdout is a TTY. `--plain`, a pipe, CI or `nohup` keep the
   current clack output, which stays the reference fallback.
 - For `start` and `resume`, the interface lives in the run's process. Closing it stops the run the
@@ -131,7 +133,7 @@ listens; clack ignores what it cannot show.
 | `command` | registry checks and dependency installs | task, label, command, start / progress / end, exit code, log path |
 | `publication` | release and closing | tag, pipeline, push, merge request, Slack, Jira — with a link when there is one |
 | `warning` | the session and the memory step | what the run carries on without: a memory that would not pull or push |
-| `preflight` | `start` and `resume` — planned, slice 5 | step, status, detail |
+| `preflight` | `start` and `resume`, before the session | step, ok / fail, what it found — or a line the image build printed |
 
 Agent observations carry the task that asked explicitly: `ask()` gets its source from the
 session it runs in, so parallel agents are never attributed by guesswork.
@@ -202,13 +204,11 @@ keys; `viewer.ts` adds only the keys that leave.
 
 ## Slices
 
-Slices 1 to 5 are in place, except pre-flight inside the dashboard of `start` and `resume`: they
-still check the runtime, the image and the credentials in plain text before opening it.
+Slices 1 to 5 are in place.
 
 1. `RunEvent` channel, agent attribution, gate / command / publication events, view model.
    Clack output unchanged.
 2. Read-only dashboard for `start` and `resume`, `--plain`, TTY detection.
 3. Question panels, plan review, bell.
 4. Event journal, `show`, and `resume` replaying the journal.
-5. `init` ([init.md](init.md)): every section of the configuration, the image built and tested
-   from it. `start` and `resume` do not reuse its sections for their pre-flight yet.
+5. `init` ([init.md](init.md)), and pre-flight inside the dashboard of `start` and `resume`.

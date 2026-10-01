@@ -73,6 +73,8 @@ export type RunEvent =
       readonly logPath?: string | null;
     }
   | { readonly type: "publication"; readonly task: string; readonly action: PublicationAction; readonly detail: string; readonly url: string | null }
+  /** A pre-flight step before the run, or a line its command printed. */
+  | { readonly type: "preflight"; readonly step: string; readonly status: "ok" | "fail" | "output"; readonly detail: string }
   /** Something went wrong that the run carries on without: a memory that would not pull or push. */
   | { readonly type: "warning"; readonly task: string | null; readonly text: string };
 

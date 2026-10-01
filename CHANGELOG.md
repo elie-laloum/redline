@@ -56,6 +56,10 @@ releases are tagged `v<version>` and published to npm as
   repository added from its checkout with its identity read from it and its commands typed and
   tried; the voice, in `$EDITOR`; every other setting, laid out from the schema, with its default
   and a reset; and the full check. See [docs/init.md](docs/init.md).
+- `start` and `resume` open their dashboard at once and run pre-flight inside it, one journal
+  line per step; a missing agent image is asked about in a question panel and built with its
+  output in the journal. A failure freezes the screen on its cause, then is printed once the
+  terminal is back. `--plain` is unchanged.
 - `CHANGELOG.md`.
 
 ### Changed

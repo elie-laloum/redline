@@ -242,6 +242,22 @@ describe("le modele du tableau de bord", () => {
     assert.deepEqual(ended.commands["core.code"]?.map((run) => [run.status, run.exitCode, run.elapsedMs]), [["failed", 1, 41_000]]);
   });
 
+  it("note chaque etape du pre-vol, et la sortie du build de l'image ligne a ligne", () => {
+    const state = play([
+      { type: "preflight", step: "registre", status: "ok", detail: "2 depot(s)" },
+      { type: "preflight", step: "image", status: "output", detail: "#5 [3/6] RUN npm install -g" },
+      { type: "preflight", step: "image", status: "fail", detail: "Image des agents absente.\nConstruis-la avec : bun redline image build" },
+    ]);
+    assert.deepEqual(
+      state.journal.map((entry) => [entry.tone, entry.text]),
+      [
+        ["success", "✓ registre — 2 depot(s)"],
+        ["info", "  #5 [3/6] RUN npm install -g"],
+        ["error", "✗ image des agents — Image des agents absente."],
+      ],
+    );
+  });
+
   it("note les actions publiques avec leur lien", () => {
     const state = play([phase("closing", { "merge-requests": "active" }), { type: "publication", task: "merge-requests", action: "merge-request", detail: "core : MR ouverte", url: "https://gitlab/mr/1" }]);
     assert.deepEqual([state.journal.at(-1)?.text, state.journal.at(-1)?.url], ["↗ core : MR ouverte", "https://gitlab/mr/1"]);

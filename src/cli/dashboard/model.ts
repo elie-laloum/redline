@@ -94,6 +94,7 @@ export interface Dashboard {
 }
 
 const PHASES: Record<RunPhase, string> = { framing: "Cadrage", delivery: "Livraison", closing: "Cloture" };
+const PREFLIGHT: Readonly<Record<string, string>> = { memoire: "memoire", registre: "registre", jetons: "jetons", claude: "Claude", conteneurs: "conteneurs", image: "image des agents", ticket: "ticket" };
 const ORDER: readonly RunPhase[] = ["framing", "delivery", "closing"];
 const PER_REPO = /^(.+)\.(workspace|tests|code(?:-\d+)?|release|summary)$/;
 
@@ -176,6 +177,12 @@ export function reduce(state: Dashboard, event: RunEvent, now: number): Dashboar
       return log(next, now, "success", event.task, `↗ ${event.detail}`, event.url);
     case "warning":
       return log(next, now, "warning", event.task, `⚠ ${event.text}`);
+    case "preflight": {
+      if (event.status === "output") return log(next, now, "info", null, `  ${event.detail}`);
+      const detail = event.detail.split("\n")[0] ?? "";
+      const label = PREFLIGHT[event.step] ?? event.step;
+      return log(next, now, event.status === "ok" ? "success" : "error", null, `${event.status === "ok" ? "✓" : "✗"} ${label}${detail ? ` — ${detail}` : ""}`);
+    }
   }
 }
 

@@ -2,7 +2,7 @@ import type { KeyEvent } from "@opentui/core";
 import type { DriveOutcome } from "../../app/driver.ts";
 import type { JournalLine } from "../../app/event-journal.ts";
 import type { Prompter } from "../ask.ts";
-import { begin } from "../dashboard/model.ts";
+import { begin, type Tone } from "../dashboard/model.ts";
 import type { Progress } from "../progress.ts";
 import { outcomeNotice } from "../report.ts";
 import { createBoard } from "./board.ts";
@@ -15,6 +15,10 @@ export interface DashboardSession {
   readonly prompter: Prompter;
   /** Shows what the run's earlier sessions did, before this one starts. */
   replay(lines: readonly JournalLine[]): void;
+  /** The ticket's title, once pre-flight has read it. */
+  retitle(title: string): void;
+  /** Freezes the screen on why the run could not start, and waits for the human to leave it. */
+  abort(tone: Tone, text: string): Promise<void>;
   /** The run stops cleanly after a first Ctrl-C: the banner says so, and a pending question is dropped. */
   stopping(): void;
   /** Freezes the screen on the outcome and waits for the human to leave it. */
@@ -120,6 +124,19 @@ export async function openDashboard(ticket: { readonly key: string; readonly tit
           focusOn("question");
         });
       },
+    },
+    retitle(title) {
+      board.apply((state) => ({ ...state, title }));
+    },
+    async abort(tone, text) {
+      settle(null);
+      confirming = false;
+      board.set({ ended: true });
+      board.freeze(Date.now());
+      board.notify(tone, `${text}\nq pour quitter.`);
+      await new Promise<void>((resolve) => {
+        leave = resolve;
+      });
     },
     replay(lines) {
       for (const line of lines) if ("event" in line) board.feed(line.event, line.at);
