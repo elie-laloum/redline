@@ -34,7 +34,7 @@ export interface AppContext {
   /** Where the memory's notes live: paths.memory is its directory. */
   readonly memoryRepository: MemoryRepository;
   readonly secrets: Secrets;
-  /** The settings' mode, unless the command line overrides it for this run. */
+  /** How agents authenticate to Claude: agents.authentication. */
   readonly authentication: AuthMode;
   readonly services: Services;
   memory(): MemoryStore;
@@ -44,7 +44,6 @@ export interface AppContext {
 export interface ContextOptions {
   readonly home?: string;
   readonly env?: Readonly<Record<string, string | undefined>>;
-  readonly authentication?: AuthMode;
   readonly templates?: string;
   readonly services?: Partial<Services>;
 }
@@ -57,7 +56,7 @@ export function createContext(options: ContextOptions = {}): AppContext {
   const memory = memoryRepository(settings, home.home);
   const paths: Paths = { ...home, memory: memory.directory };
   const secrets = loadSecrets(paths.env, env);
-  const authentication = options.authentication ?? settings.agents.authentication;
+  const authentication = settings.agents.authentication;
   const services = lazyServices(secrets, options.services ?? {}, {
     agents: () => createClaudeAgents(settings, authenticationFor(authentication, secrets)),
     sandboxes: () => createOutpostSandboxes({ settings, registry: configuration.registry, home: paths.home, memory, resolvePath: expandTilde, isolation: "docker" }),

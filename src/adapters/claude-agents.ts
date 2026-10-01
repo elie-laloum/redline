@@ -26,15 +26,15 @@ export function credentialsFile(env: Readonly<Record<string, string | undefined>
 /** What the mode lacks to authenticate the agents, or null when it has it. */
 export function authenticationProblem(mode: AuthMode, secrets: Pick<Secrets, "get">, env: Readonly<Record<string, string | undefined>> = process.env): string | null {
   const secret = AUTH_SECRETS[mode];
-  if (secret) return secrets.get(secret) ? null : `${secret} manquant : bun redline auth ${mode}`;
+  if (secret) return secrets.get(secret) ? null : `${secret} manquant : bun redline init, section Claude`;
   const file = credentialsFile(env);
-  return existsSync(file) ? null : `${file} absent : connecte-toi avec claude, ou choisis un autre mode (bun redline auth oauth)`;
+  return existsSync(file) ? null : `${file} absent : connecte-toi avec claude, ou passe en oauth avec bun redline init, section Claude`;
 }
 
 export function authenticationFor(mode: AuthMode, secrets: Pick<Secrets, "get">): AgentAuthentication {
   const secret = AUTH_SECRETS[mode];
   if (!secret) return "account";
-  const value = secrets.get(secret) ?? fail(`Authentification ${mode} : ${secret} manquant.`, `Renseigne-le avec : bun redline auth ${mode}`);
+  const value = secrets.get(secret) ?? fail(`Authentification ${mode} : ${secret} manquant.`, "Renseigne-le avec : bun redline init, section Claude");
   return mode === "oauth" ? { account: { key: value } } : { usage: { key: value } };
 }
 

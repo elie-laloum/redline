@@ -165,9 +165,9 @@ Design decisions, keys and the event channel behind it: [docs/tui.md](docs/tui.m
   as is.
 - **Claude credentials** — by default the account logged in on the machine
   (`~/.claude/.credentials.json`); a `claude setup-token` token or an API key also work.
-- **Jira Cloud, GitLab and Slack** — a personal token for each. The Slack token is a **user**
-  token (`xoxp-`): every action appears under your own name.
-- **Figma** is optional. Without a token the run continues without mockups.
+- **Jira Cloud and GitLab** — a personal token for each.
+- **Slack and Figma**, unless switched off — a personal token for each. The Slack token is a
+  **user** token (`xoxp-`): every action appears under your own name.
 
 ## Install
 
@@ -175,22 +175,21 @@ From a clone:
 
 ```
 bun install
-mkdir -p ~/.redline
-cp templates/env.example ~/.redline/.env                             # then fill in the tokens
-cp templates/redline.example.yaml ~/.redline/redline.yaml
-cp templates/repositories.example.yaml ~/.redline/repositories.yaml  # your repositories
-cp templates/voice.template.md ~/.redline/voice.md                   # your writing voice
-bun redline image build                                              # the agent image, built locally
-bun redline check
+bun redline init
 ```
+
+`init` takes you through every section of the configuration on one screen — tokens, tested
+against their service as you type them; how agents authenticate to Claude; the services a run
+uses; the memory; the agent image, built from there; your repositories; your writing voice; the
+settings — and ends with the full check.
 
 Redline is also published on npm as
 [`@elie-laloum/redline`](https://www.npmjs.com/package/@elie-laloum/redline). It still runs on
-Bun: `bun add -g @elie-laloum/redline`, then `redline check`. The templates and the Dockerfile
+Bun: `bun add -g @elie-laloum/redline`, then `redline init`. The templates and the Dockerfile
 ship with the package.
 
-`bun redline check` is the command to run after any change. The full walkthrough — tokens and
-their scopes, authentication modes, the registry, the settings and your writing voice — is in
+`bun redline check` checks the same things in plain text, after any change. What each setting
+means, and how to set redline up by hand on a machine without a terminal, is in
 [docs/setup.md](docs/setup.md).
 
 ## Commands
@@ -198,12 +197,11 @@ their scopes, authentication modes, the registry, the settings and your writing 
 | Command | What it does |
 |---|---|
 | `init` | sets redline up on a full screen: tokens tested against their service, Claude, services, memory, agent image, registry, voice and every setting |
-| `start <ticket> [--notes …] [--figma <url>…] [--auth <mode>] [--plain]` | frames, delivers and publishes a ticket; on a ticket that already has a run, resumes it |
-| `resume <ticket> [--fresh] [--note …] [--auth <mode>] [--plain]` | resumes an interrupted, waiting or escalated run; `--fresh` reopens the escalated task with a new budget |
+| `start <ticket> [--notes …] [--figma <url>…] [--plain]` | frames, delivers and publishes a ticket; on a ticket that already has a run, resumes it |
+| `resume <ticket> [--fresh] [--note …] [--plain]` | resumes an interrupted, waiting or escalated run; `--fresh` reopens the escalated task with a new budget |
 | `status [ticket] [--plan]` | lists the runs, or shows one run's phase, escalation, history and approved plan |
 | `show [ticket]` | opens a run's dashboard read-only — finished, or followed live while it runs in another terminal; without a ticket, the list of runs |
 | `clear <ticket> [--force] [--dry-run]` | removes a ticket's local state: worktrees, local branches, run, ledger, logs; lists the remote traces it leaves |
-| `auth [account\|oauth\|key]` | shows or changes how agents authenticate to Claude |
 | `check` | validates settings and registry, tokens and their scopes against Jira, GitLab, Slack and Figma, Docker, the agent image, Claude credentials and the registry checkouts |
 | `bench [repo…] [--kinds ut,lint]` | times the registry commands and measures their longest silence |
 | `image build` · `image doctor` | builds the agent image declared in `sandbox.image`; checks that Claude answers inside it |

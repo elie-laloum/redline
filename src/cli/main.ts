@@ -1,10 +1,8 @@
 #!/usr/bin/env -S bun --no-env-file
-import { Argument, Command, Option } from "commander";
+import { Command } from "commander";
 import packageJson from "../../package.json" with { type: "json" };
 import { redirectTmpdir } from "../app/home.ts";
 import { homeDirectory, pathsOf } from "../app/paths.ts";
-import { AUTH_MODES, type AuthMode } from "../domain/config.ts";
-import { authCommand } from "./commands/auth.ts";
 import { benchCommand } from "./commands/bench.ts";
 import { check } from "./commands/check.ts";
 import { clearCommand } from "./commands/clear.ts";
@@ -33,9 +31,8 @@ program
   .argument("<ticket>", "cle ou URL du ticket")
   .option("--notes <texte>", "consigne transmise a tous les agents")
   .option("--figma <url...>", "maquettes a prendre en compte en plus de celles du ticket")
-  .addOption(authOption())
   .option("--plain", "sortie texte au lieu du tableau de bord plein ecran")
-  .action((ticket: string, options: { notes?: string; figma?: string[]; auth?: AuthMode; plain?: boolean }) => guarded(() => startCommand(ticket, options)));
+  .action((ticket: string, options: { notes?: string; figma?: string[]; plain?: boolean }) => guarded(() => startCommand(ticket, options)));
 
 program
   .command("resume")
@@ -43,9 +40,8 @@ program
   .argument("<ticket>", "cle ou URL du ticket")
   .option("--fresh", "rouvre la tache escaladee avec un budget neuf")
   .option("--note <texte>", "consigne transmise a la tache rouverte")
-  .addOption(authOption())
   .option("--plain", "sortie texte au lieu du tableau de bord plein ecran")
-  .action((ticket: string, options: { fresh?: boolean; note?: string; auth?: AuthMode; plain?: boolean }) => guarded(() => resumeCommand(ticket, options)));
+  .action((ticket: string, options: { fresh?: boolean; note?: string; plain?: boolean }) => guarded(() => resumeCommand(ticket, options)));
 
 program
   .command("status")
@@ -68,11 +64,6 @@ program
   .option("--dry-run", "liste sans rien supprimer")
   .action((ticket: string, options: { force?: boolean; dryRun?: boolean }) => guarded(() => clearCommand(ticket, options)));
 
-program
-  .command("auth")
-  .description("Affiche ou change l'authentification des agents : account, oauth ou key")
-  .addArgument(new Argument("[mode]", "account (compte de la machine), oauth (claude setup-token) ou key (cle d'API)").choices(AUTH_MODES))
-  .action((mode: AuthMode | undefined) => guarded(() => authCommand(mode)));
 
 program
   .command("check")
@@ -97,7 +88,3 @@ image.command("build").description("Construit l'image declaree dans sandbox.imag
 image.command("doctor").description("Verifie que l'image et Claude repondent dans un conteneur").action(() => guarded(imageDoctorCommand));
 
 await program.parseAsync();
-
-function authOption(): Option {
-  return new Option("--auth <mode>", "authentification des agents pour ce run, sans changer le reglage").choices(AUTH_MODES);
-}

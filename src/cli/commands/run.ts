@@ -7,7 +7,6 @@ import { ensureMemory } from "../../app/memory-repository.ts";
 import { newLedger, readLedger, writeLedger } from "../../app/ledger.ts";
 import { authenticationPreflight, registryPreflight, sandboxPreflight, servicesPreflight } from "../../app/preflight.ts";
 import { loadHistory } from "../../app/run-history.ts";
-import type { AuthMode } from "../../domain/config.ts";
 import { fail } from "../../domain/failure.ts";
 import { normalizeKey } from "../../domain/ticket.ts";
 import { clackPrompter } from "../ask.ts";
@@ -17,9 +16,9 @@ import { report } from "../report.ts";
 import { runSession } from "../session.ts";
 import { type DashboardSession, openDashboard } from "../tui/dashboard.ts";
 
-export async function startCommand(input: string, options: { notes?: string; figma?: string[]; auth?: AuthMode; plain?: boolean }): Promise<number> {
+export async function startCommand(input: string, options: { notes?: string; figma?: string[]; plain?: boolean }): Promise<number> {
   const key = normalizeKey(input);
-  const app = createContext(options.auth ? { authentication: options.auth } : {});
+  const app = createContext();
   if (options.figma?.length && !app.configuration.settings.services.figma) fail("Figma est desactive : --figma n'aurait aucun effet.", "Active-le avec : bun redline init");
   // Cloned before the home lays out its folders, which would otherwise take the clone's place.
   await ensureMemory(app.memoryRepository);
@@ -36,9 +35,9 @@ export async function startCommand(input: string, options: { notes?: string; fig
   return interactive(app, key, {}, options);
 }
 
-export async function resumeCommand(input: string, options: { fresh?: boolean; note?: string; auth?: AuthMode; plain?: boolean }): Promise<number> {
+export async function resumeCommand(input: string, options: { fresh?: boolean; note?: string; plain?: boolean }): Promise<number> {
   const key = normalizeKey(input);
-  const app = createContext(options.auth ? { authentication: options.auth } : {});
+  const app = createContext();
   clack.intro(`redline ${key} — reprise`);
   await ensureMemory(app.memoryRepository);
   await preflight(app);

@@ -1,8 +1,8 @@
 # Setup
 
-This page takes you from a clone to a first run: the home directory, the tokens, how agents
-authenticate, the agent image, the registry of repositories, the settings and your writing
-voice. The [README](../README.md) gives the overview.
+This page takes you from a clone to a first run. `bun redline init` does most of it on one
+screen; the sections below say what each setting means, and how to set redline up by hand on a
+machine without a terminal. The [README](../README.md) gives the overview.
 
 ## 1. Install
 
@@ -17,11 +17,28 @@ Or from npm, still on Bun: `bun add -g @elie-laloum/redline`, then `redline --he
 templates and the Dockerfile ship with the package. The rest of this page writes `bun redline`;
 installed from npm, the command is `redline`.
 
-## 2. The home directory
+## 2. `init`
 
-Everything personal lives in `~/.redline`, or in the directory named by `REDLINE_HOME`. `start`
-creates its layout on first use and makes it a git repository in which only `memory/` and
-`tickets/` are tracked. Copy the templates into it:
+```
+bun redline init
+```
+
+It lays the home out, then shows every section of the configuration with its state, and opens
+on the first one that needs you: Jira, GitLab, Slack and Figma tokens, the services a run uses,
+the agent image, how agents authenticate to Claude, the memory, the registry of repositories,
+your writing voice, every other setting, and the full check. Each change is written as soon as
+you make it, and each token is tested against its service as soon as it is complete. `s` jumps
+to the next section that needs you; run it again any time to change something.
+[init.md](init.md) records how it works.
+
+`init` needs a terminal. Without one, set redline up by hand: the home directory below, the
+`.env` from the token table, and `repositories.yaml`.
+
+## 3. The home directory
+
+Everything personal lives in `~/.redline`, or in the directory named by `REDLINE_HOME`, exported
+in the shell. `init` and `start` create its layout and make it a git repository in which only
+`memory/` and `tickets/` are tracked. By hand:
 
 ```
 mkdir -p ~/.redline
@@ -37,7 +54,7 @@ differs from the defaults the first time redline reads it, and the original is k
 `redline.yaml.3.bak`. `repositories.yaml` has no fallback: without it, `start` refuses to run.
 `voice.md` falls back to the uncalibrated template. `.env` has no fallback.
 
-## 3. Tokens
+## 4. Tokens
 
 Tokens are read from `~/.redline/.env`. A variable exported in the shell overrides its line
 there. The `.env` of the directory you launch redline from is never read, although Bun would load
@@ -58,7 +75,7 @@ The Slack token is a user token on purpose: every action appears under your own 
 bot token the channel would be created by an app, and the point — a colleague seeing that *you*
 opened the channel — falls away.
 
-## 4. How agents authenticate
+## 5. How agents authenticate
 
 | Mode | Credential |
 |---|---|
@@ -66,18 +83,23 @@ opened the channel — falls away.
 | `oauth` | `CLAUDE_CODE_OAUTH_TOKEN`, from `claude setup-token` |
 | `key` | `ANTHROPIC_API_KEY`, billed by usage |
 
-`bun redline auth` shows the active mode and whether its credential is there.
-`bun redline auth <mode>` writes the mode into `redline.yaml` — only that value changes, comments
-included — and asks for the missing token, which it writes into `.env`. `start` and `resume` take
-`--auth <mode>` to override it for one run.
+The mode is `agents.authentication` in `redline.yaml`, and nothing else. `init`'s Claude section
+sets it. In `oauth` mode it runs `claude setup-token` inside the agent image — where `claude` is
+always installed — and reads the token back. Then it checks that Claude answers inside the
+container.
 
-## 5. The agent image
+`account` suits a machine where you already use Claude Code, which keeps the login fresh. Redline
+copies that file into each agent's container and never writes it back, so a login made for
+redline alone is never refreshed and ends up expiring; a macOS login kept in the Keychain is not
+a file at all. Without a login on the machine, use `oauth`.
+
+## 6. The agent image
 
 Agents run Claude Code inside a Docker container. `sandbox.image` in `redline.yaml` names the
 image, and `bun redline image build` builds it from `docker/agent.Dockerfile` through the outpost
 CLI, with your user and group ids so the agent writes files you own. `bun redline image doctor`
-checks that Claude answers inside it. `start` and `resume` check that Docker answers and that the
-image exists; when it does not, they offer to build it.
+checks that Claude answers inside it; `init`'s image section does both. `start` and `resume`
+check that Docker answers and that the image exists; when it does not, they offer to build it.
 
 `sandbox.cpus` and `sandbox.memoryMb` limit each container. `sandbox.agentChecks: true` lets the
 developer run the registry's typecheck and lint inside its container; by default it runs nothing
@@ -86,10 +108,17 @@ and redline returns the errors after its turn.
 On macOS with Colima, which shares only `$HOME` with its VM, nothing is needed: redline points
 `TMPDIR` at `~/.redline/tmp`, so the folders outpost mounts are always shared.
 
-## 6. The registry: `repositories.yaml`
+## 7. The registry: `repositories.yaml`
 
 Almost all of the adaptation to your stack happens here, and none of it in code. The registry is
 the only source of truth on how to run what: no command is inferred from a detected runner.
+
+`init`'s registry section adds a repository from its checkout and reads what it can without
+guessing — the GitLab project from the remote, the base branch, the package manager from the
+lockfile, the package name — and flags what it had to guess. You type each command, and
+`Essayer` runs it in the checkout, with its duration and its longest silence. It proposes the
+lowest `level` your `dependsOn` allows, keeps `withoutTests` in step with the test commands, and
+opens the file in `$EDITOR` for the keys below the basics.
 
 **Each repository** declares where it lives and how it relates to the others:
 
@@ -122,7 +151,7 @@ A few keys exist because their absence cost real hours:
 `evalOnly` reserves test-bench repositories for the Jira projects it lists: a real ticket cannot
 land on them, and a ticket from those projects touches no production repository.
 
-## 7. The settings: `redline.yaml`
+## 8. The settings: `redline.yaml`
 
 | Section | What it sets |
 |---|---|
@@ -159,7 +188,7 @@ already keep elsewhere. The notes sit at the repository's root.
 - `init` connects the memory, imports the notes the home already holds without overwriting any,
   archives them, and takes `memory/` out of the home's repository.
 
-## 8. Your writing voice
+## 9. Your writing voice
 
 The closing phase publishes under **your own name** — a Slack message, a Jira comment, merge
 request descriptions. A message that reads as machine-written is worse than no message at all,
@@ -201,10 +230,11 @@ commit messages; a few hundred lines is plenty — and give Claude this prompt a
 > Here is the corpus:
 > [paste]
 
-Then read it back and correct it by hand. A profile you have not reread is a profile that will
+Then read it back and correct it by hand — `init`'s voice section opens `voice.md` in `$EDITOR`,
+from the template when it does not exist yet. A profile you have not reread is a profile that will
 publish something you would not have written.
 
-## 9. Check
+## 10. Check
 
 ```
 bun redline check
@@ -217,7 +247,7 @@ skipped. It checks Docker, the agent image and your Claude credentials, and warn
 checkouts that are missing, dirty or off their base branch — the scouts read them as they are. It
 exits non-zero while anything blocks a run.
 
-## 10. Coming from autopilot
+## 11. Coming from autopilot
 
 `bun redline migrate-home [--from ~/.autopilot]` copies the memory notes of a former autopilot
 installation and archives its ticket files under `tickets/autopilot/`, without resuming them. It

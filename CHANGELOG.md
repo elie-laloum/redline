@@ -4,7 +4,17 @@ All notable changes to redline. Versions follow [semantic versioning](https://se
 releases are tagged `v<version>` and published to npm as
 [`@elie-laloum/redline`](https://www.npmjs.com/package/@elie-laloum/redline).
 
-## Unreleased
+## Unreleased — 4.0.0
+
+### Breaking
+
+- `redline auth` is removed: `init` sets how agents authenticate, in its Claude section. Without a
+  terminal, set `agents.authentication` in `redline.yaml` and the token in `.env`.
+- `--auth` leaves `start` and `resume`: the mode is `agents.authentication`, and nothing else.
+- `redline.yaml` holds only overrides of the package defaults, and an existing one is reduced to
+  them the first time it is read (see Changed).
+- `start` and `resume` refuse to run without a personal `repositories.yaml`, and while a token of
+  a service that is on is missing — `FIGMA_TOKEN` included, while Figma is on.
 
 ### Added
 

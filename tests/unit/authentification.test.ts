@@ -24,7 +24,7 @@ describe("le mode d'authentification des agents", () => {
 
   it("refuse un mode dont le secret manque, en disant comment le renseigner", () => {
     assert.throws(() => authenticationFor("oauth", secrets({})), /CLAUDE_CODE_OAUTH_TOKEN manquant/);
-    assert.equal(authenticationProblem("key", secrets({})), "ANTHROPIC_API_KEY manquant : bun redline auth key");
+    assert.equal(authenticationProblem("key", secrets({})), "ANTHROPIC_API_KEY manquant : bun redline init, section Claude");
     assert.equal(authenticationProblem("key", secrets({ ANTHROPIC_API_KEY: "cle" })), null);
   });
 

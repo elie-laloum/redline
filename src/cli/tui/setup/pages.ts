@@ -505,7 +505,7 @@ function voice(context: PageContext): Row[] {
   return [
     note(calibrated ? "voice.md existe : le finalizer ecrit dans ta voix." : "Pas encore de voice.md : le finalizer reste factuel et n'imite aucun style.", calibrated ? "success" : "warning"),
     note(
-      "Pour la calibrer : rassemble quelques centaines de lignes que tu as ecrites — commentaires de MR, messages Slack, commits —, donne-les a Claude avec le prompt de docs/setup.md, section 8, puis relis et corrige le profil. Un profil que tu n'as pas relu publiera ce que tu n'aurais pas ecrit.",
+      "Pour la calibrer : rassemble quelques centaines de lignes que tu as ecrites — commentaires de MR, messages Slack, commits —, donne-les a Claude avec le prompt de docs/setup.md, section 9, puis relis et corrige le profil. Un profil que tu n'as pas relu publiera ce que tu n'aurais pas ecrit.",
     ),
     {
       kind: "action",
