@@ -4,7 +4,7 @@ import { inviteesFor } from "../../src/domain/allowlist.ts";
 import { resolveBySquad } from "../../src/domain/config.ts";
 import { exampleSettings } from "../helpers.ts";
 
-const slack = exampleSettings().slack;
+const slack = { ...exampleSettings().slack, invitees: { default: [], bySquad: { FT: ["first.dev@example.com", "second.dev@example.com"] } } };
 
 describe("allowlist slack", () => {
   it("rend la liste de la squad quand elle est declaree", () => {
@@ -26,8 +26,7 @@ describe("allowlist slack", () => {
     assert.deepEqual(resolveBySquad({ default: ["repli@x.fr"], bySquad: { REV: [] as string[] } }, "REV"), []);
   });
 
-  it("n'invite jamais hors d'un seul et meme domaine", () => {
-    const domains = new Set(Object.values(slack.invitees.bySquad).flat().map((email) => email.split("@")[1]?.toLowerCase()));
-    assert.ok(domains.size <= 1, `plusieurs domaines : ${[...domains].join(", ")}`);
+  it("les defauts du paquet n'invitent personne", () => {
+    assert.deepEqual(exampleSettings().slack.invitees, { default: [], bySquad: {} });
   });
 });

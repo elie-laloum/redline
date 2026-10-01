@@ -26,12 +26,15 @@ creates its layout on first use and makes it a git repository in which only `mem
 ```
 mkdir -p ~/.redline
 cp templates/env.example ~/.redline/.env
-cp templates/redline.example.yaml ~/.redline/redline.yaml
 cp templates/repositories.example.yaml ~/.redline/repositories.yaml
 cp templates/voice.template.md ~/.redline/voice.md
 ```
 
-`redline.yaml` and `repositories.yaml` fall back to their templates while they are missing, and
+`redline.yaml` holds only what you change: every key it does not set comes from the package's
+defaults, `templates/redline.example.yaml`, so new defaults reach you with each release. Do not
+copy the whole template. A file written before 4.0, which was such a copy, is reduced to what
+differs from the defaults the first time redline reads it, and the original is kept as
+`redline.yaml.3.bak`. `repositories.yaml` has no fallback: without it, `start` refuses to run.
 `voice.md` falls back to the uncalibrated template. `.env` has no fallback.
 
 ## 3. Tokens

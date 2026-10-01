@@ -4,7 +4,7 @@ import { type AppContext, createContext } from "../../app/context.ts";
 import type { DriveRequest } from "../../app/driver.ts";
 import { ensureHome } from "../../app/home.ts";
 import { newLedger, readLedger, writeLedger } from "../../app/ledger.ts";
-import { authenticationPreflight, sandboxPreflight } from "../../app/preflight.ts";
+import { authenticationPreflight, registryPreflight, sandboxPreflight } from "../../app/preflight.ts";
 import { loadHistory } from "../../app/run-history.ts";
 import type { AuthMode } from "../../domain/config.ts";
 import { normalizeKey } from "../../domain/ticket.ts";
@@ -40,6 +40,7 @@ export async function resumeCommand(input: string, options: { fresh?: boolean; n
 }
 
 async function preflight(app: AppContext): Promise<void> {
+  registryPreflight(app);
   authenticationPreflight(app);
   await sandboxPreflight(app, { build: offerImageBuild });
 }

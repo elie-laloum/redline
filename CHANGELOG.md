@@ -31,6 +31,18 @@ releases are tagged `v<version>` and published to npm as
   `resume`.
 - `CHANGELOG.md`.
 
+### Changed
+
+- `~/.redline/redline.yaml` holds only overrides: every key it does not set comes from the
+  package's defaults, merged map by map, a list replacing the default list whole. New defaults —
+  `sandbox.image` changes with every release — now reach existing homes. A file written before,
+  a full copy of the template, is reduced once to what differs from the defaults, without the
+  image, and the original is kept as `redline.yaml.3.bak`.
+- The package's defaults invite nobody to Slack and set no Jira transition per squad: the
+  examples the template carried are comments now.
+- Without `~/.redline/repositories.yaml`, `start` and `resume` refuse to run and `check` fails;
+  the demo registry is no longer a silent fallback.
+
 ### Fixed
 
 - What one phase hands the next — the approved framing, the delivered repositories, the

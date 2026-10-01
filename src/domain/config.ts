@@ -67,7 +67,7 @@ const AgentModelSchema = v.object({
 });
 
 export const SettingsSchema = v.object({
-  schemaVersion: v.literal(1),
+  schemaVersion: v.literal(2),
   budgets: v.object({
     testAdversary: positive,
     redChecker: positive,

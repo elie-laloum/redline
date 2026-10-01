@@ -21,10 +21,11 @@ export async function diagnose(app: AppContext): Promise<Finding[]> {
 
 function configuration(app: AppContext): Finding[] {
   const { sources, registry } = app.configuration;
-  const origin = (file: string, own: string) => (file === own ? "personnel" : "modele (repli)");
   return [
-    { section: "configuration", label: "reglages", status: "ok", detail: `${sources.settings} — ${origin(sources.settings, app.paths.settings)}` },
-    { section: "configuration", label: "registre", status: "ok", detail: `${registry.repositories.length} repos — ${origin(sources.registry, app.paths.registry)}` },
+    { section: "configuration", label: "reglages", status: "ok", detail: sources.settings ? `${sources.settings} — surcharges des defauts du paquet` : "defauts du paquet" },
+    sources.registry
+      ? { section: "configuration", label: "registre", status: "ok", detail: `${registry.repositories.length} repos — ${sources.registry}` }
+      : { section: "configuration", label: "registre", status: "fail", detail: `aucun registre dans ${app.paths.registry} : declare tes repos avec bun redline init` },
   ];
 }
 

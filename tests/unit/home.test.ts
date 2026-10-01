@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, it } from "bun:test";
+import { parse, stringify } from "yaml";
 import { commitHome, ensureHome, redirectTmpdir } from "../../src/app/home.ts";
 import { approvedOf, deliveredOf, newLedger, readLedger, recordEvent, updateLedger, writeLedger } from "../../src/app/ledger.ts";
 import { acquireLock, readLock } from "../../src/app/lock.ts";
@@ -47,13 +48,35 @@ describe("le dossier redline", () => {
 });
 
 describe("les reglages", () => {
-  it("retombent sur les modeles quand le dossier n'en porte pas", () => {
+  it("sont les defauts du paquet quand le dossier n'en surcharge aucun, et sans registre aucun repo", () => {
     const configuration = loadConfiguration(paths);
-    assert.match(configuration.sources.settings, /templates\/redline\.example\.yaml$/);
+    assert.deepEqual(configuration.sources, { settings: null, registry: null });
+    assert.deepEqual(configuration.settings, exampleSettings());
+    assert.deepEqual(configuration.registry.repositories, []);
+  });
+
+  it("ne prennent du fichier personnel que ses surcharges, une liste remplacant la liste par defaut", () => {
+    writeFileSync(paths.settings, "schemaVersion: 2\nbudgets:\n  testAdversary: 5\nnaming:\n  types: [feature]\n");
+    const { settings } = loadConfiguration(paths);
+    assert.equal(settings.budgets.testAdversary, 5);
+    assert.equal(settings.budgets.redChecker, exampleSettings().budgets.redChecker);
+    assert.deepEqual(settings.naming.types, ["feature"]);
+    execFileSync("rm", [paths.settings]);
+  });
+
+  it("reduisent une ancienne copie complete du modele a ce qui differe, en gardant l'original", () => {
+    const old = { ...exampleSettings(), schemaVersion: 1, budgets: { ...exampleSettings().budgets, testAdversary: 7 }, sandbox: { image: "redline-agent:ancienne", agentChecks: true } };
+    writeFileSync(paths.settings, stringify(old));
+    const { settings } = loadConfiguration(paths);
+    assert.equal(settings.budgets.testAdversary, 7);
+    assert.equal(settings.sandbox.image, exampleSettings().sandbox.image);
+    assert.deepEqual(parse(readFileSync(paths.settings, "utf8")), { schemaVersion: 2, budgets: { testAdversary: 7 }, sandbox: { agentChecks: true } });
+    assert.deepEqual(parse(readFileSync(`${paths.settings}.3.bak`, "utf8")).sandbox.image, "redline-agent:ancienne");
+    execFileSync("rm", [paths.settings, `${paths.settings}.3.bak`]);
   });
 
   it("disent ou et pourquoi un fichier est invalide", () => {
-    writeFileSync(paths.settings, "schemaVersion: 1\nbudgets: { testAdversary: 0 }\n");
+    writeFileSync(paths.settings, "schemaVersion: 2\nbudgets: { testAdversary: 0 }\n");
     assert.throws(() => loadConfiguration(paths), /budgets\.testAdversary/);
     execFileSync("rm", [paths.settings]);
   });

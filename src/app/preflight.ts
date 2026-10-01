@@ -19,6 +19,11 @@ export async function sandboxPreflight(app: AppContext, options: { build?: (imag
   if (inspected.state === "absent" && !(await options.build?.(image))) fail(`Image des agents ${image} absente.`, "Construis-la avec : bun redline image build");
 }
 
+/** Without a registry no repository can be in scope: the run would escalate after framing. */
+export function registryPreflight(app: AppContext): void {
+  if (!app.configuration.sources.registry) fail(`Aucun registre de repos dans ${app.paths.registry}.`, "Declare tes repos avec : bun redline init");
+}
+
 /** A missing credential stops the run here rather than in its first agent task. */
 export function authenticationPreflight(app: AppContext): void {
   const problem = authenticationProblem(app.authentication, app.secrets);

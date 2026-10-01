@@ -117,9 +117,10 @@ describe("resolution par squad", () => {
     assert.deepEqual(resolveBySquad(indexed, "NOUVELLE"), ["repli"]);
   });
 
-  it("resout la transition Jira des reglages modeles", () => {
+  it("resout la transition Jira, les defauts du paquet n'en declarant aucune par squad", () => {
     const transitions = exampleSettings().jira.transitions;
+    assert.deepEqual(transitions.bySquad, {});
     assert.equal(resolveBySquad(transitions, "FT").afterMergeRequest, "VALIDATION");
-    assert.equal(resolveBySquad(transitions, "TJ").afterMergeRequest, "En cours");
+    assert.equal(resolveBySquad({ ...transitions, bySquad: { TJ: { afterMergeRequest: "En cours" } } }, "TJ").afterMergeRequest, "En cours");
   });
 });

@@ -1,7 +1,8 @@
-# Reglages de redline. Copie dans ~/.redline/redline.yaml pour les surcharger ;
-# ce modele sert de repli et c'est lui que la suite de tests lit.
+# Les reglages par defaut de redline. ~/.redline/redline.yaml n'en porte que les surcharges :
+# une valeur absente de ce fichier personnel vient d'ici, une liste remplace la liste par defaut.
+# C'est aussi ce modele que la suite de tests lit.
 
-schemaVersion: 1
+schemaVersion: 2
 
 budgets:                             # tours de boucle avant escalade
   testAdversary: 3
@@ -61,18 +62,18 @@ jira:
   transitions:
     default:
       afterMergeRequest: VALIDATION
-    bySquad:
-      TJ:
-        afterMergeRequest: En cours
+    bySquad: {}                      # par prefixe de cle Jira, par exemple :
+#      TJ:
+#        afterMergeRequest: En cours
 
 slack:
   channelVisibility: private
   invitees:                          # allowlist stricte, par prefixe de cle Jira
     default: []
-    bySquad:
-      FT:
-        - first.dev@example.com
-        - second.dev@example.com
+    bySquad: {}                      # par exemple :
+#      FT:
+#        - first.dev@example.com
+#        - second.dev@example.com
 
 agents:
   authentication: account            # account | oauth | key — bun redline auth <mode>

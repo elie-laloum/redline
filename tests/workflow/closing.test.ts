@@ -17,6 +17,8 @@ afterEach(async () => {
 const git = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
 const delivery = { ...testsPhase, developer: [{ writes: { "src/period.js": IMPLEMENTATION }, reply: codeReply() }], "code-adversary": [{ reply: codePass(["C1"]) }] };
 const USERS = { "first.dev@example.com": "U1" };
+/** The package invites nobody by default: this squad's allowlist is declared here. */
+const INVITEES = (template: string) => template.replace(/ {4}bySquad: \{\}( +# par exemple :)/, "    bySquad:\n      FT: [first.dev@example.com, second.dev@example.com]");
 
 async function delivered(world: World, notes: string | null = null) {
   const ledger = world.ledger("FT-1", { notes });
@@ -31,6 +33,7 @@ describe("la cloture", () => {
     world = await createWorld({
       issues: [ISSUE],
       slackUsers: USERS,
+      settings: INVITEES,
       script: { ...delivery, "memory-planner": [{ reply: memoryReply }], finalizer: [{ reply: proseReply(["fixture-core"]) }] } as Script,
     });
     const { ledger, framing, repos } = await delivered(world);
@@ -60,6 +63,7 @@ describe("la cloture", () => {
     world = await createWorld({
       issues: [ISSUE],
       slackUsers: USERS,
+      settings: INVITEES,
       script: { ...delivery, "memory-planner": [{ reply: memoryReply }], finalizer: [{ reply: proseReply(["fixture-core"]) }] } as Script,
     });
     const { ledger, framing, repos } = await delivered(world, "Garder le format de date ISO.");

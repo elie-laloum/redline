@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, describe, it } from "bun:test";
+import { parse } from "yaml";
 import { authenticationFor, authenticationProblem } from "../../src/adapters/claude-agents.ts";
 import { loadSecrets, writeSecret } from "../../src/adapters/secrets.ts";
 import { pathsOf } from "../../src/app/paths.ts";
-import { loadConfiguration, writeSetting } from "../../src/app/settings.ts";
-import { TEMPLATES, temporaryDirectory } from "../helpers.ts";
+import { loadConfiguration, resetSetting, writeSetting } from "../../src/app/settings.ts";
+import { temporaryDirectory } from "../helpers.ts";
 
 const directory = temporaryDirectory();
 afterAll(() => directory.cleanup());
@@ -56,23 +57,22 @@ describe("le .env de redline", () => {
 });
 
 describe("l'ecriture d'un reglage", () => {
-  const template = readFileSync(join(TEMPLATES, "redline.example.yaml"), "utf8");
-
-  it("part du modele et ne change que la valeur, commentaires et alignement compris", () => {
-    const paths = pathsOf(join(directory.path, "home-modele"));
+  it("n'ecrit que la surcharge, dans un fichier personnel cree au besoin", () => {
+    const paths = pathsOf(join(directory.path, "home-neuf"));
     writeSetting(paths, ["agents", "authentication"], "oauth");
-    const written = readFileSync(paths.settings, "utf8");
-    assert.equal(written, template.replace(/authentication: account/, "authentication: oauth"));
+    assert.deepEqual(parse(readFileSync(paths.settings, "utf8")), { schemaVersion: 2, agents: { authentication: "oauth" } });
     assert.equal(loadConfiguration(paths).settings.agents.authentication, "oauth");
   });
 
-  it("ajoute la cle a sa section quand un fichier plus ancien ne la porte pas", () => {
-    const paths = pathsOf(join(directory.path, "home-ancien"));
+  it("ne change que la valeur visee, commentaires compris, et remet le defaut en retirant la surcharge", () => {
+    const paths = pathsOf(join(directory.path, "home-commente"));
     mkdirSync(paths.home, { recursive: true });
-    writeFileSync(paths.settings, template.replace(/ {2}authentication: .*\n/, ""));
-    writeSetting(paths, ["agents", "authentication"], "key");
-    assert.match(readFileSync(paths.settings, "utf8"), /\nagents:\n {2}authentication: key\n {2}default:\n/);
-    assert.equal(loadConfiguration(paths).settings.agents.authentication, "key");
+    writeFileSync(paths.settings, "schemaVersion: 2\n\n# mes budgets\nbudgets:\n  testAdversary: 5 # plus patient\n");
+    writeSetting(paths, ["slack", "invitees", "bySquad", "FT"], ["moi@example.com"]);
+    assert.match(readFileSync(paths.settings, "utf8"), /# mes budgets\nbudgets:\n {2}testAdversary: 5 # plus patient\n/);
+    assert.deepEqual(loadConfiguration(paths).settings.slack.invitees.bySquad, { FT: ["moi@example.com"] });
+    resetSetting(paths, ["slack", "invitees", "bySquad", "FT"]);
+    assert.equal("slack" in parse(readFileSync(paths.settings, "utf8")), false);
   });
 
   it("refuse une valeur que les reglages n'acceptent pas", () => {
