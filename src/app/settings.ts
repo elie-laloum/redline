@@ -20,14 +20,25 @@ const EMPTY_REGISTRY: Registry = { schemaVersion: 1, repositories: [], evalOnly:
 const HEADER = " Surcharges de redline : seules les valeurs qui different des defauts du paquet.\n Les defauts, commentes : templates/redline.example.yaml du paquet.";
 
 export function loadConfiguration(paths: Paths, templates = TEMPLATES): Configuration {
+  const settings = loadSettings(paths, templates);
+  const registry = loadRegistry(paths);
+  return { settings, registry, sources: { settings: existsSync(paths.settings) ? paths.settings : null, registry: existsSync(paths.registry) ? paths.registry : null } };
+}
+
+/** The package defaults with the personal overrides on top; fails on a file that does not validate. */
+export function loadSettings(paths: Paths, templates = TEMPLATES): Settings {
   const defaults = defaultSettings(templates);
   const own = existsSync(paths.settings) ? upgraded(paths, defaults) : null;
-  const settings = checked(SettingsSchema, overlay(defaults, own ?? {}), own ? paths.settings : templateOf(templates));
-  const hasRegistry = existsSync(paths.registry);
-  const registry = hasRegistry ? checked(RegistrySchema, parse(readFileSync(paths.registry, "utf8")), paths.registry) : EMPTY_REGISTRY;
+  return checked(SettingsSchema, overlay(defaults, own ?? {}), own ? paths.settings : templateOf(templates));
+}
+
+/** The personal registry, empty without one; fails on a file that does not validate or does not hold together. */
+export function loadRegistry(paths: Paths): Registry {
+  if (!existsSync(paths.registry)) return EMPTY_REGISTRY;
+  const registry = checked(RegistrySchema, parse(readFileSync(paths.registry, "utf8")), paths.registry);
   const problems = registryProblems(registry);
   if (problems.length > 0) fail(`Registre incoherent (${paths.registry}) :\n- ${problems.join("\n- ")}`);
-  return { settings, registry, sources: { settings: own ? paths.settings : null, registry: hasRegistry ? paths.registry : null } };
+  return registry;
 }
 
 /** The package's settings: a personal redline.yaml only overrides them. */

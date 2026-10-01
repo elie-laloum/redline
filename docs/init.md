@@ -3,7 +3,7 @@
 `redline init` opens the terminal interface on redline's configuration: service tokens, how
 agents authenticate to Claude, which services a run uses, the memory repository, the agent
 image, the registry, the writing voice and the settings. This page records the decisions behind
-it. It is not built yet; until it is, [setup.md](setup.md) describes the manual path.
+it.
 
 ## Scope
 
@@ -46,8 +46,6 @@ first incomplete section, and `Suivant` walks through the incomplete ones.
 | Check | the full `check` | — |
 
 Claude comes after Image: its credential is obtained and tested inside the agent image.
-Anything edited outside the screen — `$EDITOR`, `claude setup-token` — runs while the renderer is
-suspended (`suspend()` / `resume()` in OpenTUI), then the screen comes back.
 
 ## Tokens
 
@@ -148,24 +146,47 @@ The memory can live in its own git repository, which several people can share.
   home's last commit. Outpost's container provider already takes volumes: the change is in
   redline only. The local provider, used by the tests, gets it as a host path.
 
-## What has to change
+## Keys
 
-- `writeSecret`: replace a commented template line instead of appending a duplicate.
-- Settings: a merge of the personal file over the defaults in `loadConfiguration`, and a writer
-  that adds and removes keys and edits lists and maps while keeping comments. `writeSetting`
-  only replaces scalars today.
-- `ensureHome` and existing homes: `memory/` leaves the home's `.gitignore` allow-list and its
-  index (`git rm -r --cached memory`) when a memory repository is set. `commitHome` splits into a
-  tickets commit and a memory commit.
-- `outpost-sandboxes.ts`: the memory volume on the reader provider.
-- Pre-flight: the enabled services' tokens. Closing: the three switches.
-- `check`: the GitLab, Slack and Figma tests, and the switches.
-- The CLI: `auth` and `--auth` removed; `init` added.
-- [setup.md](setup.md) is rewritten around `init`, keeping the manual path for machines without a
-  TTY, and the changelog lists the breaking changes of 4.0.0.
+| Key | Action |
+|---|---|
+| `↑` `↓` / `j` `k` | choose a section, or a line of the section |
+| `Enter` | open the section; edit a field, flip a switch, change a choice, run an action |
+| `←` `→` | change a choice |
+| `Esc` | leave a field without saving, a sub-page, then the section |
+| `r` | put a setting back to its default |
+| `s` | the next section that needs you |
+| `PgUp` `PgDn` | scroll a long section |
+| `q`, `Ctrl-C` | leave |
+
+A field opens a line at the bottom of the section: `Enter` saves, `Esc` leaves it. A token typed
+there stays out of sight; only its length shows.
+
+## Handing the terminal over
+
+`$EDITOR`, the image build, `doctor` and `claude setup-token` run in the real terminal, as from a
+shell: `suspend()` leaves the alternate screen and raw mode, the child runs, and `resume()` brings
+the screen back. The build and `doctor` wait for Enter so their output can be read.
+`claude setup-token` runs in a pseudo-terminal of its own (`Bun.Terminal`), 240 columns wide so a
+token is never wrapped: what it prints reaches the terminal and is kept, and the token is read
+from it, colours and cursor moves left out. When none is found, the output stays on screen until
+Enter, to be copied into the field by hand.
+
+## Where it lives
+
+| File | Role |
+|---|---|
+| `src/cli/commands/init.ts` | lays the home out, opens the terminal |
+| `src/cli/tui/setup/setup.ts` | the state: what was read, what the services answered, what the human typed |
+| `src/cli/tui/setup/pages.ts` | each section's lines and actions |
+| `src/cli/tui/setup/screen.ts` | the sections, the lines, the edit line and the keys |
+| `src/cli/tui/handoff.ts` | the terminal handed to a child, and the token read back |
+| `src/cli/setup/sections.ts`, `fields.ts` | each section's state, the settings laid out from their schema — under unit tests |
+| `src/app/setup.ts` | the home read even when a file is invalid |
+| `src/app/connections.ts`, `registry-file.ts`, `memory-repository.ts` | token tests, registry writes, the memory's repository — shared with `check` and runs |
 
 ## Order
 
-The event journal and `show` come first, as slice 4 of the interface ([tui.md](tui.md)), then
-`init` as slice 5. Pre-flight inside the interface is built as `init`'s image and check
-sections, which `start` and `resume` then reuse.
+The event journal and `show` came first, as slice 4 of the interface ([tui.md](tui.md)), then
+`init` as slice 5. Bringing the pre-flight of `start` and `resume` inside their dashboard, from
+`init`'s image and check sections, is still to do.

@@ -197,6 +197,7 @@ their scopes, authentication modes, the registry, the settings and your writing 
 
 | Command | What it does |
 |---|---|
+| `init` | sets redline up on a full screen: tokens tested against their service, Claude, services, memory, agent image, registry, voice and every setting |
 | `start <ticket> [--notes …] [--figma <url>…] [--auth <mode>] [--plain]` | frames, delivers and publishes a ticket; on a ticket that already has a run, resumes it |
 | `resume <ticket> [--fresh] [--note …] [--auth <mode>] [--plain]` | resumes an interrupted, waiting or escalated run; `--fresh` reopens the escalated task with a new budget |
 | `status [ticket] [--plan]` | lists the runs, or shows one run's phase, escalation, history and approved plan |

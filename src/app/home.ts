@@ -19,9 +19,10 @@ const READER_GUIDE = [
   "",
 ].join("\n");
 
-export async function ensureHome(paths: Paths): Promise<void> {
+/** `layoutMemory` false leaves paths.memory alone: a memory cloned from a URL is not there yet. */
+export async function ensureHome(paths: Paths, options: { readonly layoutMemory?: boolean } = {}): Promise<void> {
   for (const directory of [paths.home, paths.tickets, paths.runs, paths.logs, paths.figma, paths.locks, paths.tmp]) mkdirSync(directory, { recursive: true });
-  createMemoryStore(paths.memory, Number.MAX_SAFE_INTEGER).ensureLayout();
+  if (options.layoutMemory !== false) createMemoryStore(paths.memory, Number.MAX_SAFE_INTEGER).ensureLayout();
   if (!existsSync(join(paths.home, ".gitignore"))) writeFileSync(join(paths.home, ".gitignore"), GITIGNORE, "utf8");
   if (!existsSync(join(paths.home, "CLAUDE.md"))) writeFileSync(join(paths.home, "CLAUDE.md"), READER_GUIDE, "utf8");
   if (!existsSync(join(paths.home, ".git"))) await git(paths.home, ["init", "-q", "-b", "main"]);

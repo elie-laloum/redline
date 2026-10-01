@@ -202,12 +202,13 @@ keys; `viewer.ts` adds only the keys that leave.
 
 ## Slices
 
-Slices 1 to 4 are in place; slice 5 is not.
+Slices 1 to 5 are in place, except pre-flight inside the dashboard of `start` and `resume`: they
+still check the runtime, the image and the credentials in plain text before opening it.
 
 1. `RunEvent` channel, agent attribution, gate / command / publication events, view model.
    Clack output unchanged.
 2. Read-only dashboard for `start` and `resume`, `--plain`, TTY detection.
 3. Question panels, plan review, bell.
 4. Event journal, `show`, and `resume` replaying the journal.
-5. `init` ([init.md](init.md)). Its image and check sections bring pre-flight inside the
-   interface, with the agent image build's output shown; `start` and `resume` reuse them.
+5. `init` ([init.md](init.md)): every section of the configuration, the image built and tested
+   from it. `start` and `resume` do not reuse its sections for their pre-flight yet.

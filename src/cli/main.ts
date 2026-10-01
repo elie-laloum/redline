@@ -9,6 +9,7 @@ import { benchCommand } from "./commands/bench.ts";
 import { check } from "./commands/check.ts";
 import { clearCommand } from "./commands/clear.ts";
 import { imageBuildCommand, imageDoctorCommand } from "./commands/image.ts";
+import { initCommand } from "./commands/init.ts";
 import { migrateHomeCommand } from "./commands/migrate-home.ts";
 import { resumeCommand, startCommand } from "./commands/run.ts";
 import { showCommand } from "./commands/show.ts";
@@ -20,6 +21,11 @@ redirectTmpdir(pathsOf(homeDirectory()));
 const program = new Command("redline")
   .description("Livraison autonome depuis un ticket Jira : cadrage, TDD adversarial, memoire, publication.")
   .version(packageJson.version);
+
+program
+  .command("init")
+  .description("Configure redline en plein ecran : jetons, Claude, services, memoire, image, registre, voix, reglages")
+  .action(() => guarded(initCommand));
 
 program
   .command("start")

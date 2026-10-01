@@ -80,19 +80,23 @@ export function createContext(options: ContextOptions = {}): AppContext {
   };
 }
 
+/** The clients of the outside services, from their tokens alone: init tests them before any setting reads. */
+export function remoteServices(secrets: Secrets): { [K in "tracker" | "forge" | "chat" | "design"]: () => Services[K] } {
+  return {
+    tracker: () => createJira({ site: secrets.require("JIRA_SITE_URL"), email: secrets.require("JIRA_EMAIL"), token: secrets.require("JIRA_API_TOKEN") }),
+    forge: () => createGitlab({ host: secrets.get("GITLAB_HOST") ?? "https://gitlab.com", token: secrets.require("GITLAB_TOKEN") }),
+    chat: () => createSlack({ base: secrets.get("SLACK_API_BASE") ?? "https://slack.com/api", token: secrets.require("SLACK_USER_TOKEN") }),
+    design: () => createFigma({ base: secrets.get("FIGMA_API_BASE") ?? "https://api.figma.com/v1", token: secrets.get("FIGMA_TOKEN") }),
+  };
+}
+
 function lazyServices(
   secrets: Secrets,
   overrides: Partial<Services>,
   runtime: { agents: () => AgentFactory; sandboxes: () => Sandboxes },
 ): Services {
   const cache: Partial<Services> = { ...overrides };
-  const build: { [K in keyof Services]: () => Services[K] } = {
-    ...runtime,
-    tracker: () => createJira({ site: secrets.require("JIRA_SITE_URL"), email: secrets.require("JIRA_EMAIL"), token: secrets.require("JIRA_API_TOKEN") }),
-    forge: () => createGitlab({ host: secrets.get("GITLAB_HOST") ?? "https://gitlab.com", token: secrets.require("GITLAB_TOKEN") }),
-    chat: () => createSlack({ base: secrets.get("SLACK_API_BASE") ?? "https://slack.com/api", token: secrets.require("SLACK_USER_TOKEN") }),
-    design: () => createFigma({ base: secrets.get("FIGMA_API_BASE") ?? "https://api.figma.com/v1", token: secrets.get("FIGMA_TOKEN") }),
-  };
+  const build: { [K in keyof Services]: () => Services[K] } = { ...runtime, ...remoteServices(secrets) };
   const get = <K extends keyof Services>(key: K): Services[K] => {
     cache[key] ??= build[key]();
     return cache[key] as Services[K];

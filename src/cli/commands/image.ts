@@ -15,7 +15,7 @@ function outpost(args: readonly string[]): Promise<number> {
   });
 }
 
-function buildImage(image: string): Promise<number> {
+export function buildImage(image: string): Promise<number> {
   const uid = String(process.getuid?.() ?? 1000);
   const gid = String(process.getgid?.() ?? 1000);
   return outpost(["image", "build", "--directory", ROOT, "--file", join(ROOT, "docker", "agent.Dockerfile"), "--image", image, "--uid", uid, "--gid", gid]);

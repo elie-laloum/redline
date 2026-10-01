@@ -39,6 +39,13 @@ releases are tagged `v<version>` and published to npm as
   Runs pull it before framing and before applying notes, commit under the human's identity and
   push; a failure leaves the notes local with a warning. Reader agents get it mounted read-only.
 - A `warning` run event: the journal and the plain output show what a run carries on without.
+- `init` sets redline up on a full screen, section by section, each change written as soon as it
+  is made: Jira, GitLab, Slack and Figma tokens, tested against their service; the service
+  switches; the agent image, built and tested from the screen; Claude, with `claude setup-token`
+  run in the agent image and its token read back; the memory's repository; the registry, a
+  repository added from its checkout with its identity read from it and its commands typed and
+  tried; the voice, in `$EDITOR`; every other setting, laid out from the schema, with its default
+  and a reset; and the full check. See [docs/init.md](docs/init.md).
 - `CHANGELOG.md`.
 
 ### Changed
