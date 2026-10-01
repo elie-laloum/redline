@@ -50,6 +50,13 @@ describe("le .env de redline", () => {
     assert.equal(statSync(file).mode & 0o777, 0o600);
   });
 
+  it("remplit a sa place la ligne que le modele laisse en commentaire", () => {
+    const template = join(directory.path, "secrets", "modele.env");
+    writeFileSync(template, "# Claude\n# CLAUDE_CODE_OAUTH_TOKEN=\n# ANTHROPIC_API_KEY=\n");
+    writeSecret(template, "CLAUDE_CODE_OAUTH_TOKEN", "jeton");
+    assert.equal(readFileSync(template, "utf8"), "# Claude\nCLAUDE_CODE_OAUTH_TOKEN=jeton\n# ANTHROPIC_API_KEY=\n");
+  });
+
   it("cede a une variable exportee dans le shell", () => {
     assert.equal(loadSecrets(file, {}).get("ANTHROPIC_API_KEY"), "nouvelle");
     assert.equal(loadSecrets(file, { ANTHROPIC_API_KEY: "du-shell" }).get("ANTHROPIC_API_KEY"), "du-shell");

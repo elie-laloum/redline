@@ -60,11 +60,16 @@ export function loadSecrets(file: string | null, env: Readonly<Record<string, st
   };
 }
 
-/** Sets one line of the .env, keeping every other line, and leaves the file readable by its owner only. */
+/**
+ * Sets one line of the .env, keeping every other line, and leaves the file readable by its owner
+ * only. A line the template left commented out, `# KEY=`, takes the value in place.
+ */
 export function writeSecret(file: string, key: SecretKey, value: string): void {
   const lines = existsSync(file) ? readFileSync(file, "utf8").replace(/\n$/, "").split("\n") : [];
   const line = `${key}=${value}`;
-  const index = lines.findIndex((existing) => existing.trim().startsWith(`${key}=`));
+  const set = lines.findIndex((existing) => existing.trim().startsWith(`${key}=`));
+  const commented = lines.findIndex((existing) => new RegExp(`^#\\s*${key}=`).test(existing.trim()));
+  const index = set >= 0 ? set : commented;
   if (index >= 0) lines[index] = line;
   else lines.push(line);
   mkdirSync(dirname(file), { recursive: true });
