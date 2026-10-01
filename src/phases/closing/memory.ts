@@ -3,12 +3,13 @@ import { memoryPlanner } from "../../agents/memory-planner.ts";
 import { arbitrages, bullets } from "../../agents/render.ts";
 import { ask } from "../../agents/role.ts";
 import { commitHome } from "../../app/home.ts";
+import { commitMemory, pullMemory } from "../../app/memory-repository.ts";
 import { digest } from "../../domain/digest.ts";
 import type { Frontmatter } from "../../domain/memory.ts";
 import { type ContradictionDecision, type MemoryOp, memoryOpProblems } from "../../domain/memory-ops.ts";
 import { renderPlan } from "../../domain/plan.ts";
 import { type Converged, converge } from "../../workflow/converge.ts";
-import { cached, type RunContext, withReader } from "../run.ts";
+import { cached, emit, type RunContext, withReader } from "../run.ts";
 import type { ClosingContext } from "./context.ts";
 
 export interface MemoryPlan {
@@ -65,6 +66,12 @@ export function memoryApplyTask(run: RunContext, plan: Task<Converged<MemoryPlan
     key: "memory-apply",
     after: [plan],
     async perform(context) {
+      const memory = run.app.memoryRepository;
+      const warn = (text: string | null) => {
+        if (text) emit(run, { type: "warning", task: "memory-apply", text });
+      };
+      // Someone else's run may have pushed notes since this one started.
+      warn(await pullMemory(memory));
       const store = run.app.memory();
       const { operations } = context.value(plan).candidate;
       for (const op of operations) {
@@ -74,7 +81,16 @@ export function memoryApplyTask(run: RunContext, plan: Task<Converged<MemoryPlan
           store.write(op.path, op.frontmatter as Frontmatter, op.body);
         }
       }
-      const commit = await commitHome(run.app.paths, `memory: ${run.ledger.key}`);
+      const message = `memory: ${run.ledger.key}`;
+      let commit: string | null;
+      if (memory.separate) {
+        const committed = await commitMemory(memory, message, run.app.configuration.settings.git.committer);
+        warn(committed.warning);
+        commit = committed.commit;
+        await commitHome(run.app.paths, message, ["tickets"]);
+      } else {
+        commit = await commitHome(run.app.paths, message);
+      }
       return { operations: operations.map(({ action, path, why }) => ({ action, path, why })), commit };
     },
   });

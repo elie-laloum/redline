@@ -4,9 +4,11 @@ import { git, gitAllowFailure } from "../adapters/git.ts";
 import { createMemoryStore } from "../adapters/memory-store.ts";
 import type { Paths } from "./paths.ts";
 
-const IDENTITY = ["-c", "user.name=redline", "-c", "user.email=redline@localhost"];
+export const REDLINE_IDENTITY = ["-c", "user.name=redline", "-c", "user.email=redline@localhost"] as const;
 
 const GITIGNORE = ["*", "!.gitignore", "!CLAUDE.md", "!memory/", "!memory/**", "!tickets/", "!tickets/**", ""].join("\n");
+/** Once the memory has a repository of its own, the home's only tracks the tickets. */
+export const GITIGNORE_WITHOUT_MEMORY = ["*", "!.gitignore", "!CLAUDE.md", "!tickets/", "!tickets/**", ""].join("\n");
 
 const READER_GUIDE = [
   "# Espace de lecture redline",
@@ -25,7 +27,7 @@ export async function ensureHome(paths: Paths): Promise<void> {
   if (!existsSync(join(paths.home, ".git"))) await git(paths.home, ["init", "-q", "-b", "main"]);
   if (!(await gitAllowFailure(paths.home, ["rev-parse", "--verify", "HEAD"])).ok) {
     await git(paths.home, ["add", "--", ".gitignore", "CLAUDE.md"]);
-    await git(paths.home, [...IDENTITY, "commit", "-q", "-m", "redline: home"]);
+    await git(paths.home, [...REDLINE_IDENTITY, "commit", "-q", "-m", "redline: home"]);
   }
 }
 
@@ -36,9 +38,10 @@ export function redirectTmpdir(paths: Paths): void {
   process.env.TMPDIR = paths.tmp;
 }
 
-export async function commitHome(paths: Paths, message: string): Promise<string | null> {
-  await git(paths.home, ["add", "-A", "--", "memory", "tickets"]);
+/** Commits the tickets, and the memory while it lives in the home's repository. */
+export async function commitHome(paths: Paths, message: string, scope: readonly string[] = ["memory", "tickets"]): Promise<string | null> {
+  await git(paths.home, ["add", "-A", "--", ...scope]);
   if ((await gitAllowFailure(paths.home, ["diff", "--cached", "--quiet"])).ok) return null;
-  await git(paths.home, [...IDENTITY, "commit", "-q", "-m", message]);
+  await git(paths.home, [...REDLINE_IDENTITY, "commit", "-q", "-m", message]);
   return git(paths.home, ["rev-parse", "--short", "HEAD"]);
 }

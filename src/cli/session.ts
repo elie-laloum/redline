@@ -4,6 +4,7 @@ import { type DriveOutcome, type DriveRequest, drive } from "../app/driver.ts";
 import { openJournal } from "../app/event-journal.ts";
 import { readLedger } from "../app/ledger.ts";
 import { acquireLock } from "../app/lock.ts";
+import { pullMemory } from "../app/memory-repository.ts";
 import { seedJournal } from "../app/run-history.ts";
 import { releaseCheckpoint, storageFor } from "../app/storage.ts";
 import type { RunObserver } from "../domain/run-events.ts";
@@ -34,6 +35,8 @@ export async function runSession(app: AppContext, key: string, first: DriveReque
     // The journal only feeds the screen: a run never fails on it.
     if (ledger) await seedJournal(app.paths, ledger).catch(() => {});
     journal.begin(process.pid);
+    const pulled = await pullMemory(app.memoryRepository);
+    if (pulled) events({ type: "warning", task: null, text: pulled });
     const orphan = lock.reclaimed ? ledger?.active : null;
     if (orphan) await releaseCheckpoint(storageFor(app.paths, key), orphan.runId);
     let request: DriveRequest = first;

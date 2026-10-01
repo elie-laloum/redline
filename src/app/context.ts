@@ -15,6 +15,7 @@ import type { Design } from "../ports/design.ts";
 import type { Forge } from "../ports/forge.ts";
 import type { Sandboxes } from "../ports/sandboxes.ts";
 import type { Tracker } from "../ports/tracker.ts";
+import { type MemoryRepository, memoryRepository } from "./memory-repository.ts";
 import { expandTilde, homeDirectory, logDirectory, type Paths, pathsOf } from "./paths.ts";
 import { type Configuration, loadConfiguration } from "./settings.ts";
 
@@ -30,6 +31,8 @@ export interface Services {
 export interface AppContext {
   readonly paths: Paths;
   readonly configuration: Configuration;
+  /** Where the memory's notes live: paths.memory is its directory. */
+  readonly memoryRepository: MemoryRepository;
   readonly secrets: Secrets;
   /** The settings' mode, unless the command line overrides it for this run. */
   readonly authentication: AuthMode;
@@ -48,19 +51,22 @@ export interface ContextOptions {
 
 export function createContext(options: ContextOptions = {}): AppContext {
   const env = options.env ?? process.env;
-  const paths = pathsOf(options.home ?? homeDirectory(env));
-  const configuration = loadConfiguration(paths, options.templates);
-  const secrets = loadSecrets(paths.env, env);
+  const home = pathsOf(options.home ?? homeDirectory(env));
+  const configuration = loadConfiguration(home, options.templates);
   const { settings } = configuration;
+  const memory = memoryRepository(settings, home.home);
+  const paths: Paths = { ...home, memory: memory.directory };
+  const secrets = loadSecrets(paths.env, env);
   const authentication = options.authentication ?? settings.agents.authentication;
   const services = lazyServices(secrets, options.services ?? {}, {
     agents: () => createClaudeAgents(settings, authenticationFor(authentication, secrets)),
-    sandboxes: () => createOutpostSandboxes({ settings, registry: configuration.registry, home: paths.home, resolvePath: expandTilde, isolation: "docker" }),
+    sandboxes: () => createOutpostSandboxes({ settings, registry: configuration.registry, home: paths.home, memory, resolvePath: expandTilde, isolation: "docker" }),
   });
 
   return {
     paths,
     configuration,
+    memoryRepository: memory,
     secrets,
     authentication,
     services,

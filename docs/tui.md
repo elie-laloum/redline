@@ -130,6 +130,7 @@ listens; clack ignores what it cannot show.
 | `gate` | `converge`, after each verdict | task, gate, round, verdict, spent / budget, feedback text; the budget is null when rebuilt from a checkpoint |
 | `command` | registry checks and dependency installs | task, label, command, start / progress / end, exit code, log path |
 | `publication` | release and closing | tag, pipeline, push, merge request, Slack, Jira — with a link when there is one |
+| `warning` | the session and the memory step | what the run carries on without: a memory that would not pull or push |
 | `preflight` | `start` and `resume` — planned, slice 5 | step, status, detail |
 
 Agent observations carry the task that asked explicitly: `ask()` gets its source from the

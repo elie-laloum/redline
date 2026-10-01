@@ -34,6 +34,11 @@ releases are tagged `v<version>` and published to npm as
   writes no text for a channel that is off.
 - `check` asks GitLab, Slack and Figma who each token belongs to, as it already asked Jira, and
   fails on a missing GitLab or Slack scope or a Slack bot token.
+- The memory can live in a git repository of its own, which a team can share:
+  `memory.repository` (a URL redline clones into the home) or `memory.path` (an existing clone).
+  Runs pull it before framing and before applying notes, commit under the human's identity and
+  push; a failure leaves the notes local with a warning. Reader agents get it mounted read-only.
+- A `warning` run event: the journal and the plain output show what a run carries on without.
 - `CHANGELOG.md`.
 
 ### Changed

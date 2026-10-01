@@ -33,6 +33,8 @@ memory:
   selection:                         # notes injectees dans les briefs
     maxNotes: 15
     maxLines: 400
+  repository: null                   # URL d'un depot git dedie, clone dans ~/.redline/memory
+  path: null                         # ou le chemin d'un clone existant ; aucun des deux : le home
 
 naming:                              # placeholders : {type} {ticket} {slug} {titre} {n}
   types: [feature, bugfix, hotfix, documentation, chore, refactor, test, style, task]

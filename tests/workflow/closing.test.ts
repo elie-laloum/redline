@@ -7,6 +7,7 @@ import type { Script } from "../kit/agents.ts";
 import { approved, close, codePass, codeReply, deliver, IMPLEMENTATION, memoryReply, proseReply, testsPhase } from "../kit/delivery.ts";
 import { ISSUE } from "../kit/framing.ts";
 import { createWorld, type World } from "../kit/world.ts";
+import { temporaryDirectory } from "../helpers.ts";
 
 let world: World | null = null;
 afterEach(async () => {
@@ -75,6 +76,35 @@ describe("la cloture", () => {
     assert.deepEqual(outcome?.jira, { transition: null, commented: false });
     assert.deepEqual([world.slack.channels.length, world.slack.messages.length, world.jira.transitions.length, world.jira.comments.length], [0, 0, 0, 0]);
     assert.match(world.agents.prompts.finalizer?.[0] ?? "", /une chaine vide : Slack est desactive/);
+  });
+
+  it("ecrit la memoire dans son propre depot, sous l'identite de l'humain, et la pousse", async () => {
+    const shared = temporaryDirectory("redline-memoire-partagee-");
+    try {
+      const remote = join(shared.path, "memoire.git");
+      const clone = join(shared.path, "memoire");
+      execFileSync("git", ["init", "-q", "--bare", "-b", "main", remote]);
+      execFileSync("git", ["clone", "-q", remote, clone], { stdio: "ignore" });
+      git(clone, "-c", "user.name=t", "-c", "user.email=t@x", "commit", "-q", "--allow-empty", "-m", "seed");
+      git(clone, "push", "-q", "origin", "main");
+      world = await createWorld({
+        issues: [ISSUE],
+        slackUsers: USERS,
+        settings: (template) => `${INVITEES(template).replace(/ {2}path: null[^\n]*/, `  path: ${clone}`)}\ngit:\n  committer: { name: Ada, email: ada@x }\n`.replace(/\ngit: \{\}\n/, "\n"),
+        script: { ...delivery, "memory-planner": [{ reply: memoryReply }], finalizer: [{ reply: proseReply(["fixture-core"]) }] } as Script,
+      });
+      const { ledger, framing, repos } = await delivered(world);
+      const { result, outcome } = await close(world, ledger, framing, repos);
+      result.unwrap();
+
+      assert.equal(world.app.paths.memory, clone);
+      assert.ok(existsSync(join(clone, "features/periode/filtre.md")));
+      assert.equal(git(remote, "log", "-1", "--format=%an %s"), "Ada memory: FT-1");
+      assert.equal(outcome?.memory.commit, git(clone, "rev-parse", "--short", "HEAD"));
+      assert.equal(git(world.app.paths.home, "show", "--name-only", "--format=", "HEAD").includes("memory/"), false);
+    } finally {
+      shared.cleanup();
+    }
   });
 
   it("transmet les notes du lancement a chaque agent de la livraison et de la cloture", async () => {

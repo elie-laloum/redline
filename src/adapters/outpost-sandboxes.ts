@@ -1,4 +1,5 @@
-import { existsSync } from "node:fs";
+import { existsSync, symlinkSync } from "node:fs";
+import { join } from "node:path";
 import { createSandbox, openWorkspace, type SandboxProvider } from "@elie-laloum/outpost";
 import { createDockerSandboxProvider } from "@elie-laloum/outpost/providers/docker";
 import { createLocalSandboxProvider } from "@elie-laloum/outpost/providers/local";
@@ -10,6 +11,8 @@ export interface SandboxOptions {
   readonly settings: Settings;
   readonly registry: Registry;
   readonly home: string;
+  /** A memory with a repository of its own is not in the home's worktree: readers get it mounted. */
+  readonly memory: { readonly directory: string; readonly separate: boolean };
   readonly resolvePath: (path: string) => string;
   readonly isolation: "docker" | "local";
 }
@@ -22,7 +25,10 @@ export function createOutpostSandboxes(options: SandboxOptions): Sandboxes {
   const repoProvider = options.isolation === "docker" ? docker([]) : createLocalSandboxProvider();
   const readerProvider =
     options.isolation === "docker"
-      ? docker(mounted.map((repo) => ({ source: options.resolvePath(repo.path), target: `/repos/${repo.name}`, readOnly: true })))
+      ? docker([
+          ...mounted.map((repo) => ({ source: options.resolvePath(repo.path), target: `/repos/${repo.name}`, readOnly: true })),
+          ...(options.memory.separate ? [{ source: options.memory.directory, target: "memory", readOnly: true }] : []),
+        ])
       : createLocalSandboxProvider();
   const repoPath = (name: string) => {
     const repo = options.registry.repositories.find((entry) => entry.name === name);
@@ -66,6 +72,8 @@ export function createOutpostSandboxes(options: SandboxOptions): Sandboxes {
         signal: input.signal,
       });
       const directory = opened.workspace.directory;
+      // Without mounts, the local provider reads the memory where it lives, at the path the briefs name.
+      if (options.isolation === "local" && options.memory.separate && !existsSync(join(directory, "memory"))) symlinkSync(options.memory.directory, join(directory, "memory"));
       return {
         sandbox: opened,
         directory,

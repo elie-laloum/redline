@@ -3,6 +3,7 @@ import { killRunningCommands } from "../../adapters/exec.ts";
 import { type AppContext, createContext } from "../../app/context.ts";
 import type { DriveRequest } from "../../app/driver.ts";
 import { ensureHome } from "../../app/home.ts";
+import { ensureMemory } from "../../app/memory-repository.ts";
 import { newLedger, readLedger, writeLedger } from "../../app/ledger.ts";
 import { authenticationPreflight, registryPreflight, sandboxPreflight, servicesPreflight } from "../../app/preflight.ts";
 import { loadHistory } from "../../app/run-history.ts";
@@ -20,6 +21,8 @@ export async function startCommand(input: string, options: { notes?: string; fig
   const key = normalizeKey(input);
   const app = createContext(options.auth ? { authentication: options.auth } : {});
   if (options.figma?.length && !app.configuration.settings.services.figma) fail("Figma est desactive : --figma n'aurait aucun effet.", "Active-le avec : bun redline init");
+  // Cloned before the home lays out its folders, which would otherwise take the clone's place.
+  await ensureMemory(app.memoryRepository);
   await ensureHome(app.paths);
   clack.intro(`redline ${key}`);
   await preflight(app);
@@ -37,6 +40,7 @@ export async function resumeCommand(input: string, options: { fresh?: boolean; n
   const key = normalizeKey(input);
   const app = createContext(options.auth ? { authentication: options.auth } : {});
   clack.intro(`redline ${key} — reprise`);
+  await ensureMemory(app.memoryRepository);
   await preflight(app);
   return interactive(app, key, { resume: true, ...(options.fresh ? { fresh: { note: options.note ?? null } } : {}) }, options);
 }

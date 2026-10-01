@@ -128,7 +128,7 @@ land on them, and a ticket from those projects touches no production repository.
 |---|---|
 | `budgets` | loop turns before escalation, per gate: `testAdversary`, `redChecker`, `testDispute`, `greenChecker`, `codeAdversary`; `disputeBeforeEscalation` (the same test contested this many times escalates); `developerBatchLines`; `grillRounds`; `planRepairs`, `memoryRepairs`, `proseRepairs` |
 | `timeouts` | CI pipeline and polling, repository setup, registry commands and their tolerated silence, container start, image pull, agent turn and agent idle time |
-| `memory` | the maximum length of a note, and how many notes and lines are selected for a brief |
+| `memory` | the maximum length of a note, how many notes and lines are selected for a brief, and where the memory lives: `repository` or `path` (below) |
 | `naming` | branch, merge request and Slack channel patterns with `{type}`, `{ticket}`, `{slug}`, `{titre}`, `{n}`; the allowed types; the mapping from Jira issue types |
 | `git.committer` | the identity of the commits redline makes, when it must differ from your git config |
 | `gitlab.mrDraft` | open merge requests as drafts |
@@ -143,6 +143,21 @@ land on them, and a ticket from those projects touches no production repository.
 is treated as waiting on infrastructure and escalates as `environment`.
 `bun redline bench [repo…] [--kinds ut,lint]` runs the registry commands in each checkout and
 reports their duration and their longest silence.
+
+### A memory of its own
+
+By default the memory lives in the home's git repository, next to the tickets. It can have a git
+repository of its own, which a team can share: `memory.repository` names a URL that redline clones
+into `~/.redline/memory` on the first run of each machine, or `memory.path` names a clone you
+already keep elsewhere. The notes sit at the repository's root.
+
+- Every `start` and `resume` pulls with rebase before framing, and again just before the closing
+  phase applies its notes. Redline then commits under your git identity, or `git.committer`, and
+  pushes. A pull or a push that fails leaves the notes local with a warning in the journal; the run
+  carries on.
+- Reader agents get the memory mounted read-only at the path they always read, `memory/`.
+- `init` connects the memory, imports the notes the home already holds without overwriting any,
+  archives them, and takes `memory/` out of the home's repository.
 
 ## 8. Your writing voice
 

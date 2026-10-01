@@ -92,10 +92,17 @@ export const SettingsSchema = v.object({
     agentSeconds: positive,
     agentIdleSeconds: positive,
   }),
-  memory: v.object({
-    maxNoteLines: positive,
-    selection: v.object({ maxNotes: positive, maxLines: positive }),
-  }),
+  memory: v.pipe(
+    v.object({
+      maxNoteLines: positive,
+      selection: v.object({ maxNotes: positive, maxLines: positive }),
+      /** A git repository of its own, possibly shared: cloned into the home from this URL… */
+      repository: v.nullable(text),
+      /** …or an existing clone, anywhere on disk. Neither: the memory stays in the home's repository. */
+      path: v.nullable(text),
+    }),
+    v.check((memory) => !(memory.repository && memory.path), "memory.repository et memory.path s'excluent"),
+  ),
   naming: v.object({
     types: v.array(text),
     branch: text,

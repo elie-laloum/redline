@@ -93,6 +93,7 @@ export async function createWorld(options: WorldOptions): Promise<World> {
     settings: bootstrap.configuration.settings,
     registry: bootstrap.configuration.registry,
     home,
+    memory: bootstrap.memoryRepository,
     resolvePath: expandTilde,
     isolation: "local",
   });

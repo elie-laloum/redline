@@ -174,6 +174,8 @@ export function reduce(state: Dashboard, event: RunEvent, now: number): Dashboar
       return onCommand(next, event, now);
     case "publication":
       return log(next, now, "success", event.task, `↗ ${event.detail}`, event.url);
+    case "warning":
+      return log(next, now, "warning", event.task, `⚠ ${event.text}`);
   }
 }
 

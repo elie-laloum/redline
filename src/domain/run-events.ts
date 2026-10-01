@@ -72,6 +72,8 @@ export type RunEvent =
       readonly passed?: boolean;
       readonly logPath?: string | null;
     }
-  | { readonly type: "publication"; readonly task: string; readonly action: PublicationAction; readonly detail: string; readonly url: string | null };
+  | { readonly type: "publication"; readonly task: string; readonly action: PublicationAction; readonly detail: string; readonly url: string | null }
+  /** Something went wrong that the run carries on without: a memory that would not pull or push. */
+  | { readonly type: "warning"; readonly task: string | null; readonly text: string };
 
 export type RunObserver = (event: RunEvent) => void;

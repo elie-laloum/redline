@@ -38,6 +38,7 @@ export function clackProgress(): Progress {
     event(event) {
       if (event.type === "workflow") workflow(event.event);
       if (event.type === "agent") agent(event.role, event.event);
+      if (event.type === "warning") clack.log.warn(event.text);
     },
     pause: () => stop(),
   };
