@@ -175,7 +175,7 @@ function integrityGate(run: DeliveryContext, target: RepoTarget, tests: Task<Con
         const changed = (await git(opened.directory, ["diff", "--name-only", `${since}..HEAD`])).split("\n").filter((path) => path && isTestFile(path));
         if (changed.length === 0 || target.entry.tests.length === 0) return { kind: "pass" };
         const verdict = await opened.withSandbox((sandbox) =>
-          ask(context, session(run, sandbox, { task: codeKey(target) }), testAdversary, { ticket: run.framing.ticket, notes: run.ledger.notes, repo: target.repo.name, tests: target.entry.tests, files: changed, kinds: declaredTestKinds(target.repo) }),
+          ask(context, session(run, sandbox, { task: codeKey(target) }), testAdversary, { ticket: run.framing.ticket, notes: run.ledger.notes, repo: target.repo.name, arbitrages: arbitragesOf(run), tests: target.entry.tests, files: changed, kinds: declaredTestKinds(target.repo) }),
         );
         const failing = failingLines(verdict.lines);
         return failing.length === 0 ? { kind: "pass" } : { kind: "arbitrage", text: `Des tests modifies par l'arbitre ne tiennent plus la checklist :\n${renderVerdicts(failing)}` };

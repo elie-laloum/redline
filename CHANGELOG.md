@@ -4,6 +4,15 @@ All notable changes to redline. Versions follow [semantic versioning](https://se
 releases are tagged `v<version>` and published to npm as
 [`@elie-laloum/redline`](https://www.npmjs.com/package/@elie-laloum/redline).
 
+## Unreleased
+
+### Fixed
+
+- The test adversary receives the arbitrages the test writer is bound by, and its brief states
+  that an arbitrage binds its judgement too: a point an arbitrage puts out of scope is a
+  conformance, not a weakness. The writer obeyed an arbitrage and the adversary reported that
+  obedience as a weakness, so neither state of the test could pass the gate.
+
 ## 4.0.1 — 2026-10-01
 
 ### Fixed
