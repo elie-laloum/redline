@@ -44,6 +44,26 @@ describe("la convergence des tests", () => {
     assert.equal(core?.commits[0], "test(period): cover the default period");
   });
 
+  it("livre une checklist entierement prouvee malgre les faiblesses restantes, une fois le budget epuise", async () => {
+    const fragile = { ...allPass(["T1"]), weaknesses: [{ file: "tests/period-default.test.js", problem: "ligne 5 : l'assertion est faible" }] };
+    const written = { writes: { "tests/period-default.test.js": FAILING_TEST }, reply: testsReply() };
+    world = await createWorld({
+      issues: [ISSUE],
+      script: {
+        "test-writer": [written, written, written, written],
+        "test-adversary": [{ reply: fragile }, { reply: fragile }, { reply: fragile }, { reply: fragile }],
+        "red-checker": [{ reply: goodRed }],
+        developer: [{ writes: { "src/period.js": IMPLEMENTATION }, reply: codeReply() }],
+        "code-adversary": [{ reply: codePass(["C1"]) }],
+      },
+    });
+    const { result, outcome } = await deliver(world, world.ledger("FT-1"), approved(world));
+    result.unwrap();
+
+    assert.deepEqual(world.agents.remaining(), {});
+    assert.equal(outcome?.[0]?.commits[0], "test(period): cover the default period");
+  });
+
   it("escalade quand le registre ne permet pas de tester une ligne du plan", async () => {
     world = await createWorld({
       issues: [ISSUE],
