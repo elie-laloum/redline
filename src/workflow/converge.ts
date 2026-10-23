@@ -3,7 +3,7 @@ import type { RunObserver } from "../domain/run-events.ts";
 import { Escalation } from "./escalation.ts";
 
 export type Verdict =
-  | { readonly kind: "pass"; readonly memo?: WorkflowJson }
+  | { readonly kind: "pass"; readonly memo?: WorkflowJson; readonly note?: string }
   | { readonly kind: "feedback"; readonly text: string; readonly memo?: WorkflowJson }
   | { readonly kind: "environment"; readonly text: string }
   | { readonly kind: "arbitrage"; readonly text: string };
@@ -64,7 +64,7 @@ export function converge<C>(options: ConvergeOptions<C>): Task<Converged<C>> {
           verdict: verdict.kind,
           spent,
           budget: gate.budget,
-          text: verdict.kind === "pass" ? null : verdict.text,
+          text: verdict.kind === "pass" ? (verdict.note ?? null) : verdict.text,
         });
         if (verdict.kind === "pass") continue;
         if (spent > gate.budget) {

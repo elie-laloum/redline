@@ -92,11 +92,13 @@ function zoneGate(budget: number): Gate<TestsCandidate> {
   };
 }
 
+const adversaryName = "adversaire";
+
 function adversaryGate(run: DeliveryContext, target: RepoTarget, budget: number): Gate<TestsCandidate> {
   return {
-    name: "adversaire",
+    name: adversaryName,
     budget,
-    judge: (context, candidate) =>
+    judge: (context, candidate, carry) =>
       withTarget(run, target, async (opened) => {
         const verdict = await opened.withSandbox((sandbox) =>
           ask(context, session(run, sandbox, { task: testsKey(target) }), testAdversary, {
@@ -111,7 +113,11 @@ function adversaryGate(run: DeliveryContext, target: RepoTarget, budget: number)
         const failing = failingLines(verdict.lines);
         if (failing.length === 0 && verdict.weaknesses.length === 0) return { kind: "pass" };
         const weaknesses = verdict.weaknesses.map((entry) => `${entry.file} : ${entry.problem}`);
-        return { kind: "feedback", text: [renderVerdicts(failing), weaknesses.length ? `Tests fragiles :\n${bullets(weaknesses)}` : ""].filter(Boolean).join("\n\n") };
+        const fragile = `Tests fragiles :\n${bullets(weaknesses)}`;
+        // The last turn is spent: a checklist fully proven is delivered with the residual
+        // weaknesses reported, since only a line the adversary reports as missing is a gap.
+        if (failing.length === 0 && (carry.spent[adversaryName] ?? 0) + 1 > budget) return { kind: "pass", note: fragile };
+        return { kind: "feedback", text: [renderVerdicts(failing), weaknesses.length ? fragile : ""].filter(Boolean).join("\n\n") };
       }),
   };
 }
