@@ -19,6 +19,10 @@ releases are tagged `v<version>` and published to npm as
   that an arbitrage binds its judgement too: a point an arbitrage puts out of scope is a
   conformance, not a weakness. The writer obeyed an arbitrage and the adversary reported that
   obedience as a weakness, so neither state of the test could pass the gate.
+- The `tests-modifies` gate judges the checklist against the whole delivered suite instead of
+  only the test files the appeal arbiter changed. A change still triggers the re-reading, but
+  every line proven by an untouched file was reported missing, so a single settled appeal
+  could escalate the entire checklist.
 
 ## 4.0.1 — 2026-10-01
 
