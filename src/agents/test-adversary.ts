@@ -9,6 +9,7 @@ export interface TestAdversaryInput {
   readonly ticket: TicketSnapshot;
   readonly notes: string | null;
   readonly repo: string;
+  readonly arbitrages: string;
   readonly tests: readonly PlanTest[];
   readonly files: readonly string[];
   readonly kinds: readonly string[];
@@ -25,6 +26,7 @@ export const testAdversary = defineRole({
   values: (input: TestAdversaryInput) => ({
     TICKET: ticket(input.ticket, input.notes),
     REPO: input.repo,
+    ARBITRAGES: input.arbitrages,
     TESTS: bullets(input.tests.map((test) => `${test.id} [${test.kind}] ${test.criterion}`)),
     FILES: bullets(input.files),
     KINDS: input.kinds.join(", ") || "aucun",

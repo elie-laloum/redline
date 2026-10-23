@@ -103,6 +103,7 @@ function adversaryGate(run: DeliveryContext, target: RepoTarget, budget: number)
             ticket: run.framing.ticket,
             notes: run.ledger.notes,
             repo: target.repo.name,
+            arbitrages: arbitragesOf(run),
             tests: target.entry.tests,
             files: candidate.files.map((file) => file.path),
             kinds: declaredTestKinds(target.repo),

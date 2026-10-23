@@ -20,6 +20,14 @@ Les fichiers de test ecrits :
 
 Types de tests declares ici : {{KINDS}}.
 
+Les arbitrages deja tranches par l'humain :
+
+{{ARBITRAGES}}
+
+Un arbitrage te lie autant qu'il lie l'auteur des tests. Ce qu'il place hors du perimetre
+n'est pas une faiblesse : ne le signale pas, meme si tu juges la preuve souhaitable. Si
+l'auteur a suivi un arbitrage, c'est un point conforme, pas un manque.
+
 ## Ce que tu verifies
 
 Le code de production n'est peut-etre pas encore ecrit : en TDD, les tests echouent avant
