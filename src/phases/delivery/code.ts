@@ -171,11 +171,14 @@ function integrityGate(run: DeliveryContext, target: RepoTarget, tests: Task<Con
     budget,
     judge: (context) =>
       withTarget(run, target, async (opened): Promise<Verdict> => {
-        const since = context.value(tests).candidate.head;
-        const changed = (await git(opened.directory, ["diff", "--name-only", `${since}..HEAD`])).split("\n").filter((path) => path && isTestFile(path));
+        const delivered = context.value(tests).candidate;
+        const changed = (await git(opened.directory, ["diff", "--name-only", `${delivered.head}..HEAD`])).split("\n").filter((path) => path && isTestFile(path));
         if (changed.length === 0 || target.entry.tests.length === 0) return { kind: "pass" };
+        // A change triggers the re-reading; the checklist is judged against the whole suite,
+        // since a line is usually proven by a file the arbiter never touched.
+        const files = [...new Set([...delivered.files.map((file) => file.path), ...changed])];
         const verdict = await opened.withSandbox((sandbox) =>
-          ask(context, session(run, sandbox, { task: codeKey(target) }), testAdversary, { ticket: run.framing.ticket, notes: run.ledger.notes, repo: target.repo.name, tests: target.entry.tests, files: changed, kinds: declaredTestKinds(target.repo) }),
+          ask(context, session(run, sandbox, { task: codeKey(target) }), testAdversary, { ticket: run.framing.ticket, notes: run.ledger.notes, repo: target.repo.name, tests: target.entry.tests, files, kinds: declaredTestKinds(target.repo) }),
         );
         const failing = failingLines(verdict.lines);
         return failing.length === 0 ? { kind: "pass" } : { kind: "arbitrage", text: `Des tests modifies par l'arbitre ne tiennent plus la checklist :\n${renderVerdicts(failing)}` };

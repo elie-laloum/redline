@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { afterEach, describe, it } from "bun:test";
 import type { Plan } from "../../src/domain/plan.ts";
 import { parseEscalation } from "../../src/domain/escalation.ts";
-import { approved, codePass, codeRefuse, codeReply, deliver, IMPLEMENTATION, testsPhase } from "../kit/delivery.ts";
+import { allPass, approved, codePass, codeRefuse, codeReply, deliver, IMPLEMENTATION, testsPhase } from "../kit/delivery.ts";
 import { ISSUE, plan } from "../kit/framing.ts";
 import { createWorld, type World } from "../kit/world.ts";
 
@@ -39,6 +39,28 @@ describe("la convergence du code", () => {
     assert.match(world.agents.prompts.developer?.[1] ?? "", /le mois est fige/);
     assert.equal(world.gitlab.mergeRequests.length, 0);
     assert.equal(world.slack.channels.length, 0);
+  });
+
+  it("relit la checklist sur toute la suite livree quand l'arbitre touche un test", async () => {
+    const dispute = { kind: "test-conteste", test: "T1", reason: "l'assertion me semble inversee" };
+    const EXTRA_TEST = "import { test } from 'node:test';\n\ntest('clamp accepte un mois', () => {});\n";
+    world = await createWorld({
+      issues: [ISSUE],
+      script: {
+        ...testsPhase,
+        developer: [{ writes: { "src/period.js": IMPLEMENTATION }, reply: codeReply([dispute]) }, implement],
+        "appeal-arbiter": [{ writes: { "tests/period-extra.test.js": EXTRA_TEST }, reply: { decision: "accepte", reason: "un cas de plus ne gene pas", commit: { type: "test", scope: "period", subject: "add a case" } } }],
+        "test-adversary": [{ reply: allPass(["T1"]) }, { reply: allPass(["T1"]) }],
+        "code-adversary": [{ reply: codePass(["C1"]) }],
+      },
+    });
+    const { result } = await deliver(world, world.ledger("FT-1"), approved(world));
+    result.unwrap();
+
+    const integrity = world.agents.prompts["test-adversary"]?.[1] ?? "";
+    assert.match(integrity, /tests\/period-extra\.test\.js/);
+    assert.match(integrity, /tests\/period-default\.test\.js/);
+    assert.deepEqual(world.agents.remaining(), {});
   });
 
   it("escalade le meme test conteste deux fois", async () => {

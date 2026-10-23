@@ -4,6 +4,15 @@ All notable changes to redline. Versions follow [semantic versioning](https://se
 releases are tagged `v<version>` and published to npm as
 [`@elie-laloum/redline`](https://www.npmjs.com/package/@elie-laloum/redline).
 
+## Unreleased
+
+### Fixed
+
+- The `tests-modifies` gate judges the checklist against the whole delivered suite instead of
+  only the test files the appeal arbiter changed. A change still triggers the re-reading, but
+  every line proven by an untouched file was reported missing, so a single settled appeal
+  could escalate the entire checklist.
+
 ## 4.0.1 — 2026-10-01
 
 ### Fixed
