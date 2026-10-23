@@ -6,6 +6,13 @@ releases are tagged `v<version>` and published to npm as
 
 ## Unreleased
 
+### Changed
+
+- A test lot whose every checklist line is proven is no longer rejected by the weaknesses the
+  adversary still reports once its budget is spent. The adversary keeps its full budget to have
+  them fixed; on the last turn, a fully proven checklist is delivered and the residual weaknesses
+  are reported on the gate instead of escalating. A missing line still blocks, as before.
+
 ### Fixed
 
 - The test adversary receives the arbitrages the test writer is bound by, and its brief states
