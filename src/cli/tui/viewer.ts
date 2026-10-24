@@ -14,7 +14,7 @@ const PANELS: readonly Focus[] = ["tasks", "inspector", "journal"];
 
 /** The dashboard, read-only: nothing here reaches the run, and leaving never stops it. */
 export function openViewer(renderer: CliRenderer, ticket: { readonly key: string; readonly title: string }, back: boolean): Viewer {
-  const board = createBoard(renderer, ticket, { selected: null, follow: true, focus: "tasks", layout: "dashboard", notice: null, ended: false, watching: { pid: null, back } });
+  const board = createBoard(renderer, ticket, { selected: null, follow: true, focus: "tasks", view: "inspector", changes: null, layout: "dashboard", notice: null, ended: false, watching: { pid: null, back } });
   let leave: () => void = () => {};
   const left = new Promise<void>((resolve) => {
     leave = resolve;

@@ -15,6 +15,8 @@ import {
   type Tone,
   usageSeries,
 } from "../dashboard/model.ts";
+import type { RepoChanges } from "../dashboard/changes.ts";
+import { explain } from "../dashboard/explain.ts";
 import { formatDuration, formatTokens } from "../dashboard/format.ts";
 import { describeOutput, type OutputTone } from "../dashboard/outputs.ts";
 import type { RunPhase } from "../../domain/run-events.ts";
@@ -24,6 +26,11 @@ import { THEME, type ThemeColor } from "./theme.ts";
 
 export type Focus = "tasks" | "inspector" | "journal" | "question";
 
+/** What the right panel shows. The task table and the journal keep their place. */
+export type RightView = "inspector" | "changes" | "explain";
+
+export const RIGHT_VIEWS: readonly RightView[] = ["inspector", "changes", "explain"];
+
 /** The dashboard, or the whole body given to a question while it has the focus. */
 export type Layout = "dashboard" | "question" | "review";
 
@@ -32,6 +39,9 @@ export interface Screen {
   readonly selected: string | null;
   readonly follow: boolean;
   readonly focus: Focus;
+  readonly view: RightView;
+  /** What the run has written so far, re-read while the changes view is open. */
+  readonly changes: readonly RepoChanges[] | null;
   readonly layout: Layout;
   readonly notice: { readonly tone: Tone; readonly text: string } | null;
   readonly ended: boolean;
@@ -44,6 +54,8 @@ export interface DashboardView {
   readonly slots: { readonly question: BoxRenderable; readonly review: BoxRenderable };
   update(state: Dashboard, screen: Screen): void;
   scroll(focus: Focus, pages: number): void;
+  /** Moves a panel sideways, for the lines kept whole rather than wrapped. */
+  scrollSideways(focus: Focus, steps: number): void;
   /** Rows the task table can show; the controller keeps the selection inside them. */
   readonly taskRows: number;
   /** Takes the screen's widgets off the renderer, which stays open. */
@@ -67,7 +79,8 @@ const OUTPUT_TONES: Record<OutputTone, ThemeColor> = { title: "text", text: "tex
 const PHASE_ORDER: readonly RunPhase[] = ["framing", "delivery", "closing"];
 const JOURNAL_LINES = 200;
 const NOTICE_LINES = 8;
-const FOOTER = "↑↓ tache · Tab panneau · PgUp/PgDn defiler · f suivre l'active · q quitter · Ctrl-C arreter";
+const RIGHT_TITLES: Record<RightView, string> = { inspector: " Inspecteur ", changes: " Changements ", explain: " Explication " };
+const FOOTER = "↑↓ tache · Tab panneau · v vue · ←→ defiler · PgUp/PgDn defiler · f suivre l'active · q quitter · Ctrl-C arreter";
 const WATCH_FOOTER = "↑↓ tache · Tab panneau · PgUp/PgDn defiler · f suivre l'active";
 const QUESTION_FOOTER = "Entree envoyer · Shift/Alt+Entree nouvelle ligne · Esc revenir aux choix · Tab relire le tableau de bord · Ctrl-C arreter";
 
@@ -103,7 +116,7 @@ export function createDashboardView(renderer: CliRenderer, onSelect: (task: stri
   tasks.add(tasksText);
   const inspector = new ScrollBoxRenderable(renderer, {
     id: "inspector",
-    title: " Inspecteur ",
+    title: RIGHT_TITLES.inspector,
     flexGrow: 1,
     flexBasis: 0,
     border: true,
@@ -112,9 +125,13 @@ export function createDashboardView(renderer: CliRenderer, onSelect: (task: stri
     titleColor: THEME.muted,
     backgroundColor: THEME.panel,
     contentOptions: { paddingX: 1 },
+    scrollX: true,
   });
-  const inspectorText = new TextRenderable(renderer, { id: "inspector-text", content: "", fg: THEME.text, wrapMode: "word" });
+  // The panel wraps its own prose, so the renderable must not wrap again: a command kept whole
+  // is longer than the panel on purpose, and the horizontal bar is what reads its end.
+  const inspectorText = new TextRenderable(renderer, { id: "inspector-text", content: "", fg: THEME.text, wrapMode: "none" });
   inspector.add(inspectorText);
+  mirrorSideways(inspector);
   main.add(tasks);
   main.add(inspector);
 
@@ -178,6 +195,10 @@ export function createDashboardView(renderer: CliRenderer, onSelect: (task: stri
     scroll(focus, pages) {
       const box = focus === "journal" ? journal : focus === "inspector" ? inspector : null;
       if (box) box.scrollBy(pages * Math.max(1, box.height - 3));
+    },
+    scrollSideways(focus, steps) {
+      const box = focus === "journal" ? journal : focus === "inspector" ? inspector : null;
+      if (box) box.scrollLeft = Math.max(0, box.scrollLeft + steps * Math.max(4, Math.floor((box.width - 4) / 3)));
     },
     update(state, screen) {
       arrange(screen.layout);
@@ -268,11 +289,14 @@ export function createDashboardView(renderer: CliRenderer, onSelect: (task: stri
       ]);
 
       const inspectorWidth = Math.max(20, (inspector.width || Math.floor(width * 0.42)) - 4);
-      if (selected?.key !== inspected) {
-        inspected = selected?.key ?? null;
+      const panelKey = `${screen.view}:${selected?.key ?? ""}`;
+      if (panelKey !== inspected) {
+        inspected = panelKey;
         inspector.scrollTop = 0;
+        inspector.scrollLeft = 0;
       }
-      inspectorText.content = styled(selected ? inspect(state, selected, inspectorWidth) : [[span("Aucune tache selectionnee.", "muted")]]);
+      inspector.title = RIGHT_TITLES[screen.view];
+      inspectorText.content = styled(rightPanel(state, screen, selected, inspectorWidth));
 
       const journalWidth = Math.max(20, width - 6);
       journalText.content = styled(
@@ -389,12 +413,60 @@ function inspect(state: Dashboard, row: TaskRow, width: number): Line[] {
 
   for (const lane of lanesOf(state, row.key)) {
     lines.push([], [span(`── ${lane.role}${lane.lane ? ` · ${lane.lane}` : ""} `, "accent", { bold: true })]);
-    for (const tool of lane.tools.slice(-5)) lines.push([span(fit(`› ${tool}`, width).trimEnd(), "muted")]);
+    for (const tool of lane.tools.slice(-5)) lines.push([span(`› ${tool}`.replace(/[\t\r\n]+/g, " "), "muted")]);
     const said = withoutResponseBlock([lane.text, lane.draft].filter(Boolean).join("\n\n"));
     if (said) lines.push(...wrap(said, width).slice(-14).map((line): Line => [span(line)]));
   }
   if (lines.length === 1 && row.status === "waiting") lines.push([span("En attente de ses dependances.", "muted")]);
   return lines;
+}
+
+function rightPanel(state: Dashboard, screen: Screen, selected: TaskRow | null, width: number): Line[] {
+  if (screen.view === "changes") return changesPanel(state, screen, width);
+  if (screen.view === "explain") return explain(state).flatMap((entry): Line[] => (entry.text ? wrap(entry.text, width).map((part) => [span(part, OUTPUT_TONES[entry.tone], { bold: entry.tone === "title" })]) : [[]]));
+  return selected ? inspect(state, selected, width) : [[span("Aucune tache selectionnee.", "muted")]];
+}
+
+function changesPanel(state: Dashboard, screen: Screen, width: number): Line[] {
+  const workspaces = Object.values(state.workspaces);
+  if (workspaces.length === 0) return [[span("Aucun worktree ouvert pour l'instant.", "muted")]];
+  const changes = screen.changes ?? [];
+  const lines: Line[] = [];
+  for (const workspace of workspaces) {
+    const read = changes.find((entry) => entry.repo === workspace.repo);
+    if (lines.length) lines.push([]);
+    lines.push([span(workspace.repo, "text", { bold: true }), span(`  ${workspace.branch}`, "accent")]);
+    lines.push([span("worktree  ", "muted"), span(workspace.directory, "info")]);
+    if (!read) {
+      lines.push([span("Lecture en cours…", "muted")]);
+      continue;
+    }
+    if (read.error) {
+      lines.push([span(read.error, "danger")]);
+      continue;
+    }
+    if (read.commits.length === 0 && read.stat.length === 0) {
+      lines.push([span("Rien d'ecrit pour l'instant.", "muted")]);
+      continue;
+    }
+    for (const commit of read.commits) lines.push([span(`· ${commit}`, "success")]);
+    if (read.stat.length) lines.push([]);
+    for (const row of read.stat) lines.push([span(row.trim(), "muted")]);
+  }
+  return lines.map((line) => (line.length ? line : [span("", "muted")]));
+}
+
+/**
+ * Flips a sideways wheel before the box reads it. The terminal reports the raw wheel direction,
+ * which runs against the gesture the vertical scroll already follows. `onMouse` is called ahead
+ * of the box's own handler, so changing the direction here is what the box ends up scrolling by.
+ */
+function mirrorSideways(box: ScrollBoxRenderable): void {
+  box.onMouse = (event: MouseEvent) => {
+    const scroll = event.type === "scroll" ? event.scroll : null;
+    if (scroll?.direction === "left") scroll.direction = "right";
+    else if (scroll?.direction === "right") scroll.direction = "left";
+  };
 }
 
 function clock(at: number): string {

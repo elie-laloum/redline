@@ -73,6 +73,8 @@ export type RunEvent =
       readonly passed?: boolean;
       readonly logPath?: string | null;
     }
+  /** Where a repo's worktree lives, so the human can go and read it while the run works in it. */
+  | { readonly type: "workspace"; readonly repo: string; readonly directory: string; readonly branch: string; readonly base: string }
   | { readonly type: "publication"; readonly task: string; readonly action: PublicationAction; readonly detail: string; readonly url: string | null }
   /** A pre-flight step before the run, or a line its command printed. */
   | { readonly type: "preflight"; readonly step: string; readonly status: "ok" | "fail" | "output"; readonly detail: string }

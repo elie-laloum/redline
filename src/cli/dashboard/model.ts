@@ -53,6 +53,14 @@ export interface CommandRun {
   readonly entry: number;
 }
 
+export interface Workspace {
+  readonly repo: string;
+  readonly directory: string;
+  readonly branch: string;
+  /** The ref the branch was cut from, which every diff of the run is taken against. */
+  readonly base: string;
+}
+
 export type Tone = "info" | "success" | "warning" | "error";
 
 export interface JournalEntry {
@@ -87,6 +95,8 @@ export interface Dashboard {
   readonly minutes: readonly { readonly minute: number; readonly tokens: number }[];
   readonly lanes: readonly Lane[];
   readonly commands: Readonly<Record<string, readonly CommandRun[]>>;
+  /** Where each repo's worktree lives, as the run opened it. */
+  readonly workspaces: Readonly<Record<string, Workspace>>;
   readonly journal: readonly JournalEntry[];
   readonly waiting: string | null;
   /** The question the waiting task put, as asked. */
@@ -125,6 +135,7 @@ export function createDashboard(ticket: { readonly key: string; readonly title: 
     minutes: [],
     lanes: [],
     commands: {},
+    workspaces: {},
     journal: [],
     waiting: null,
     asked: null,
@@ -174,6 +185,12 @@ export function reduce(state: Dashboard, event: RunEvent, now: number): Dashboar
     }
     case "command":
       return onCommand(next, event, now);
+    case "workspace": {
+      const known = state.workspaces[event.repo];
+      if (known?.directory === event.directory) return next;
+      const workspace: Workspace = { repo: event.repo, directory: event.directory, branch: event.branch, base: event.base };
+      return { ...next, workspaces: { ...state.workspaces, [event.repo]: workspace } };
+    }
     case "publication":
       return log(next, now, "success", event.task, `↗ ${event.detail}`, event.url);
     case "warning":

@@ -1,7 +1,8 @@
 import type { CliRenderer, KeyEvent } from "@opentui/core";
+import { collectChanges } from "../dashboard/changes.ts";
 import type { RunEvent } from "../../domain/run-events.ts";
 import { createDashboard, type Dashboard, reduce, tick, type Tone } from "../dashboard/model.ts";
-import { createDashboardView, type DashboardView, type Screen } from "./view.ts";
+import { createDashboardView, type DashboardView, RIGHT_VIEWS, type Screen } from "./view.ts";
 
 const FRAME_MS = 50;
 
@@ -68,6 +69,20 @@ export function createBoard(renderer: CliRenderer, ticket: { readonly key: strin
     state = tick(state, Date.now());
     schedule();
   }, 1000);
+
+  // The changes view reads git, so it refreshes on its own slow beat and only while it is open.
+  let reading = false;
+  const watcher = setInterval(() => {
+    const workspaces = Object.values(state.workspaces);
+    if (screen.view !== "changes" || reading || workspaces.length === 0) return;
+    reading = true;
+    collectChanges(workspaces)
+      .then((changes) => set({ changes }))
+      .catch(() => {})
+      .finally(() => {
+        reading = false;
+      });
+  }, 3000);
   renderer.on("resize", schedule);
   schedule();
 
@@ -105,6 +120,17 @@ export function createBoard(renderer: CliRenderer, ticket: { readonly key: strin
           follow();
           schedule();
           return true;
+        case "v": {
+          const order = RIGHT_VIEWS;
+          const index = Math.max(0, order.indexOf(screen.view));
+          set({ view: order[(index + 1) % order.length] ?? "inspector", ...(screen.view === "inspector" ? {} : { changes: null }) });
+          return true;
+        }
+        case "left":
+        case "right":
+          view.scrollSideways(screen.focus, key.name === "left" ? -1 : 1);
+          renderer.requestRender();
+          return true;
         default:
           return false;
       }
@@ -116,6 +142,7 @@ export function createBoard(renderer: CliRenderer, ticket: { readonly key: strin
     },
     dispose() {
       clearInterval(clock);
+      clearInterval(watcher);
       if (scheduled) clearTimeout(scheduled);
       scheduled = null;
       renderer.off("resize", schedule);

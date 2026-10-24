@@ -69,6 +69,13 @@ tokens in a single file.
   YAML for any other — then its gates, commands and agents. What agents said stays after their
   phase ends. Parallel agents inside one task (the scope scouts) appear as separate lanes, one per
   repository.
+- `v` switches the right panel between three views. The inspector is the one above. Changes
+  lists, per worktree the run opened, its path, its branch, the commits the run made and the
+  `git diff --stat` against the base branch; it reads git every three seconds, only while it is
+  shown. Explanation reads the run back in plain words — where it is, what is working, what each
+  judge of the current loop checks, which budgets are spent or one turn from spent, and what each
+  kind of escalation asks of you. It is derived from the dashboard alone and asks no agent.
+- The inspector does not wrap long lines: `←` `→`, or a sideways wheel, scrolls it horizontally.
 - The usage card shows the ticket's total tokens, with the current phase's underneath. The phase's
   are restored from its checkpoint when it starts, then counted from the workflow's usage events;
   every workflow run records what it spent in the ledger (`usage`, by run id), which gives the
@@ -111,6 +118,8 @@ Questions are panels that appear and disappear, not overlays:
 | `↑` `↓` / `j` `k` | select a task |
 | `Tab` | cycle focus: tasks → inspector → journal, and the question panel while one waits |
 | `PgUp` `PgDn` | scroll the focused panel; in a question, its text or the plan |
+| `←` `→` | scroll the inspector sideways |
+| `v` | cycle the right panel: inspector → changes → explanation |
 | `f` | follow the active task again |
 | `Enter` | confirm a choice |
 | `Enter` in a text area | send the answer |
@@ -135,6 +144,7 @@ listens; clack ignores what it cannot show.
 | `question` | the session, before asking the human | the request as asked: outpost's input request event does not carry it |
 | `agent` | `ask()` | `{ task, lane? }`, role, the raw `AgentObservation` |
 | `gate` | `converge`, after each verdict | task, gate, round, verdict, spent / budget, feedback text; the budget is null when rebuilt from a checkpoint |
+| `workspace` | delivery, when it opens a repository's worktree | repository, directory, branch, the base ref every diff is taken against |
 | `command` | registry checks and dependency installs | task, label, command, start / progress / end, exit code, log path |
 | `publication` | release and closing | tag, pipeline, push, merge request, Slack, Jira — with a link when there is one |
 | `warning` | the session and the memory step | what the run carries on without: a memory that would not pull or push |
