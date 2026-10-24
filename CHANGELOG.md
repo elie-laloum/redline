@@ -53,6 +53,9 @@ releases are tagged `v<version>` and published to npm as
   through a second shell that expands the `{a,b}` list a multi-file lot renders, so the runner
   received one word per file and a runner refusing positionals failed before any test ran — an
   `environment` escalation that blamed the runner (#3).
+- The inspector shows what an agent said, without the structured block it answers with. A role
+  ends on its `<tests>{…}</tests>` or `<verdict>{…}</verdict>`, and the panel keeps the last
+  lines, so a finished task showed its JSON and hid the prose above it.
 
 ## 4.0.1 — 2026-10-01
 
