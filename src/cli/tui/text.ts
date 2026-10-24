@@ -60,3 +60,16 @@ export function wrap(text: string, width: number): string[] {
     return lines;
   });
 }
+
+/**
+ * Trims a notice to `max` lines by keeping its first line and its last ones, the elision counted
+ * in between. A command's output ends on what made it fail, so keeping only the head drops the
+ * one part worth reading.
+ */
+export function fitNotice(lines: readonly string[], max: number): string[] {
+  if (max <= 0) return [];
+  if (lines.length <= max) return [...lines];
+  if (max <= 2) return lines.slice(-max);
+  const tail = lines.slice(-(max - 2));
+  return [lines[0] ?? "", `… ${lines.length - tail.length - 1} ligne(s) masquee(s), journal complet : redline status`, ...tail];
+}

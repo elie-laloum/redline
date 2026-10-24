@@ -4,6 +4,14 @@ All notable changes to redline. Versions follow [semantic versioning](https://se
 releases are tagged `v<version>` and published to npm as
 [`@elie-laloum/redline`](https://www.npmjs.com/package/@elie-laloum/redline).
 
+## Unreleased
+
+### Fixed
+
+- An escalation banner too long for the screen keeps its heading and its **end**, and says how
+  many lines it hid, instead of silently showing the first four. A failed command ends on what
+  made it fail, so the banner used to show progress lines and hide the error itself.
+
 ## 4.0.1 — 2026-10-01
 
 ### Fixed

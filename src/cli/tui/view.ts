@@ -19,7 +19,7 @@ import { formatDuration, formatTokens } from "../dashboard/format.ts";
 import { describeOutput, type OutputTone } from "../dashboard/outputs.ts";
 import type { RunPhase } from "../../domain/run-events.ts";
 import { labelOf } from "../labels.ts";
-import { badge, bar, fit, type Line, span, sparkline, styled, wrap } from "./text.ts";
+import { badge, bar, fit, fitNotice, type Line, span, sparkline, styled, wrap } from "./text.ts";
 import { THEME, type ThemeColor } from "./theme.ts";
 
 export type Focus = "tasks" | "inspector" | "journal" | "question";
@@ -66,6 +66,7 @@ const TONES: Record<Tone, ThemeColor> = { info: "text", success: "success", warn
 const OUTPUT_TONES: Record<OutputTone, ThemeColor> = { title: "text", text: "text", muted: "muted", success: "success", warning: "warning", danger: "danger", info: "info" };
 const PHASE_ORDER: readonly RunPhase[] = ["framing", "delivery", "closing"];
 const JOURNAL_LINES = 200;
+const NOTICE_LINES = 8;
 const FOOTER = "↑↓ tache · Tab panneau · PgUp/PgDn defiler · f suivre l'active · q quitter · Ctrl-C arreter";
 const WATCH_FOOTER = "↑↓ tache · Tab panneau · PgUp/PgDn defiler · f suivre l'active";
 const QUESTION_FOOTER = "Entree envoyer · Shift/Alt+Entree nouvelle ligne · Esc revenir aux choix · Tab relire le tableau de bord · Ctrl-C arreter";
@@ -208,7 +209,7 @@ export function createDashboardView(renderer: CliRenderer, onSelect: (task: stri
       const notice = screen.notice ?? (waiting ? { tone: "warning" as const, text: waiting } : null);
       banner.visible = notice !== null;
       if (notice) {
-        const lines = wrap(notice.text, Math.max(20, width - 6)).slice(0, 4);
+        const lines = fitNotice(wrap(notice.text, Math.max(20, width - 6)), NOTICE_LINES);
         banner.height = lines.length + 2;
         banner.borderColor = THEME[TONES[notice.tone]];
         bannerText.content = styled(lines.map((line, index) => [span(line, TONES[notice.tone], { bold: index === 0 })]));
