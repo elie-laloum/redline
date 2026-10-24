@@ -73,3 +73,15 @@ export function fitNotice(lines: readonly string[], max: number): string[] {
   const tail = lines.slice(-(max - 2));
   return [lines[0] ?? "", `… ${lines.length - tail.length - 1} ligne(s) masquee(s), journal complet : redline status`, ...tail];
 }
+
+/** `<tests>{…}</tests>`, `<verdict>{…}</verdict>`: the block a role answers with, closed or still streaming. */
+const RESPONSE_BLOCK = /<([a-z][a-z0-9-]*)>\s*[[{][\s\S]*?(?:<\/\1>|$)/g;
+
+/**
+ * Drops the structured block an agent ends on. It belongs to the parser, and showing it buries
+ * what the agent said under its own JSON — the more so in a panel that keeps the last lines,
+ * where the block is always what is left.
+ */
+export function withoutResponseBlock(said: string): string {
+  return said.replace(RESPONSE_BLOCK, "").replace(/\n{3,}/g, "\n\n").trim();
+}

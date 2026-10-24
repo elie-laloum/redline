@@ -19,7 +19,7 @@ import { formatDuration, formatTokens } from "../dashboard/format.ts";
 import { describeOutput, type OutputTone } from "../dashboard/outputs.ts";
 import type { RunPhase } from "../../domain/run-events.ts";
 import { labelOf } from "../labels.ts";
-import { badge, bar, fit, fitNotice, type Line, span, sparkline, styled, wrap } from "./text.ts";
+import { badge, bar, fit, fitNotice, type Line, span, sparkline, styled, withoutResponseBlock, wrap } from "./text.ts";
 import { THEME, type ThemeColor } from "./theme.ts";
 
 export type Focus = "tasks" | "inspector" | "journal" | "question";
@@ -390,7 +390,7 @@ function inspect(state: Dashboard, row: TaskRow, width: number): Line[] {
   for (const lane of lanesOf(state, row.key)) {
     lines.push([], [span(`── ${lane.role}${lane.lane ? ` · ${lane.lane}` : ""} `, "accent", { bold: true })]);
     for (const tool of lane.tools.slice(-5)) lines.push([span(fit(`› ${tool}`, width).trimEnd(), "muted")]);
-    const said = [lane.text, lane.draft].filter(Boolean).join("\n\n");
+    const said = withoutResponseBlock([lane.text, lane.draft].filter(Boolean).join("\n\n"));
     if (said) lines.push(...wrap(said, width).slice(-14).map((line): Line => [span(line)]));
   }
   if (lines.length === 1 && row.status === "waiting") lines.push([span("En attente de ses dependances.", "muted")]);
