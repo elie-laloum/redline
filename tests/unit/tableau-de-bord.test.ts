@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "bun:test";
 import type { TaskStatus, WorkflowEvent } from "@elie-laloum/outpost/workflows";
 import type { AgentObservation } from "@elie-laloum/outpost/integrations";
+import { collectChanges } from "../../src/cli/dashboard/changes.ts";
+import { explain } from "../../src/cli/dashboard/explain.ts";
 import { begin, createDashboard, type Dashboard, interrupt, LIMITS, lanesOf, progressOf, reduce, repoProgress, runUsage, usageSeries } from "../../src/cli/dashboard/model.ts";
 import type { RunEvent, RunPhase } from "../../src/domain/run-events.ts";
 
@@ -264,9 +266,39 @@ describe("le modele du tableau de bord", () => {
     assert.deepEqual([state.journal.at(-1)?.text, state.journal.at(-1)?.url], ["↗ core : MR ouverte", "https://gitlab/mr/1"]);
   });
 
+  it("retient le worktree de chaque depot tel que le run l'a ouvert", () => {
+    const opened: RunEvent = { type: "workspace", repo: "core", directory: "/w/core-1", branch: "feat/FT-1-filtre", base: "origin/dev" };
+    const once = play([phase("delivery", DELIVERY), opened]);
+    const twice = reduce(once, opened, T0 + 9000);
+    assert.deepEqual(once.workspaces, { core: { repo: "core", directory: "/w/core-1", branch: "feat/FT-1-filtre", base: "origin/dev" } });
+    assert.equal(twice.workspaces, once.workspaces);
+  });
+
   it("borne le journal", () => {
     const state = play([phase("delivery", DELIVERY), ...Array.from({ length: LIMITS.journal + 10 }, () => workflow("retry", "core.tests", T0))]);
     assert.equal(state.journal.length, LIMITS.journal);
     assert.equal(state.journal.at(-1)?.id, LIMITS.journal + 11);
+  });
+});
+
+describe("les vues du panneau de droite", () => {
+  it("explique un juge a bout de budget et celui a qui il reste un tour", () => {
+    const state = play([
+      phase("delivery", { ...DELIVERY, "core.code": "active" }),
+      { type: "gate", task: "core.code", gate: "vert", round: 2, verdict: "feedback", spent: 2, budget: 3, text: "rouge" },
+      { type: "gate", task: "core.code", gate: "adversaire", round: 2, verdict: "feedback", spent: 2, budget: 1, text: "C1 toujours pas" },
+    ]);
+    const said = explain({ ...state, loop: "core.code" });
+    const meaning = said.filter((line) => line.tone === "danger" || line.tone === "warning").map((line) => line.text);
+    assert.ok(meaning.includes("adversaire a epuise son budget : le run va rendre la main plutot que de tourner."));
+    assert.ok(meaning.includes("vert en est a 2/3 : il reste un tour avant l'escalade."));
+  });
+
+  it("rend l'erreur d'un worktree illisible sans vider les autres", async () => {
+    const changes = await collectChanges([{ repo: "core", directory: "/nonexistent/redline-worktree", branch: "feat/FT-1", base: "origin/dev" }]);
+    assert.equal(changes.length, 1);
+    assert.equal(changes[0]?.repo, "core");
+    assert.deepEqual([changes[0]?.commits, changes[0]?.stat], [[], []]);
+    assert.ok(changes[0]?.error);
   });
 });

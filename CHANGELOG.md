@@ -6,6 +6,14 @@ releases are tagged `v<version>` and published to npm as
 
 ## Unreleased
 
+### Added
+
+- The dashboard's right panel has three views, cycled with `v`: the inspector; the changes the
+  run made in each worktree — path, branch, commits and diff stat against the base branch, read
+  from git while the view is shown; and an explanation of the run in plain words — where it is,
+  what each judge of the loop checks, which budgets are spent or one turn from spent. The inspector
+  scrolls sideways with `←` `→` or the wheel, in the direction of the gesture.
+
 ### Changed
 
 - Upgrade outpost from 9.0.0 to 14.3.0. Outpost now appends the expected answer format to every

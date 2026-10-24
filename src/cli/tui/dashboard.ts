@@ -38,7 +38,7 @@ const BELL = "\u0007";
 export async function openDashboard(ticket: { readonly key: string; readonly title: string }, hooks: DashboardHooks): Promise<DashboardSession> {
   const terminal = await openTerminal();
   const { renderer } = terminal;
-  const board = createBoard(renderer, ticket, { selected: null, follow: true, focus: "tasks", layout: "dashboard", notice: null, ended: false, watching: null });
+  const board = createBoard(renderer, ticket, { selected: null, follow: true, focus: "tasks", view: "inspector", changes: null, layout: "dashboard", notice: null, ended: false, watching: null });
   const panel = createQuestionPanel(renderer, board.view.slots.question, board.view.slots.review);
 
   let confirming = false;

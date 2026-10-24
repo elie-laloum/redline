@@ -42,6 +42,7 @@ export function openTarget(run: DeliveryContext, target: RepoTarget): Promise<Re
 
 export async function withTarget<T>(run: DeliveryContext, target: RepoTarget, work: (workspace: RepoWorkspace) => Promise<T>): Promise<T> {
   const workspace = await openTarget(run, target);
+  run.events?.({ type: "workspace", repo: target.repo.name, directory: workspace.directory, branch: workspace.branch, base: `origin/${target.repo.baseBranch}` });
   try {
     return await work(workspace);
   } finally {
