@@ -26,6 +26,10 @@ releases are tagged `v<version>` and published to npm as
 - An escalation banner too long for the screen keeps its heading and its **end**, and says how
   many lines it hid, instead of silently showing the first four. A failed command ends on what
   made it fail, so the banner used to show progress lines and hide the error itself.
+- A resume recognises every stale checkpoint outpost refuses, the loop and speculation kinds
+  included, and hands back the escalation that names `--fresh`. Only the plain workflow wording
+  matched, so the other two escaped as a raw stack — after the ledger had already been reopened,
+  which is the state where `--fresh` no longer applies. The one remedy became unreachable.
 
 ## 4.0.1 — 2026-10-01
 
