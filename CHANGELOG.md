@@ -4,6 +4,15 @@ All notable changes to redline. Versions follow [semantic versioning](https://se
 releases are tagged `v<version>` and published to npm as
 [`@elie-laloum/redline`](https://www.npmjs.com/package/@elie-laloum/redline).
 
+## Unreleased
+
+### Fixed
+
+- A resume recognises every stale checkpoint outpost refuses, the loop and speculation kinds
+  included, and hands back the escalation that names `--fresh`. Only the plain workflow wording
+  matched, so the other two escaped as a raw stack — after the ledger had already been reopened,
+  which is the state where `--fresh` no longer applies. The one remedy became unreachable.
+
 ## 4.0.1 — 2026-10-01
 
 ### Fixed

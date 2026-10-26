@@ -34,6 +34,15 @@ export interface DriveOptions {
 
 const REOPEN = { amend: "plan", "reject-functional": "functional", "reject-technical": "technical" } as const;
 
+/**
+ * outpost refuses a checkpoint its current definitions cannot read, and names the kind it was
+ * reading: `workflow`, `workflow loop` or `speculation`. All three mean the same thing here --
+ * the saved state was written by other code -- and all three are answered with `--fresh`.
+ */
+export function staleCheckpoint(error: unknown): boolean {
+  return error instanceof Error && /\bincompatible\b.*\bcheckpoint\b/i.test(error.message);
+}
+
 export async function drive(app: AppContext, key: string, request: DriveRequest, options: DriveOptions = {}): Promise<DriveOutcome> {
   let ledger = readLedger(app.paths, key) ?? failMissing(key);
   let answers = request.answers;
@@ -49,7 +58,7 @@ export async function drive(app: AppContext, key: string, request: DriveRequest,
       if ("outcome" in next) return next.outcome;
       ledger = next.ledger;
     } catch (error) {
-      if (!(error instanceof Error && /incompatible workflow checkpoint/i.test(error.message)) || ledger.phase === "done" || ledger.phase === "escalated") throw error;
+      if (!staleCheckpoint(error) || ledger.phase === "done" || ledger.phase === "escalated") throw error;
       const detail = `le checkpoint de ${ledger.phase} a ete ecrit par une autre version des briefs ou de redline. Reprends avec bun redline resume ${key} --fresh : les taches finies sont restituees par le cache.`;
       return escalate(app, ledger, ledger.phase, { kind: "environment", task: ledger.phase, detail, at: new Date().toISOString() });
     }
