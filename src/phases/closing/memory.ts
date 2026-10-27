@@ -8,7 +8,7 @@ import { digest } from "../../domain/digest.ts";
 import type { Frontmatter } from "../../domain/memory.ts";
 import { type ContradictionDecision, type MemoryOp, memoryOpProblems } from "../../domain/memory-ops.ts";
 import { renderPlan } from "../../domain/plan.ts";
-import { type Converged, converge } from "../../workflow/converge.ts";
+import { briefOf, type Converged, converge } from "../../workflow/converge.ts";
 import { cached, emit, type RunContext, withReader } from "../run.ts";
 import type { ClosingContext } from "./context.ts";
 
@@ -45,7 +45,7 @@ export function memoryPlanTask(run: ClosingContext): Task<Converged<MemoryPlan>>
           index: indexOf(run),
           today: new Date().toISOString().slice(0, 10),
           maxNoteLines: settings.memory.maxNoteLines,
-          feedback: carry.feedback?.text ?? null,
+          feedback: briefOf(carry),
         }),
       ),
     gates: [
