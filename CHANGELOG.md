@@ -16,6 +16,10 @@ releases are tagged `v<version>` and published to npm as
   loop or speculation. One sentence blaming a version of redline or of the briefs was rendered for
   all three, when only the workflow identity is built from a version: the other two sent their
   reader after a mismatch that cannot be the cause.
+- A command the silence watchdog abandons reports the silence the watchdog acted on. Being killed
+  makes a command talk — a shutdown banner, a runner's summary — so the measure taken once the
+  pipes close read a few milliseconds, and the escalation claimed the command had been dropped
+  `apres 0s` of silence.
 
 ## 4.0.1 — 2026-10-01
 
