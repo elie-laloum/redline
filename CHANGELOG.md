@@ -4,6 +4,23 @@ All notable changes to redline. Versions follow [semantic versioning](https://se
 releases are tagged `v<version>` and published to npm as
 [`@elie-laloum/redline`](https://www.npmjs.com/package/@elie-laloum/redline).
 
+## Unreleased
+
+### Fixed
+
+- A resume recognises every stale checkpoint outpost refuses, the loop and speculation kinds
+  included, and hands back the escalation that names `--fresh`. Only the plain workflow wording
+  matched, so the other two escaped as a raw stack — after the ledger had already been reopened,
+  which is the state where `--fresh` no longer applies. The one remedy became unreachable.
+- A stale-checkpoint escalation quotes outpost's refusal and explains the kind it names — workflow,
+  loop or speculation. One sentence blaming a version of redline or of the briefs was rendered for
+  all three, when only the workflow identity is built from a version: the other two sent their
+  reader after a mismatch that cannot be the cause.
+- A command the silence watchdog abandons reports the silence the watchdog acted on. Being killed
+  makes a command talk — a shutdown banner, a runner's summary — so the measure taken once the
+  pipes close read a few milliseconds, and the escalation claimed the command had been dropped
+  `apres 0s` of silence.
+
 ## 4.0.1 — 2026-10-01
 
 ### Fixed
