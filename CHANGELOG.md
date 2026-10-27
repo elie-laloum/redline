@@ -34,6 +34,10 @@ releases are tagged `v<version>` and published to npm as
   converge loop built its carry from the note only while there was no gate feedback, so any
   repair round dropped it without a word; the note now travels in its own field and is recalled
   under the gate's verdict as a standing constraint.
+- A stale-checkpoint escalation quotes outpost's refusal and explains the kind it names — workflow,
+  loop or speculation. One sentence blaming a version of redline or of the briefs was rendered for
+  all three, when only the workflow identity is built from a version: the other two sent their
+  reader after a mismatch that cannot be the cause.
 
 ## 4.0.1 — 2026-10-01
 
