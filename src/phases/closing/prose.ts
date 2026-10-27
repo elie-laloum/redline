@@ -8,7 +8,7 @@ import { TEMPLATES } from "../../app/paths.ts";
 import { digest } from "../../domain/digest.ts";
 import { renderPlan } from "../../domain/plan.ts";
 import { publishableProblems } from "../../domain/voice.ts";
-import { type Converged, converge } from "../../workflow/converge.ts";
+import { briefOf, type Converged, converge } from "../../workflow/converge.ts";
 import { cached, withReader } from "../run.ts";
 import type { ClosingContext } from "./context.ts";
 
@@ -43,7 +43,7 @@ export function proseTask(run: ClosingContext, after: readonly Task[]): Task<Con
           voice: voice.rules,
           calibrated: voice.calibrated,
           channels,
-          feedback: carry.feedback?.text ?? null,
+          feedback: briefOf(carry),
         }),
       ),
     gates: [

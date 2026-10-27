@@ -13,7 +13,7 @@ import { failingLines, renderCheck, renderVerdicts } from "../../domain/feedback
 import { batches, type PlanCode } from "../../domain/plan.ts";
 import type { Contradiction } from "../../domain/scope.ts";
 import { isTestFile } from "../../domain/zones.ts";
-import { type Converged, converge, type Gate, type Verdict } from "../../workflow/converge.ts";
+import { briefOf, type Converged, converge, type Gate, type Verdict } from "../../workflow/converge.ts";
 import { cached, commandObserver, session } from "../run.ts";
 import { commitWork } from "./commit.ts";
 import { arbitragesOf, type DeliveryContext, monorepoFilter, type RepoTarget, seedOf, withTarget } from "./context.ts";
@@ -110,7 +110,7 @@ export function codeTask(run: DeliveryContext, target: RepoTarget, tests: Task<C
           contradictions: produced.flatMap((lot) => lot.contradictions),
         };
       }
-      return developerTurn(run, target, context, { task: key, feedback: carry.feedback?.text ?? null, lines: target.entry.code });
+      return developerTurn(run, target, context, { task: key, feedback: briefOf(carry), lines: target.entry.code });
     },
     gates: [
       appealsGate(run, target, budgets.testDispute, budgets.disputeBeforeEscalation),
