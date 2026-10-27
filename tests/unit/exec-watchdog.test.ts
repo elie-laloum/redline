@@ -35,6 +35,13 @@ describe("le chien de garde de silence", () => {
     assert.equal(stopReason(ok), null);
   });
 
+  it("rend le silence sur lequel il a tranche, meme quand l'agonie de la commande parle", async () => {
+    const result = await run("trap 'echo adieu' TERM; sleep 30", at(30_000, 1_000));
+    assert.equal(result.stoppedBy, "silence");
+    assert.ok(result.silentForMs >= 1_000, `silence rendu : ${result.silentForMs}ms`);
+    assert.match(stopReason(result) ?? "", /apres [1-9]\d*s/);
+  });
+
   it("rend le plus long silence traverse, pas seulement le dernier", async () => {
     const result = await run("echo debut; sleep 1.2; echo milieu; sleep 0.2; echo fin", at(20_000, 10_000));
     assert.ok(result.maxSilentMs >= 1_000);

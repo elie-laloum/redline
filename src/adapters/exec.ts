@@ -48,6 +48,8 @@ export function run(command: string, options: RunOptions): Promise<RunResult> {
     let maxSilentMs = 0;
     let stoppedBy: StopCause = "exit";
     let settled = false;
+    /** The silence the watchdog acted on. Dying is itself loud, so by `done` the measure is gone. */
+    let silentAtStop: number | null = null;
 
     const killTree = (): void => {
       const pid = child.pid;
@@ -70,8 +72,10 @@ export function run(command: string, options: RunOptions): Promise<RunResult> {
     const timer = setTimeout(() => stop("timeout"), options.timeoutMs);
     const tick = Math.max(1000, Math.min(PROGRESS_EVERY_MS, options.silenceMs / 2));
     const watchdog = setInterval(() => {
-      if (Date.now() - lastOutputAt >= options.silenceMs) {
+      const silentFor = Date.now() - lastOutputAt;
+      if (silentFor >= options.silenceMs) {
         clearInterval(watchdog);
+        silentAtStop = silentFor;
         stop("silence");
         return;
       }
@@ -98,7 +102,7 @@ export function run(command: string, options: RunOptions): Promise<RunResult> {
       clearTimeout(timer);
       clearInterval(watchdog);
       options.signal?.removeEventListener("abort", onAbort);
-      const silentForMs = Date.now() - lastOutputAt;
+      const silentForMs = silentAtStop ?? Date.now() - lastOutputAt;
       resolve({
         ...partial,
         command,
@@ -143,7 +147,7 @@ export function stopReason(result: Pick<RunResult, "stoppedBy" | "silentForMs" |
     case "exit":
       return null;
     case "silence":
-      return `Commande abandonnee apres ${Math.round(result.silentForMs / 1000)}s sans la moindre sortie : attente d'infrastructure probable (conteneurs, base, ports), pas un test lent.`;
+      return `Commande abandonnee apres ${Math.round(result.silentForMs / 1000)}s sans la moindre sortie : attente d'infrastructure (conteneurs, base, ports) ou machine trop chargee pour relever la sortie, pas un test lent.`;
     case "abort":
       return "Commande interrompue a la demande.";
     default:
