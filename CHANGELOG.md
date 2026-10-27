@@ -12,6 +12,10 @@ releases are tagged `v<version>` and published to npm as
   included, and hands back the escalation that names `--fresh`. Only the plain workflow wording
   matched, so the other two escaped as a raw stack — after the ledger had already been reopened,
   which is the state where `--fresh` no longer applies. The one remedy became unreachable.
+- A stale-checkpoint escalation quotes outpost's refusal and explains the kind it names — workflow,
+  loop or speculation. One sentence blaming a version of redline or of the briefs was rendered for
+  all three, when only the workflow identity is built from a version: the other two sent their
+  reader after a mismatch that cannot be the cause.
 
 ## 4.0.1 — 2026-10-01
 

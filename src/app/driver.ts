@@ -36,11 +36,24 @@ const REOPEN = { amend: "plan", "reject-functional": "functional", "reject-techn
 
 /**
  * outpost refuses a checkpoint its current definitions cannot read, and names the kind it was
- * reading: `workflow`, `workflow loop` or `speculation`. All three mean the same thing here --
- * the saved state was written by other code -- and all three are answered with `--fresh`.
+ * reading: `workflow`, `workflow loop` or `speculation`. All three mean the saved state no longer
+ * reads against the definitions in force, and all three are answered with `--fresh`.
  */
-export function staleCheckpoint(error: unknown): boolean {
+export function staleCheckpoint(error: unknown): error is Error {
   return error instanceof Error && /\bincompatible\b.*\bcheckpoint\b/i.test(error.message);
+}
+
+/**
+ * What the refusal is about, by the kind outpost named. The plain workflow checkpoint is keyed by
+ * an identity hashed from the workflow name, the version it was opened with and the task graph, so
+ * a version is a real suspect there. The loop and speculation refusals come out of their own
+ * validators, where that version plays no part: naming it sends the reader after a mismatch that
+ * does not exist.
+ */
+export function refusedCheckpoint(error: Error): string {
+  if (/\bloop checkpoint\b/i.test(error.message)) return "les tours sauvegardes ne se relisent plus avec la boucle en cours";
+  if (/\bspeculation checkpoint\b/i.test(error.message)) return "l'etat de speculation sauvegarde ne se relit plus";
+  return "l'identite du workflow a change depuis l'ecriture : son nom, le graphe des taches, ou la version de redline et des briefs";
 }
 
 export async function drive(app: AppContext, key: string, request: DriveRequest, options: DriveOptions = {}): Promise<DriveOutcome> {
@@ -59,7 +72,7 @@ export async function drive(app: AppContext, key: string, request: DriveRequest,
       ledger = next.ledger;
     } catch (error) {
       if (!staleCheckpoint(error) || ledger.phase === "done" || ledger.phase === "escalated") throw error;
-      const detail = `le checkpoint de ${ledger.phase} a ete ecrit par une autre version des briefs ou de redline. Reprends avec bun redline resume ${key} --fresh : les taches finies sont restituees par le cache.`;
+      const detail = `le checkpoint de ${ledger.phase} a ete refuse par outpost ("${error.message}") : ${refusedCheckpoint(error)}. Reprends avec bun redline resume ${key} --fresh : les taches finies sont restituees par le cache.`;
       return escalate(app, ledger, ledger.phase, { kind: "environment", task: ledger.phase, detail, at: new Date().toISOString() });
     }
   }

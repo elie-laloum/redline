@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "bun:test";
-import { staleCheckpoint } from "../../src/app/driver.ts";
+import { refusedCheckpoint, staleCheckpoint } from "../../src/app/driver.ts";
 
 /** The three refusals outpost can raise, taken verbatim from its validators. */
 const OUTPOST = [
@@ -9,7 +9,7 @@ const OUTPOST = [
   "Invalid or incompatible speculation checkpoint",
 ];
 
-describe("le checkpoint qu'une autre version a ecrit", () => {
+describe("le checkpoint que les definitions en cours ne relisent plus", () => {
   it("est reconnu quelle que soit la sorte nommee par outpost", () => {
     for (const message of OUTPOST) assert.equal(staleCheckpoint(new Error(message)), true, message);
   });
@@ -23,5 +23,13 @@ describe("le checkpoint qu'une autre version a ecrit", () => {
   it("ne confond pas une valeur qui n'est pas une erreur", () => {
     assert.equal(staleCheckpoint("Invalid or incompatible workflow loop checkpoint"), false);
     assert.equal(staleCheckpoint(null), false);
+  });
+
+  it("ne met la version en cause que pour la sorte dont elle fait l'identite", () => {
+    const [workflow, loop, speculation] = OUTPOST.map((message) => refusedCheckpoint(new Error(message)));
+    assert.match(workflow ?? "", /version de redline et des briefs/);
+    assert.doesNotMatch(loop ?? "", /version/);
+    assert.doesNotMatch(speculation ?? "", /version/);
+    assert.notEqual(loop, speculation);
   });
 });
