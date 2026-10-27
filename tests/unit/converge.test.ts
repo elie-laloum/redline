@@ -3,7 +3,7 @@ import { afterAll, describe, it } from "bun:test";
 import { createLocalTransport, createWorkflowCheckpointStore, defineWorkflow, type WorkflowJson } from "@elie-laloum/outpost";
 import { parseEscalation } from "../../src/domain/escalation.ts";
 import type { RunEvent, RunObserver } from "../../src/domain/run-events.ts";
-import { type Carry, converge, type Gate, type Verdict } from "../../src/workflow/converge.ts";
+import { briefOf, type Carry, converge, type Gate, type Verdict } from "../../src/workflow/converge.ts";
 import { temporaryDirectory } from "../helpers.ts";
 
 const storage = temporaryDirectory();
@@ -75,6 +75,21 @@ describe("converge", () => {
   it("transmet la note humaine au premier tour", async () => {
     const { carries } = await execute([scriptedGate("adversary", 1, [])], "garde le contrat v1");
     assert.deepEqual(carries[0]?.feedback, { gate: "humain", text: "garde le contrat v1" });
+  });
+
+  it("garde la note humaine une fois qu'une porte a pris le canal du retour", async () => {
+    const adversary = scriptedGate("adversary", 3, [{ kind: "feedback", text: "T2 ne verifie rien" }]);
+    const { carries } = await execute([adversary], "garde le contrat v1");
+    assert.deepEqual(carries.map(briefOf), [
+      "garde le contrat v1",
+      "T2 ne verifie rien\n\nNote de l'humain a la reprise, valable a chaque tour :\ngarde le contrat v1",
+    ]);
+  });
+
+  it("laisse le retour de la porte seul quand la reprise n'a donne aucune note", async () => {
+    const adversary = scriptedGate("adversary", 3, [{ kind: "feedback", text: "rouge pour une erreur d'import" }]);
+    const { carries } = await execute([adversary]);
+    assert.deepEqual(carries.map(briefOf), [null, "rouge pour une erreur d'import"]);
   });
 
   it("escalade quand un juge depasse son propre budget, sans toucher a celui des autres", async () => {

@@ -30,6 +30,10 @@ releases are tagged `v<version>` and published to npm as
   included, and hands back the escalation that names `--fresh`. Only the plain workflow wording
   matched, so the other two escaped as a raw stack — after the ledger had already been reopened,
   which is the state where `--fresh` no longer applies. The one remedy became unreachable.
+- A `--note` given to `resume` reaches every round of the reopened task, not only the first. The
+  converge loop built its carry from the note only while there was no gate feedback, so any
+  repair round dropped it without a word; the note now travels in its own field and is recalled
+  under the gate's verdict as a standing constraint.
 
 ## 4.0.1 — 2026-10-01
 
