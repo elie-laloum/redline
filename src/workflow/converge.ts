@@ -11,6 +11,8 @@ export type Verdict =
 export interface Carry {
   readonly round: number;
   readonly spent: Readonly<Record<string, number>>;
+  /** The note the human gave when reopening this generation. Unlike `feedback`, it outlives the first round. */
+  readonly seed: string | null;
   readonly feedback: { readonly gate: string; readonly text: string } | null;
   readonly memo: Readonly<Record<string, WorkflowJson>>;
 }
@@ -70,7 +72,7 @@ export function converge<C>(options: ConvergeOptions<C>): Task<Converged<C>> {
         if (spent > gate.budget) {
           throw new Escalation("convergence", `${options.key}/${gate.name}`, `budget de ${gate.budget} tour(s) epuise. Dernier retour : ${verdict.text}`);
         }
-        const next: Carry = { round: carry.round + 1, spent: { ...carry.spent, [gate.name]: spent }, feedback: { gate: gate.name, text: verdict.text }, memo };
+        const next: Carry = { round: carry.round + 1, spent: { ...carry.spent, [gate.name]: spent }, seed: carry.seed, feedback: { gate: gate.name, text: verdict.text }, memo };
         return { done: false, feedback: JSON.stringify(next) };
       }
       return { done: true };
@@ -78,10 +80,24 @@ export function converge<C>(options: ConvergeOptions<C>): Task<Converged<C>> {
   });
 }
 
-function initial(seed: string | null): Carry {
-  return { round: 1, spent: {}, feedback: seed ? { gate: "humain", text: seed } : null, memo: {} };
+/**
+ * What the maker must act on this round: the refusal that sent it back, with the human note
+ * restated under it. `feedback` is the gate's channel from the second round on, so the note
+ * would otherwise be read once and never again — on a loop that takes several rounds, which is
+ * the ordinary case, a human would be instructing nobody.
+ */
+export function briefOf(carry: Carry): string | null {
+  const refusal = carry.feedback?.text ?? null;
+  if (!carry.seed || carry.feedback?.gate === "humain") return refusal;
+  return refusal ? `${refusal}\n\nNote de l'humain a la reprise, valable a chaque tour :\n${carry.seed}` : carry.seed;
 }
 
+function initial(seed: string | null): Carry {
+  return { round: 1, spent: {}, seed, feedback: seed ? { gate: "humain", text: seed } : null, memo: {} };
+}
+
+/** `seed` is absent from a checkpoint an earlier version wrote. */
 function decode(feedback: string): Carry {
-  return JSON.parse(feedback) as Carry;
+  const carry = JSON.parse(feedback) as Carry;
+  return { ...carry, seed: carry.seed ?? null };
 }

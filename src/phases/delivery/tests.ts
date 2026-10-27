@@ -13,7 +13,7 @@ import { failingLines, renderCheck, renderVerdicts } from "../../domain/feedback
 import { isTestFile } from "../../domain/zones.ts";
 import type { CheckResult } from "../../ports/checks.ts";
 import type { RepoWorkspace } from "../../ports/sandboxes.ts";
-import { type Converged, converge, type Gate, type Verdict } from "../../workflow/converge.ts";
+import { briefOf, type Converged, converge, type Gate, type Verdict } from "../../workflow/converge.ts";
 import { Escalation } from "../../workflow/escalation.ts";
 import { cached, commandObserver, session } from "../run.ts";
 import { commitWork } from "./commit.ts";
@@ -38,7 +38,7 @@ export function testsTask(run: DeliveryContext, target: RepoTarget, workspace: T
       after: [workspace],
       perform: async (context) => {
         const head = await git(context.value(workspace).directory, ["rev-parse", "HEAD"]);
-        return { candidate: { files: [], reverted: [], head }, carry: { round: 0, spent: {}, feedback: null, memo: {} } };
+        return { candidate: { files: [], reverted: [], head }, carry: { round: 0, spent: {}, seed: null, feedback: null, memo: {} } };
       },
     });
   }
@@ -60,7 +60,7 @@ export function testsTask(run: DeliveryContext, target: RepoTarget, workspace: T
             entry: target.entry,
             arbitrages: arbitragesOf(run),
             kinds: declaredTestKinds(target.repo),
-            feedback: carry.feedback?.text ?? null,
+            feedback: briefOf(carry),
           }),
         );
         if (reply.uncoverable.length > 0) {

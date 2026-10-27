@@ -6,7 +6,7 @@ import { declaredTestKinds, findRepo, type RepoEntry } from "../../domain/config
 import { digest } from "../../domain/digest.ts";
 import { type Plan, planProblems } from "../../domain/plan.ts";
 import type { TicketSnapshot } from "../../domain/ticket.ts";
-import { type Converged, converge } from "../../workflow/converge.ts";
+import { briefOf, type Converged, converge } from "../../workflow/converge.ts";
 import type { Interviewed } from "../../workflow/interview.ts";
 import { cached, type RunContext, withReader } from "../run.ts";
 import { type GrillOutcome, renderGrill, renderScope } from "./grills.ts";
@@ -54,7 +54,7 @@ export function planTask(
           repos: renderCapabilities(repos),
           types: settings.naming.types,
           memory: context.value(deps.memory).rendered,
-          feedback: carry.feedback?.text ?? null,
+          feedback: briefOf(carry),
         });
       }),
     gates: [
