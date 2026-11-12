@@ -1,4 +1,4 @@
-import { defineTask, type Task, type TaskContext, type WorkflowInputQuestion, type WorkflowJson } from "@elie-laloum/outpost";
+import { defineTask, type Task, type TaskContext, type WorkflowInputQuestion, type WorkflowJson } from "@elie-laloum/outpost/workflows";
 import { Escalation } from "./escalation.ts";
 import { createMemo, type MemoOptions } from "./memo.ts";
 

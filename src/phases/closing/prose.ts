@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Task } from "@elie-laloum/outpost";
+import type { Task } from "@elie-laloum/outpost/workflows";
 import { finalizer } from "../../agents/finalizer.ts";
 import { arbitrages, bullets } from "../../agents/render.ts";
 import { ask } from "../../agents/role.ts";

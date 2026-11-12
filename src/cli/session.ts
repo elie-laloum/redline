@@ -1,4 +1,4 @@
-import type { WorkflowAnswer } from "@elie-laloum/outpost";
+import type { WorkflowAnswer } from "@elie-laloum/outpost/workflows";
 import type { AppContext } from "../app/context.ts";
 import { type DriveOutcome, type DriveRequest, drive } from "../app/driver.ts";
 import { openJournal } from "../app/event-journal.ts";

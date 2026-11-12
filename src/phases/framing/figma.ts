@@ -1,4 +1,4 @@
-import { defineTask, type Task } from "@elie-laloum/outpost";
+import { defineTask, type Task } from "@elie-laloum/outpost/workflows";
 import { figmaDirectory } from "../../app/paths.ts";
 import { type FigmaRef, findFigmaUrls, outline, parseFigmaUrl } from "../../domain/figma.ts";
 import type { TicketSnapshot } from "../../domain/ticket.ts";

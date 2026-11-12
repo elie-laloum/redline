@@ -1,13 +1,7 @@
 import assert from "node:assert/strict";
 import { afterAll, describe, it } from "bun:test";
-import {
-  createLocalTransport,
-  createTaskCacheStore,
-  createWorkflowCheckpointStore,
-  defineWorkflow,
-  type WorkflowInputRequest,
-  type WorkflowResult,
-} from "@elie-laloum/outpost";
+import { createLocalTransport } from "@elie-laloum/outpost/core";
+import { createTaskCacheStore, createWorkflowCheckpointStore, defineWorkflow, type WorkflowInputRequest, type WorkflowResult } from "@elie-laloum/outpost/workflows";
 import { parseEscalation } from "../../src/domain/escalation.ts";
 import { defineInterview, type Exchange, type Question, type Turn } from "../../src/workflow/interview.ts";
 import { temporaryDirectory } from "../helpers.ts";

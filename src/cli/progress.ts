@@ -1,5 +1,6 @@
 import * as clack from "@clack/prompts";
-import type { AgentObservation, WorkflowEvent } from "@elie-laloum/outpost";
+import type { WorkflowEvent } from "@elie-laloum/outpost/workflows";
+import type { AgentObservation } from "@elie-laloum/outpost/integrations";
 import type { RoleName } from "../domain/roles.ts";
 import type { RunEvent } from "../domain/run-events.ts";
 import { labelOf } from "./labels.ts";

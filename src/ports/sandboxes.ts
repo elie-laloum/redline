@@ -1,4 +1,4 @@
-import type { Sandbox } from "@elie-laloum/outpost";
+import type { Sandbox } from "@elie-laloum/outpost/core";
 import type { RepoEntry } from "../domain/config.ts";
 
 export interface RepoWorkspace {

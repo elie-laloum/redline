@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { TaskCacheStore, TaskContext, WorkflowJson } from "@elie-laloum/outpost";
+import type { TaskCacheStore, TaskContext, WorkflowJson } from "@elie-laloum/outpost/workflows";
 
 export interface MemoOptions {
   readonly store: TaskCacheStore;

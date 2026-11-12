@@ -1,4 +1,4 @@
-import { defineWorkflow, type Workflow, type WorkflowResult } from "@elie-laloum/outpost";
+import { defineWorkflow, type Workflow, type WorkflowResult } from "@elie-laloum/outpost/workflows";
 import type { Plan } from "../../domain/plan.ts";
 import type { Contradiction, Scope } from "../../domain/scope.ts";
 import type { TicketSnapshot } from "../../domain/ticket.ts";

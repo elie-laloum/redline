@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { defineTask, type LoopTaskContext, type Task } from "@elie-laloum/outpost";
+import { defineTask, type LoopTaskContext, type Task } from "@elie-laloum/outpost/workflows";
 import { redChecker } from "../../agents/red-checker.ts";
 import { bullets } from "../../agents/render.ts";
 import { ask } from "../../agents/role.ts";

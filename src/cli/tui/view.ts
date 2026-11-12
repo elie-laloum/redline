@@ -1,5 +1,5 @@
 import { BoxRenderable, type CliRenderer, type MouseEvent, ScrollBoxRenderable, TextRenderable } from "@opentui/core";
-import type { TaskStatus } from "@elie-laloum/outpost";
+import type { TaskStatus } from "@elie-laloum/outpost/workflows";
 import {
   commandsOf,
   type Dashboard,

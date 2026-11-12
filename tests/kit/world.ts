@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { WorkflowInputRequest, WorkflowResult } from "@elie-laloum/outpost";
+import type { WorkflowInputRequest, WorkflowResult } from "@elie-laloum/outpost/workflows";
 import { createOutpostSandboxes } from "../../src/adapters/outpost-sandboxes.ts";
 import { type AppContext, createContext } from "../../src/app/context.ts";
 import { ensureHome } from "../../src/app/home.ts";

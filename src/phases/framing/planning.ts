@@ -1,4 +1,4 @@
-import type { Task } from "@elie-laloum/outpost";
+import type { Task } from "@elie-laloum/outpost/workflows";
 import { planner } from "../../agents/planner.ts";
 import { bullets } from "../../agents/render.ts";
 import { ask } from "../../agents/role.ts";

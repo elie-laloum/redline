@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { type AgentAuthentication, createAgent, createClaudeHarness, type DispatchAgent } from "@elie-laloum/outpost";
+import { type AgentAuthentication, createAgent, createClaudeHarness, type DispatchAgent } from "@elie-laloum/outpost/core";
 import type { AuthMode, Settings } from "../domain/config.ts";
 import { fail } from "../domain/failure.ts";
 import type { RoleName } from "../domain/roles.ts";

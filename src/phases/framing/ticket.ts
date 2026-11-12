@@ -1,4 +1,4 @@
-import { defineTask, type Task } from "@elie-laloum/outpost";
+import { defineTask, type Task } from "@elie-laloum/outpost/workflows";
 import type { RelatedTicket, TicketReference, TicketSnapshot } from "../../domain/ticket.ts";
 import type { Tracker } from "../../ports/tracker.ts";
 import type { RunContext } from "../run.ts";

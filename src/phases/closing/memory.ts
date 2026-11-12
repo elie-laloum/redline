@@ -1,4 +1,4 @@
-import { defineTask, type Task } from "@elie-laloum/outpost";
+import { defineTask, type Task } from "@elie-laloum/outpost/workflows";
 import { memoryPlanner } from "../../agents/memory-planner.ts";
 import { arbitrages, bullets } from "../../agents/render.ts";
 import { ask } from "../../agents/role.ts";

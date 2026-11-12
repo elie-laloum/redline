@@ -1,4 +1,5 @@
-import type { Logging, Workflow, WorkflowAnswer, WorkflowCheckpoint, WorkflowCheckpointStore, WorkflowEvent, WorkflowInputRequest, WorkflowResult } from "@elie-laloum/outpost";
+import type { Logging } from "@elie-laloum/outpost/core";
+import type { Workflow, WorkflowAnswer, WorkflowCheckpoint, WorkflowCheckpointStore, WorkflowEvent, WorkflowInputRequest, WorkflowResult } from "@elie-laloum/outpost/workflows";
 import { type EscalationRecord, parseEscalation } from "../domain/escalation.ts";
 import { describeError } from "../domain/failure.ts";
 import { addTokens, NO_TOKENS, type PhaseTask, type RunEvent, type RunObserver, type RunPhase, type Tokens } from "../domain/run-events.ts";

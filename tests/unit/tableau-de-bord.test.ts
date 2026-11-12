@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "bun:test";
-import type { AgentObservation, TaskStatus, WorkflowEvent } from "@elie-laloum/outpost";
+import type { TaskStatus, WorkflowEvent } from "@elie-laloum/outpost/workflows";
+import type { AgentObservation } from "@elie-laloum/outpost/integrations";
 import { begin, createDashboard, type Dashboard, interrupt, LIMITS, lanesOf, progressOf, reduce, repoProgress, runUsage, usageSeries } from "../../src/cli/dashboard/model.ts";
 import type { RunEvent, RunPhase } from "../../src/domain/run-events.ts";
 

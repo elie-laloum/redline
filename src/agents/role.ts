@@ -1,5 +1,8 @@
 import { join } from "node:path";
-import { type AgentObservation, defineAgentTask, defineJsonResponse, type Logging, type PromptVariables, ResponseError, type Sandbox, type TaskContext } from "@elie-laloum/outpost";
+import { defineJsonResponse, type Logging, type PromptVariables, ResponseError, type ResponseSpec, type Sandbox } from "@elie-laloum/outpost/core";
+import { defineAgentTask, type TaskContext } from "@elie-laloum/outpost/workflows";
+import type { AgentObservation } from "@elie-laloum/outpost/integrations";
+import { toJsonSchema } from "@valibot/to-json-schema";
 import type * as v from "valibot";
 import type { RoleName } from "../domain/roles.ts";
 import type { AgentSource, RunObserver } from "../domain/run-events.ts";
@@ -48,7 +51,7 @@ export async function ask<I, O>(context: TaskContext, session: AgentSession, rol
       agent: session.agents.agent(role.name),
       label: role.name,
       brief: { file: role.prompt, values: role.values(input) },
-      response: defineJsonResponse({ tag: role.tag, schema: role.schema(input), repairs: REPAIRS }),
+      response: roleResponse(role, input, REPAIRS),
       deadlineMs: limits.deadlineMs,
       idleMs: limits.idleMs,
       ...(session.logging !== undefined ? { logging: session.logging } : {}),
@@ -64,6 +67,15 @@ export async function ask<I, O>(context: TaskContext, session: AgentSession, rol
 }
 
 const REPAIRS = 2;
+
+/**
+ * The valibot schema alone decides whether an answer is accepted. The JSON Schema only describes the
+ * expected answer to the agent, so a rule it cannot express is dropped from it rather than failing the call.
+ */
+export function roleResponse<I, O>(role: Role<I, O>, input: I, repairs?: number): ResponseSpec<O> {
+  const schema = role.schema(input);
+  return defineJsonResponse<O>({ tag: role.tag, schema, jsonSchema: { ...toJsonSchema(schema, { errorMode: "ignore" }) }, ...(repairs !== undefined ? { repairs } : {}) });
+}
 
 function summarize(error: ResponseError): string {
   const issues = /"message":"([^"]+)"/g;

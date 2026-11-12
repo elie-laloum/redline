@@ -1,4 +1,4 @@
-import type { DispatchAgent } from "@elie-laloum/outpost";
+import type { DispatchAgent } from "@elie-laloum/outpost/core";
 import type { RoleName } from "../domain/roles.ts";
 
 export interface AgentLimits {

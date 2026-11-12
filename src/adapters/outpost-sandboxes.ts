@@ -1,6 +1,8 @@
 import { existsSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
-import { createSandbox, openWorkspace, type SandboxProvider } from "@elie-laloum/outpost";
+import { createSandbox } from "@elie-laloum/outpost/core";
+import { openWorkspace } from "@elie-laloum/outpost/workspaces";
+import type { SandboxProvider } from "@elie-laloum/outpost/integrations";
 import { createDockerSandboxProvider } from "@elie-laloum/outpost/providers/docker";
 import { createLocalSandboxProvider } from "@elie-laloum/outpost/providers/local";
 import type { Registry, Settings } from "../domain/config.ts";

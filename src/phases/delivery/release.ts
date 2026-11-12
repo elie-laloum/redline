@@ -1,4 +1,4 @@
-import { defineTask, type Task } from "@elie-laloum/outpost";
+import { defineTask, type Task } from "@elie-laloum/outpost/workflows";
 import { manifestVersion } from "../../adapters/packages.ts";
 import { git, gitAllowFailure, listTags } from "../../adapters/git.ts";
 import { parseDevVersion, nextDevVersion } from "../../domain/versions.ts";

@@ -10,7 +10,7 @@ const ROOT = resolve(import.meta.dir, "..", "..", "..");
 
 /** The outpost CLI, on the terminal, or line by line to `output` while a screen holds the terminal. */
 function outpost(args: readonly string[], output?: (line: string) => void): Promise<number> {
-  const cli = join(dirname(fileURLToPath(import.meta.resolve("@elie-laloum/outpost"))), "cli", "main.js");
+  const cli = join(dirname(fileURLToPath(import.meta.resolve("@elie-laloum/outpost/core"))), "cli", "main.js");
   return new Promise((done) => {
     const child = spawn(process.execPath, ["--no-env-file", cli, ...args], { stdio: output ? ["ignore", "pipe", "pipe"] : "inherit", cwd: ROOT });
     if (output) {
@@ -29,7 +29,7 @@ function outpost(args: readonly string[], output?: (line: string) => void): Prom
 export function buildImage(image: string, output?: (line: string) => void): Promise<number> {
   const uid = String(process.getuid?.() ?? 1000);
   const gid = String(process.getgid?.() ?? 1000);
-  return outpost(["image", "build", "--directory", ROOT, "--file", join(ROOT, "docker", "agent.Dockerfile"), "--image", image, "--uid", uid, "--gid", gid], output);
+  return outpost(["image", "build", "--directory", ROOT, "--file", join(ROOT, "docker", "agent.Dockerfile"), "--tag", image, "--uid", uid, "--gid", gid], output);
 }
 
 export async function imageBuildCommand(): Promise<number> {
@@ -55,5 +55,5 @@ export async function imageDoctorCommand(): Promise<number> {
   const app = createContext();
   const image = app.configuration.settings.sandbox.image;
   await sandboxPreflight(app);
-  return outpost(["doctor", "--sandbox-provider", "docker", "--agent", "claude", "--image", image]);
+  return outpost(["doctor", "--provider", "docker", "--agent", "claude", "--image", image]);
 }

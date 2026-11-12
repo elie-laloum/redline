@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { defineTask, type Task } from "@elie-laloum/outpost";
+import { defineTask, type Task } from "@elie-laloum/outpost/workflows";
 import { ensureImages, runtimeStatus, startRuntime } from "../../adapters/container-runtime.ts";
 import { run as execute, stopReason } from "../../adapters/exec.ts";
 import { git, gitAllowFailure } from "../../adapters/git.ts";

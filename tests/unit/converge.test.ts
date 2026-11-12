@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { afterAll, describe, it } from "bun:test";
-import { createLocalTransport, createWorkflowCheckpointStore, defineWorkflow, type WorkflowJson } from "@elie-laloum/outpost";
+import { createLocalTransport } from "@elie-laloum/outpost/core";
+import { createWorkflowCheckpointStore, defineWorkflow, type WorkflowJson } from "@elie-laloum/outpost/workflows";
 import { parseEscalation } from "../../src/domain/escalation.ts";
 import type { RunEvent, RunObserver } from "../../src/domain/run-events.ts";
 import { briefOf, type Carry, converge, type Gate, type Verdict } from "../../src/workflow/converge.ts";

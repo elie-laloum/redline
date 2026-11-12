@@ -1,4 +1,4 @@
-import type { Task } from "@elie-laloum/outpost";
+import type { Task } from "@elie-laloum/outpost/workflows";
 import { renderPlan, type Plan } from "../../domain/plan.ts";
 import { type TicketSnapshot, titleDrift } from "../../domain/ticket.ts";
 import type { Converged } from "../../workflow/converge.ts";

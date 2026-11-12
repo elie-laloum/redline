@@ -3,10 +3,11 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, describe, it } from "bun:test";
-import { defineJsonResponse, defineTask, defineWorkflow, openWorkspace } from "@elie-laloum/outpost";
+import { defineTask, defineWorkflow } from "@elie-laloum/outpost/workflows";
+import { openWorkspace } from "@elie-laloum/outpost/workspaces";
 import { createLocalSandboxProvider } from "@elie-laloum/outpost/providers/local";
 import * as roles from "../../src/agents/index.ts";
-import { ask, type Role } from "../../src/agents/role.ts";
+import { ask, type Role, roleResponse } from "../../src/agents/role.ts";
 import { ROLE_NAMES } from "../../src/domain/roles.ts";
 import { fakeAgents } from "../kit/agents.ts";
 import { PLAN_REPO, TICKET } from "../kit/samples.ts";
@@ -97,7 +98,7 @@ describe("le contrat de chaque prompt", () => {
   for (const entry of CASES) {
     describe(entry.role.name, () => {
       const source = existsSync(entry.role.prompt) ? readFileSync(entry.role.prompt, "utf8") : "";
-      const response = () => defineJsonResponse({ tag: entry.role.tag, schema: entry.role.schema(entry.input as never) });
+      const response = () => roleResponse(entry.role, entry.input as never);
 
       it("a un brief qui porte exactement les variables fournies", () => {
         assert.ok(source, `${entry.role.prompt} absent`);

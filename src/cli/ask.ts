@@ -1,5 +1,5 @@
 import * as clack from "@clack/prompts";
-import type { WorkflowInputRequest } from "@elie-laloum/outpost";
+import type { WorkflowInputRequest } from "@elie-laloum/outpost/workflows";
 
 export interface Prompter {
   ask(request: WorkflowInputRequest): Promise<string | null>;

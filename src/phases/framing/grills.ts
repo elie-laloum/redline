@@ -1,4 +1,4 @@
-import type { Task, TaskContext } from "@elie-laloum/outpost";
+import type { Task, TaskContext } from "@elie-laloum/outpost/workflows";
 import { functionalGrill } from "../../agents/functional-grill.ts";
 import { arbitrages as renderArbitrages } from "../../agents/render.ts";
 import { ask } from "../../agents/role.ts";

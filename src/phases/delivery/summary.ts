@@ -1,4 +1,4 @@
-import { defineTask, type Task } from "@elie-laloum/outpost";
+import { defineTask, type Task } from "@elie-laloum/outpost/workflows";
 import { git } from "../../adapters/git.ts";
 import type { Contradiction } from "../../domain/scope.ts";
 import type { Converged } from "../../workflow/converge.ts";
