@@ -70,7 +70,9 @@ version is a digest of the briefs of the roles involved: editing a brief invalid
 tasks that use it.
 
 **Versions.** A checkpoint's version is a digest of redline's version, outpost's version and every
-brief. A checkpoint written by another version escalates as `environment` instead of crashing;
+brief. A checkpoint outpost refuses to reopen escalates as `environment` instead of crashing, and
+the escalation quotes the refusal: a `workflow` checkpoint is refused when that version differs,
+while the `loop` and `speculation` kinds come from their own validators, which never read a version.
 `resume --fresh` starts a new attempt and the cache restores what still holds.
 
 ## Bounded loops: `converge`
@@ -85,14 +87,19 @@ gates. Each round, `make` produces a candidate, and the gates judge it in order:
 | `environment` | escalation at once, no turn spent |
 | `arbitrage` | escalation at once: a human decides |
 
-A gate that exceeds its own budget escalates as `convergence`. Budgets are per gate, so a
-talkative adversary cannot use up the turns meant for a red run. Each verdict is published as a
-`gate` event with the spent and total budget.
+A gate that exceeds its own budget escalates as `convergence`, with one exception: on the turn
+that would escalate, the test adversary passes a lot whose every checklist line is proven, and its
+remaining weaknesses are reported as a `note` on the `gate` event. A missing line still blocks.
+Budgets are per gate, so a talkative adversary cannot use up the turns meant for a red run. Each
+verdict is published as a `gate` event with the spent and total budget.
+
+A `resume --note` is the loop's seed. It travels in the carry beside the gate's feedback, so every
+round of the reopened task reads it under the latest verdict, not only the first.
 
 | Loop | Gates, in order |
 |---|---|
-| `<repo>.tests` | `zone` — only test files · `adversaire` — the test adversary · `rouge` — the tests run red, for the right reason |
-| `<repo>.code` | `recours` — reverted test edits and appeals · `tests-modifies` — tests the arbiter changed still hold · `vert` — typecheck, lint and suites · `adversaire` — the code adversary |
+| `<repo>.tests` | `zone` — only test files · `adversaire` — the test adversary, bound by the arbitrages like the writer · `rouge` — the tests run red, for the right reason |
+| `<repo>.code` | `recours` — reverted test edits and appeals · `tests-modifies` — once the arbiter changed tests, the checklist still holds over the whole delivered suite · `vert` — typecheck, lint and suites · `adversaire` — the code adversary |
 | `plan` | `validite` — the plan rules |
 | `memory-plan` | `validite` — the memory operations apply |
 | `prose` | `publiable` — the texts can be published |
@@ -113,6 +120,12 @@ Each role in `agents/` declares its input, its response schema and its brief in
 is given, validates the JSON answer against the schema, and reports every agent observation with
 the task — and lane, for parallel scouts — that asked. The model and reasoning effort come from
 `agents.default` and `agents.byRole`.
+
+The schema is a valibot schema, and it alone decides whether an answer is accepted. Outpost appends
+the expected answer format to every brief, from a JSON Schema that `roleResponse()` derives from it
+with `@valibot/to-json-schema`. What JSON Schema cannot express — `trim` transformations and the
+cross-field `check` rules — is left out of that description: the briefs state those rules, and a
+breach comes back to the agent as valibot's message on the repair turn.
 
 Agents work in two kinds of sandboxes:
 
