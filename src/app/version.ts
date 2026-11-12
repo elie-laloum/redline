@@ -13,7 +13,7 @@ export function promptDigest(roles: readonly RoleName[]): string {
 }
 
 export function outpostVersion(): string {
-  const entry = fileURLToPath(import.meta.resolve("@elie-laloum/outpost"));
+  const entry = fileURLToPath(import.meta.resolve("@elie-laloum/outpost/core"));
   return (JSON.parse(readFileSync(join(dirname(entry), "..", "package.json"), "utf8")) as { version: string }).version;
 }
 

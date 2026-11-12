@@ -1,4 +1,5 @@
-import type { AgentObservation, TaskStatus, WorkflowEvent, WorkflowInputRequest } from "@elie-laloum/outpost";
+import type { TaskStatus, WorkflowEvent, WorkflowInputRequest } from "@elie-laloum/outpost/workflows";
+import type { AgentObservation } from "@elie-laloum/outpost/integrations";
 import type { RoleName } from "./roles.ts";
 
 export type RunPhase = "framing" | "delivery" | "closing";

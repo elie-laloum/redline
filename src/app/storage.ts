@@ -1,14 +1,7 @@
 import { createHash } from "node:crypto";
-import {
-  createLocalTransport,
-  createTaskCacheStore,
-  createWorkflowCheckpointStore,
-  recoverWorkflowCheckpoint,
-  type TaskCacheStore,
-  type Transport,
-  type WorkflowCheckpoint,
-  type WorkflowCheckpointStore,
-} from "@elie-laloum/outpost";
+import { createLocalTransport } from "@elie-laloum/outpost/core";
+import { createTaskCacheStore, createWorkflowCheckpointStore, recoverWorkflowCheckpoint, type TaskCacheStore, type WorkflowCheckpoint, type WorkflowCheckpointStore } from "@elie-laloum/outpost/workflows";
+import type { Transport } from "@elie-laloum/outpost/storage";
 import { type Paths, runDirectory } from "./paths.ts";
 
 export interface RunStorage {

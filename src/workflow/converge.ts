@@ -1,4 +1,4 @@
-import { defineLoopTask, type LoopTaskContext, type Task, type TaskCacheOptions, type TaskContext, type WorkflowJson } from "@elie-laloum/outpost";
+import { defineLoopTask, type LoopTaskContext, type Task, type TaskCacheOptions, type TaskContext, type WorkflowJson } from "@elie-laloum/outpost/workflows";
 import type { RunObserver } from "../domain/run-events.ts";
 import { Escalation } from "./escalation.ts";
 

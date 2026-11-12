@@ -1,4 +1,5 @@
-import type { Logging, TaskCacheOptions, TaskCacheStore, TaskContext, WorkflowJson } from "@elie-laloum/outpost";
+import type { Logging } from "@elie-laloum/outpost/core";
+import type { TaskCacheOptions, TaskCacheStore, TaskContext, WorkflowJson } from "@elie-laloum/outpost/workflows";
 import type { AgentSession } from "../agents/role.ts";
 import type { AppContext } from "../app/context.ts";
 import type { Ledger } from "../app/ledger.ts";

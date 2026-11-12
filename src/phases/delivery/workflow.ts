@@ -1,4 +1,4 @@
-import { defineWorkflow, type Task, type Workflow, type WorkflowResult } from "@elie-laloum/outpost";
+import { defineWorkflow, type Task, type Workflow, type WorkflowResult } from "@elie-laloum/outpost/workflows";
 import { downstreamInScope } from "../../domain/config.ts";
 import { batchTasks, codeTask } from "./code.ts";
 import { type DeliveryContext, targetsOf } from "./context.ts";

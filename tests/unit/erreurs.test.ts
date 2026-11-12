@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterAll, beforeAll, describe, it } from "bun:test";
-import { OutpostError } from "@elie-laloum/outpost";
+import { OutpostError } from "@elie-laloum/outpost/core";
 import { createJira } from "../../src/adapters/jira.ts";
 import { escalationOf } from "../../src/app/driver.ts";
 import { describeError, RedlineError } from "../../src/domain/failure.ts";

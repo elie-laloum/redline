@@ -1,4 +1,4 @@
-import { defineTask, type LoopTaskContext, type Task, type TaskContext, type WorkflowJson } from "@elie-laloum/outpost";
+import { defineTask, type LoopTaskContext, type Task, type TaskContext, type WorkflowJson } from "@elie-laloum/outpost/workflows";
 import { type Appeal, appealArbiter } from "../../agents/appeal-arbiter.ts";
 import { codeAdversary } from "../../agents/code-adversary.ts";
 import { developer } from "../../agents/developer.ts";

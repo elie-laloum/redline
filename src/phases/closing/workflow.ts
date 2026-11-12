@@ -1,4 +1,4 @@
-import { defineWorkflow, type Workflow, type WorkflowResult } from "@elie-laloum/outpost";
+import { defineWorkflow, type Workflow, type WorkflowResult } from "@elie-laloum/outpost/workflows";
 import type { ClosingContext } from "./context.ts";
 import { type MemoryApplied, memoryApplyTask, memoryPlanTask } from "./memory.ts";
 import { proseTask } from "./prose.ts";

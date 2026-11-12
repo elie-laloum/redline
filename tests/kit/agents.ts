@@ -1,4 +1,5 @@
-import { createAgent, createHarness, createHarnessEditTools, type DispatchAgent, type ModelProvider, type ModelRequest, type ModelResult } from "@elie-laloum/outpost";
+import { createAgent, type DispatchAgent } from "@elie-laloum/outpost/core";
+import { createHarness, createHarnessEditTools, type ModelProvider, type ModelRequest, type ModelResult } from "@elie-laloum/outpost/harness";
 import * as roles from "../../src/agents/index.ts";
 import type { RoleName } from "../../src/domain/roles.ts";
 import type { AgentFactory } from "../../src/ports/agents.ts";

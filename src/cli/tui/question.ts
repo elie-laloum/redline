@@ -1,5 +1,5 @@
 import { BoxRenderable, type CliRenderer, ScrollBoxRenderable, TextareaRenderable, TextRenderable } from "@opentui/core";
-import type { WorkflowInputRequest } from "@elie-laloum/outpost";
+import type { WorkflowInputRequest } from "@elie-laloum/outpost/workflows";
 import { CHOICES } from "../../phases/framing/review.ts";
 import { ChoiceList } from "./choices.ts";
 import { type Line, span, styled, wrap } from "./text.ts";

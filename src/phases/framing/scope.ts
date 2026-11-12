@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { defineTask, type Task, type TaskContext } from "@elie-laloum/outpost";
+import { defineTask, type Task, type TaskContext } from "@elie-laloum/outpost/workflows";
 import { ask } from "../../agents/role.ts";
 import { scopeScout } from "../../agents/scope-scout.ts";
 import { expandTilde } from "../../app/paths.ts";

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { appendFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { afterEach, describe, it } from "bun:test";
-import type { AgentObservation } from "@elie-laloum/outpost";
+import type { AgentObservation } from "@elie-laloum/outpost/integrations";
 import { followJournal, type JournalLine, openJournal, readJournal } from "../../src/app/event-journal.ts";
 import { journalFile, pathsOf } from "../../src/app/paths.ts";
 import type { RunEvent } from "../../src/domain/run-events.ts";

@@ -1,4 +1,4 @@
-import { defineTask, type Task, type TaskContext } from "@elie-laloum/outpost";
+import { defineTask, type Task, type TaskContext } from "@elie-laloum/outpost/workflows";
 import { renderNotes, type SelectionFocus, selectNotes } from "../../domain/memory-selection.ts";
 import type { RunContext } from "../run.ts";
 

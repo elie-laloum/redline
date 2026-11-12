@@ -1,4 +1,5 @@
-import type { AgentObservation, TaskStatus, WorkflowEvent, WorkflowInputRequest } from "@elie-laloum/outpost";
+import type { TaskStatus, WorkflowEvent, WorkflowInputRequest } from "@elie-laloum/outpost/workflows";
+import type { AgentObservation } from "@elie-laloum/outpost/integrations";
 import type { RoleName } from "../../domain/roles.ts";
 import { type AgentSource, addTokens, NO_TOKENS, type PhaseTask, type RunEvent, type RunPhase, type Tokens } from "../../domain/run-events.ts";
 import { labelOf } from "../labels.ts";

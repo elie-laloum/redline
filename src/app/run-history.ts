@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import type { WorkflowCheckpoint, WorkflowEvent } from "@elie-laloum/outpost";
+import type { WorkflowCheckpoint, WorkflowEvent } from "@elie-laloum/outpost/workflows";
 import { addTokens, NO_TOKENS, type PublicationAction, type RunEvent, type RunPhase } from "../domain/run-events.ts";
 import type { Carry } from "../workflow/converge.ts";
 import { phaseTask } from "./driver.ts";

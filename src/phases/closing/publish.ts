@@ -1,4 +1,4 @@
-import { defineTask, type Task } from "@elie-laloum/outpost";
+import { defineTask, type Task } from "@elie-laloum/outpost/workflows";
 import { arbitrages } from "../../agents/render.ts";
 import { gitAllowFailure } from "../../adapters/git.ts";
 import { inviteesFor } from "../../domain/allowlist.ts";
