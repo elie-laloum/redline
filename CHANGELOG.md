@@ -12,6 +12,8 @@ releases are tagged `v<version>` and published to npm as
   agent brief, with a JSON Schema generated from each role's valibot schema by
   `@valibot/to-json-schema`; valibot alone still decides whether an answer is accepted. A run
   started before the upgrade resumes with `--fresh`, its checkpoints being tied to the outpost version.
+- Upgrade outpost to 14.3.1. A run in which a loop task was served by the task cache resumes
+  without `--fresh`: outpost refused to reopen the checkpoint of such a run.
 - A test lot whose every checklist line is proven is no longer rejected by the weaknesses the
   adversary still reports once its budget is spent. The adversary keeps its full budget to have
   them fixed; on the last turn, a fully proven checklist is delivered and the residual weaknesses

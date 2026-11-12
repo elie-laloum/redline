@@ -6,7 +6,7 @@
       "name": "redline",
       "dependencies": {
         "@clack/prompts": "^1.8.1",
-        "@elie-laloum/outpost": "14.3.0",
+        "@elie-laloum/outpost": "14.3.1",
         "@opentui/core": "0.5.14",
         "@valibot/to-json-schema": "^1.8.0",
         "commander": "^15.0.0",
@@ -24,7 +24,7 @@
 
     "@clack/prompts": ["@clack/prompts@1.8.1", "", { "dependencies": { "@clack/core": "1.5.1", "fast-string-width": "^3.0.2", "fast-wrap-ansi": "^0.2.0", "sisteransi": "^1.0.5" } }, "sha512-dlT1m5e/0yUL0kRNcQn7yGLVThkgbB0Ga/1AmfDDC/8ik6AIiSf2QLQO2zPYvefsHP0aFgxO93cVLCCfDp7kzQ=="],
 
-    "@elie-laloum/outpost": ["@elie-laloum/outpost@14.3.0", "", { "dependencies": { "@clack/prompts": "^1.8.1", "ajv": "8.20.0", "commander": "^15.0.0", "import-meta-resolve": "4.2.0", "yaml": "^2.9.1" }, "peerDependencies": { "@1password/sdk": "^0.5.0", "@aws-sdk/client-s3": "^3.1140.0", "@aws-sdk/client-secrets-manager": "^3.1147.0", "@azure/keyvault-secrets": "^4.11.2", "@daytona/sdk": "^0.216.0", "@google-cloud/secret-manager": "^7.1.1", "@infisical/sdk": "^5.0.2", "@opentelemetry/api": "^1.9.0", "@vercel/sandbox": "^3.3.0", "bullmq": "^5.81.5" }, "optionalPeers": ["@1password/sdk", "@aws-sdk/client-s3", "@aws-sdk/client-secrets-manager", "@azure/keyvault-secrets", "@daytona/sdk", "@google-cloud/secret-manager", "@infisical/sdk", "@opentelemetry/api", "@vercel/sandbox", "bullmq"], "bin": { "outpost": "dist/cli/main.js" } }, "sha512-KBkJWjzUxofBoHsEyYPzAJsv+GrP+ctzWeFBL7902dYWXuCGwqiHElrEYYqoUTkaz4HEi3TOsZ/60NllqPFuKg=="],
+    "@elie-laloum/outpost": ["@elie-laloum/outpost@14.3.1", "", { "dependencies": { "@clack/prompts": "^1.8.1", "ajv": "8.20.0", "commander": "^15.0.0", "import-meta-resolve": "4.2.0", "yaml": "^2.9.1" }, "peerDependencies": { "@1password/sdk": "^0.5.0", "@aws-sdk/client-s3": "^3.1140.0", "@aws-sdk/client-secrets-manager": "^3.1147.0", "@azure/keyvault-secrets": "^4.11.2", "@daytona/sdk": "^0.216.0", "@google-cloud/secret-manager": "^7.1.1", "@infisical/sdk": "^5.0.2", "@opentelemetry/api": "^1.9.0", "@vercel/sandbox": "^3.3.0", "bullmq": "^5.81.5" }, "optionalPeers": ["@1password/sdk", "@aws-sdk/client-s3", "@aws-sdk/client-secrets-manager", "@azure/keyvault-secrets", "@daytona/sdk", "@google-cloud/secret-manager", "@infisical/sdk", "@opentelemetry/api", "@vercel/sandbox", "bullmq"], "bin": { "outpost": "dist/cli/main.js" } }, "sha512-r8g96T6ezNO+rOwW0j3GT3c8pOwLsPE8Q3dzJrEmAXAmF1az0BsHaN2H1UP1jBArrB1tPeqRS0bfGaEaZusbTA=="],
 
     "@opentui/core": ["@opentui/core@0.5.14", "", { "dependencies": { "bun-ffi-structs": "0.3.1", "diff": "9.0.0", "marked": "17.0.1", "string-width": "7.2.0", "strip-ansi": "7.1.2" }, "optionalDependencies": { "@opentui/core-darwin-arm64": "0.5.14", "@opentui/core-darwin-x64": "0.5.14", "@opentui/core-linux-arm64": "0.5.14", "@opentui/core-linux-arm64-musl": "0.5.14", "@opentui/core-linux-x64": "0.5.14", "@opentui/core-linux-x64-musl": "0.5.14", "@opentui/core-win32-arm64": "0.5.14", "@opentui/core-win32-x64": "0.5.14" }, "peerDependencies": { "web-tree-sitter": "0.25.10" } }, "sha512-tfQ+PWQyeBnYloB3diEcPqbILv14xemH5jjAEICfPuyNDtGBqrjhUtThrhbvFRuPMcj6IEeXrAk6VE8e91h0kg=="],
 
