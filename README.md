@@ -118,7 +118,7 @@ everything that runs an agent or keeps a workflow alive, and adds none of it its
 | tasks with an `interaction` | grill questions and the plan review — the run stops, the human answers, the run resumes |
 | workflow checkpoints and the task cache | resuming a run where it stopped, and restoring finished tasks after a reopen |
 | `openWorkspace`, `createSandbox`, the Docker provider | one git worktree per repository, agents in containers, registry repositories mounted read-only |
-| `createClaudeHarness`, `defineAgentTask`, `defineJsonResponse` | Claude Code inside the container, answering in validated JSON |
+| `createClaudeHarness`, `defineAgentTask`, `defineJsonResponse` | Claude Code inside the container, answering in JSON validated by each role's valibot schema, the expected format described to it as a JSON Schema |
 | quota pauses | a run that hits a usage limit pauses instead of failing |
 | the `outpost` CLI | `redline image build` and `redline image doctor` |
 
@@ -143,7 +143,7 @@ public, irreversible actions. What can still stop a run is an escalation:
 
 ```
 bun redline resume <KEY>                        # after fixing the environment
-bun redline resume <KEY> --fresh --note "…"     # reopen the escalated task with a new budget
+bun redline resume <KEY> --fresh --note "…"     # reopen the escalated task with a new budget; every round reads the note
 ```
 
 ## Watching a run
