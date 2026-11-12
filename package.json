@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@clack/prompts": "^1.8.1",
-    "@elie-laloum/outpost": "14.3.0",
+    "@elie-laloum/outpost": "14.3.1",
     "@opentui/core": "0.5.14",
     "@valibot/to-json-schema": "^1.8.0",
     "commander": "^15.0.0",
