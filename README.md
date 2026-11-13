@@ -82,6 +82,12 @@ repository in parallel and must cite `file:line` evidence, which redline checks 
 technical grill settles the remaining choices, and the planner writes a plan per repository with
 two checklists — tests and code — that the plan rules validate before a human sees it.
 
+The functional framing prevails over the ticket and over the technical one: the technical grill
+decides how, never what. It may depart from a functional arbitrage only for a technical
+impossibility or a defensible business reason, and only once the human accepts it; a refused
+derogation sends the grill back to another way. Every agent downstream receives the two framings
+in that order, with the accepted derogations marked.
+
 **Delivery** takes the repositories by ascending `level`. In each one, the test writer writes
 failing tests, which must stay inside test files, survive a test adversary, fail when run — a
 test that is already green proves nothing — and fail for the right reason, as judged by the red

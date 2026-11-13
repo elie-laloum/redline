@@ -3,6 +3,7 @@ import * as v from "valibot";
 import { parse } from "yaml";
 import { writeYamlAtomic } from "../adapters/yaml.ts";
 import { SettingsSchema } from "../domain/config.ts";
+import { DEROGATION_GROUNDS } from "../domain/derogation.ts";
 import { ESCALATION_KINDS } from "../domain/escalation.ts";
 import { fail } from "../domain/failure.ts";
 import { PlanSchema } from "../domain/plan.ts";
@@ -17,7 +18,12 @@ export const REOPEN_TARGETS = ["functional", "technical", "plan"] as const;
 const json = v.unknown();
 
 const ContradictionSchema = v.object({ note: v.string(), claim: v.string(), evidence: v.string(), raisedBy: v.string() });
-const ArbitrageSchema = v.object({ question: v.string(), answer: v.string(), why: v.string() });
+const ArbitrageSchema = v.object({
+  question: v.string(),
+  answer: v.string(),
+  why: v.string(),
+  overrides: v.optional(v.nullable(v.object({ functional: v.string(), ground: v.picklist(DEROGATION_GROUNDS) }))),
+});
 const GrillOutcomeSchema = v.object({ arbitrages: v.array(ArbitrageSchema), contradictions: v.array(ContradictionSchema) });
 const TicketReferenceSchema = v.object({ key: v.string(), relation: v.string() });
 const TokensSchema = v.object({ input: v.number(), cached: v.number(), output: v.number() });

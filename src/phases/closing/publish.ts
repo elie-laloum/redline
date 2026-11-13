@@ -1,5 +1,5 @@
 import { defineTask, type Task } from "@elie-laloum/outpost/workflows";
-import { arbitrages } from "../../agents/render.ts";
+import { framingArbitrages } from "../../agents/render.ts";
 import { gitAllowFailure } from "../../adapters/git.ts";
 import { inviteesFor } from "../../domain/allowlist.ts";
 import { resolveBySquad } from "../../domain/config.ts";
@@ -45,7 +45,7 @@ export function pushTask(run: ClosingContext, after: readonly Task[]): Task<read
 }
 
 export function description(run: ClosingContext, summary: string, others: readonly OpenedMergeRequest[]): string {
-  const decisions = arbitrages([...run.framing.functional.arbitrages, ...run.framing.technical.arbitrages]);
+  const decisions = framingArbitrages(run.framing.functional.arbitrages, run.framing.technical.arbitrages);
   const links = others.length ? ["", "## Les autres MR de ce ticket", ...others.map((other) => `- ${other.repo} — ${other.url}`)] : [];
   const body = summary.trim().replace(/^(#+ [^\n]*\n+)+/, "");
   return ["## Ce que fait ce changement", body, "", "## Arbitrages", decisions, ...links, "", `Refs: ${run.ledger.key}`].join("\n");

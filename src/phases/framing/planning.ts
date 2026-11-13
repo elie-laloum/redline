@@ -1,6 +1,6 @@
 import type { Task } from "@elie-laloum/outpost/workflows";
 import { planner } from "../../agents/planner.ts";
-import { bullets } from "../../agents/render.ts";
+import { bullets, technicalArbitrages } from "../../agents/render.ts";
 import { ask } from "../../agents/role.ts";
 import { declaredTestKinds, findRepo, type RepoEntry } from "../../domain/config.ts";
 import { digest } from "../../domain/digest.ts";
@@ -48,7 +48,7 @@ export function planTask(
           notes: run.ledger.notes,
           functional: renderGrill(context.value(deps.functional).output),
           functionalExchanges: context.value(deps.functional).transcript,
-          technical: renderGrill(context.value(deps.technical).output),
+          technical: technicalArbitrages(context.value(deps.technical).output.arbitrages),
           technicalExchanges: context.value(deps.technical).transcript,
           scope: renderScope(scope, reader.repoPath),
           repos: renderCapabilities(repos),

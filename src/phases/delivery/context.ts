@@ -1,4 +1,4 @@
-import { arbitrages } from "../../agents/render.ts";
+import { framingArbitrages } from "../../agents/render.ts";
 import { changedFilesSince, git } from "../../adapters/git.ts";
 import { packagesOf } from "../../adapters/packages.ts";
 import { filterFlags } from "../../domain/monorepo.ts";
@@ -51,7 +51,7 @@ export async function withTarget<T>(run: DeliveryContext, target: RepoTarget, wo
 }
 
 export function arbitragesOf(run: DeliveryContext): string {
-  return arbitrages([...run.framing.functional.arbitrages, ...run.framing.technical.arbitrages]);
+  return framingArbitrages(run.framing.functional.arbitrages, run.framing.technical.arbitrages);
 }
 
 export function seedOf(run: DeliveryContext, key: string): string | null {

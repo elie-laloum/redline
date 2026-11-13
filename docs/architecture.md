@@ -113,6 +113,16 @@ answer. The transcript is checkpointed, so an answered question is never asked t
 functional and technical grills are interviews with an agent behind `think`; the plan review is an
 interview with plain code behind it.
 
+The technical grill's `think` adds questions of its own. A technical arbitrage that departs from
+a functional one names it — `overrides: { functional: "F2", ground }`, the ground being
+`impossibilite-technique` or `raison-metier` — and each derogation the transcript has not ruled
+on becomes a question to the human, with no free text, before the grill may conclude. The ruling
+lives in the transcript under the id `derogation-F2`; the response schema then refuses any answer
+that still departs from a functional arbitrage whose derogation was refused, so the repair turn
+tells the agent to find another way. `framingArbitrages()` renders the two framings for every
+downstream agent: the functional one first, as prevailing, then the technical one with each
+accepted derogation marked.
+
 ## Agents
 
 Each role in `agents/` declares its input, its response schema and its brief in

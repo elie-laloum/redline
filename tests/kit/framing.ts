@@ -11,6 +11,12 @@ export const ISSUE = {
 export const question = { id: "defaut", header: "Periode par defaut", text: "Quelle periode a l'ouverture ?", options: ["Mois en cours", "Dernier mois clos"] };
 export const functionalAsk = { done: false, questions: [question], arbitrages: [], contradictions: [] };
 export const functionalDone = { done: true, questions: [], arbitrages: [{ question: "Periode par defaut ?", answer: "Mois en cours", why: "choix de l'humain" }], contradictions: [] };
+export const technicalDeparting = {
+  done: true,
+  questions: [],
+  arbitrages: [{ question: "Quelle periode a l'ouverture ?", answer: "Le mois precedent", why: "la cloture mensuelle le fige", overrides: { functional: "F1", ground: "raison-metier" } }],
+  contradictions: [],
+};
 export const technicalDone = (answer = "On etend clamp") => ({ done: true, questions: [], arbitrages: [{ question: "Ou vit le filtre ?", answer, why: "src/period.js porte deja la periode" }], contradictions: [] });
 
 export const scoutCore = (prompt: string) =>
