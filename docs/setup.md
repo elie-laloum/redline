@@ -144,7 +144,7 @@ A few keys exist because their absence cost real hours:
 | `localFiles` | ignored files, such as `.env`, to copy into a fresh worktree. A service that does not boot without them turns tests red for a reason unrelated to the code. |
 | `containers` | what must be up before the first test: `required` and the `images` to pull. Without a daemon, some suites stay silent until the timeout. |
 | `reports` | where a command writes its diagnostics when it does not write them to stdout. Without it, a lint that writes a report file fails with a silent `exit 1`. |
-| `targeting` | how a runner accepts being pointed at specific files, with `{paths}` or `{glob}`. Absent, the paths are appended; `null` says this kind cannot be targeted. |
+| `targeting` | how a runner accepts being pointed at specific files, with `{paths}` or `{glob}`. Absent, the paths are appended; `null` says this kind cannot be targeted. Several files render `{glob}` as a `{a,b}` list quoted for one shell: behind `npm run … --` or `npx`, npm runs the line through a second shell that expands it, so a command targeted with `{glob}` calls its runner without npm, and `redline check` warns otherwise. |
 | `release` | for a publishable repository: the `manifest` that holds its version (`package.json` by default) and its `tagPrefix` (`v` by default) |
 | `bump` | how a downstream repository adopts an upstream dev version, with `{package}` and `{version}` |
 
