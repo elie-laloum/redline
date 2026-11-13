@@ -27,6 +27,11 @@ Les echanges bruts avec l'humain dont ils sont tires :
 Les arbitrages resument ces echanges. Quand un resume perd une nuance, restreint ou deforme une
 reponse, c'est la reponse de l'humain qui fait foi.
 
+Les arbitrages fonctionnels priment sur le ticket et sur les arbitrages techniques. Un arbitrage
+technique ne s'en ecarte que par une derogation acceptee par l'humain, signalee comme telle : le
+plan la suit et le dit. Si le plan devait contredire un arbitrage fonctionnel sans derogation
+acceptee, ne tranche pas : mets-le dans `openPoints`.
+
 ## Le perimetre retenu
 
 {{SCOPE}}

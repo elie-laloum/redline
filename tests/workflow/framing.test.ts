@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "bun:test";
+import { ACCEPT_DEROGATION, REFUSE_DEROGATION } from "../../src/domain/derogation.ts";
 import { parseEscalation } from "../../src/domain/escalation.ts";
-import { frame, functionalAsk, functionalDone, ISSUE, plan, scoutCore, technicalDone } from "../kit/framing.ts";
+import { frame, functionalAsk, functionalDone, ISSUE, plan, scoutCore, technicalDeparting, technicalDone } from "../kit/framing.ts";
 import { createWorld, type World } from "../kit/world.ts";
 
 let world: World | null = null;
@@ -128,6 +129,31 @@ describe("le cadrage", () => {
     const { outcome } = await frame(world, world.ledger("FT-1"), ["Approuver"]);
     assert.deepEqual(outcome?.scope.impacted[0]?.evidence, ["src/period.js:1 — clamp porte la periode"]);
     assert.ok(world.agents.prompts["scope-scout"]?.some((prompt) => prompt.includes("src/nope.js n'existe pas")));
+  });
+
+  it("soumet a l'humain la derogation du technique au fonctionnel, et la fait abandonner quand il la refuse", async () => {
+    world = await createWorld({
+      issues: [ISSUE],
+      script: { "functional-grill": [{ reply: functionalDone }], "scope-scout": scouts(), "technical-grill": [{ reply: technicalDeparting }, { reply: technicalDone() }], planner: [{ reply: plan() }] },
+    });
+    const { outcome, asked } = await frame(world, world.ledger("FT-1"), [REFUSE_DEROGATION, "Approuver"]);
+
+    assert.match(asked[0] ?? "", /Grill technique · 1\/1 — Derogation a F1[\s\S]*F1 : Periode par defaut \? → Mois en cours[\s\S]*Motif \(raison metier\)/);
+    assert.match(world.agents.prompts["technical-grill"]?.[1] ?? "", /Reponse : Refuser : le fonctionnel prime/);
+    assert.deepEqual(outcome?.technical.arbitrages.map((entry) => entry.overrides ?? null), [null]);
+    assert.deepEqual(world.agents.remaining(), {});
+  });
+
+  it("consigne la derogation acceptee et la signale au planner", async () => {
+    world = await createWorld({
+      issues: [ISSUE],
+      script: { "functional-grill": [{ reply: functionalDone }], "scope-scout": scouts(), "technical-grill": [{ reply: technicalDeparting }, { reply: technicalDeparting }], planner: [{ reply: plan() }] },
+    });
+    const { outcome } = await frame(world, world.ledger("FT-1"), [ACCEPT_DEROGATION, "Approuver"]);
+
+    assert.deepEqual(outcome?.technical.arbitrages.map((entry) => entry.overrides), [{ functional: "F1", ground: "raison-metier" }]);
+    assert.match(world.agents.prompts.planner?.[0] ?? "", /Le mois precedent \(la cloture mensuelle le fige\) — derogation a F1 acceptee par l'humain \(raison metier\)/);
+    assert.deepEqual(world.agents.remaining(), {});
   });
 
   it("escalade quand aucun repo ne ressort", async () => {

@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Task } from "@elie-laloum/outpost/workflows";
 import { finalizer } from "../../agents/finalizer.ts";
-import { arbitrages, bullets } from "../../agents/render.ts";
+import { bullets, framingArbitrages } from "../../agents/render.ts";
 import { ask } from "../../agents/role.ts";
 import { TEMPLATES } from "../../app/paths.ts";
 import { digest } from "../../domain/digest.ts";
@@ -37,7 +37,7 @@ export function proseTask(run: ClosingContext, after: readonly Task[]): Task<Con
         ask(context, session, finalizer, {
           ticket: run.framing.ticket,
           notes: run.ledger.notes,
-          arbitrages: arbitrages([...run.framing.functional.arbitrages, ...run.framing.technical.arbitrages]),
+          arbitrages: framingArbitrages(run.framing.functional.arbitrages, run.framing.technical.arbitrages),
           plan: renderPlan(run.framing.plan),
           repos: run.delivered.map((repo) => ({ repo: repo.repo, commits: repo.commits })),
           voice: voice.rules,

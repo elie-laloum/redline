@@ -8,6 +8,14 @@ releases are tagged `v<version>` and published to npm as
 
 ### Added
 
+- The functional framing prevails over the ticket and over the technical framing. The technical
+  grill may depart from a functional arbitrage only for a technical impossibility or a defensible
+  business reason, and must say so: each derogation becomes a question to the human before the
+  grill concludes, and a refused one cannot come back. Every agent downstream — planner, test
+  writer, developer, adversaries, finalizer and memory planner — receives the functional
+  arbitrages first, as prevailing, then the technical ones with each accepted derogation marked.
+  The two lists used to be merged into one block, so a technical choice could silently undo a
+  functional one.
 - The dashboard's right panel has three views, cycled with `v`: the inspector; the changes the
   run made in each worktree — path, branch, commits and diff stat against the base branch, read
   from git while the view is shown; and an explanation of the run in plain words — where it is,
