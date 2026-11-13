@@ -5,7 +5,7 @@ import { createCheckRunner } from "../../src/adapters/checks.ts";
 import { run } from "../../src/adapters/exec.ts";
 import { findRepo } from "../../src/domain/config.ts";
 import { focusOn } from "../../src/domain/output.ts";
-import { renderTargeting } from "../../src/domain/targeting.ts";
+import { globCrossesSecondShell, renderTargeting } from "../../src/domain/targeting.ts";
 import { PROJECT_ROOT, registryFrom, registryYaml, repoYaml, temporaryDirectory } from "../helpers.ts";
 
 const NOISY = `node -e 'for (let i = 1; i <= 500; i++) console.log(i === 250 ? "ALTAIR le verdict cherche" : "ligne " + i)'`;
@@ -51,6 +51,14 @@ describe("le ciblage d'un fichier de test", () => {
     assert.ok(renderTargeting("-- -g {glob}", ["./src/**/*.test.ts"]).includes("'./src/**/*.test.ts'"));
     assert.equal(renderTargeting("-- -g {glob}", ["a.test.ts", "b.test.ts"]), "-- -g '{a.test.ts,b.test.ts}'");
     assert.equal(renderTargeting("{paths}", ["a.test.ts", "b.test.ts"]), "'a.test.ts' 'b.test.ts'");
+  });
+
+  it("reconnait un {glob} que npm ferait passer par un second shell", () => {
+    assert.equal(globCrossesSecondShell("npm run test:unit", "-- -g {glob}"), true);
+    assert.equal(globCrossesSecondShell("cd api && npx mtr -r", "-g {glob}"), true);
+    assert.equal(globCrossesSecondShell("npm run test:unit", "{paths}"), false);
+    assert.equal(globCrossesSecondShell("./node_modules/.bin/mtr -r", "-g {glob}"), false);
+    assert.equal(globCrossesSecondShell("pnpm run test:unit", "-- -g {glob}"), false);
   });
 
   it("ne laisse pas un drapeau nu quand aucun fichier n'est demande", () => {

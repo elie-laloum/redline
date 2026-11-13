@@ -19,7 +19,11 @@
 # recoit le refus en conclut que le repo entier n'est pas ciblable, et relit une
 # suite de plusieurs milliers de lignes pour y chercher trois tests. Le gabarit
 # porte `{paths}` ou `{glob}` ; absent il vaut `{paths}`, a `null` il dit que ce
-# type ne se cible pas.
+# type ne se cible pas. Plusieurs fichiers rendent `{glob}` en liste `{a,b}`,
+# quotee pour un seul shell : derriere `npm run … --` ou `npx`, npm relance la
+# ligne dans un second shell qui la developpe, et le runner recoit un mot par
+# fichier. Une commande ciblee par `{glob}` appelle donc son runner sans npm ;
+# `redline check` le signale.
 #
 # `containers` dit ce que la machine doit avoir debout avant le premier test.
 # Meme regle que pour les commandes : on ne declare que ce qui est verifie.
@@ -77,7 +81,7 @@ repositories:
     commands:
       lint: npm run lint
       typecheck: npm run build
-      ut: npm run test:unit
+      ut: PATH="$PWD/node_modules/.bin:$PATH" test-runner --isolation=none -g "./src/**/*.test.ts"
       it: null
       ft: npm run test:functional
       ct: null
@@ -96,9 +100,11 @@ repositories:
     # sont remplaces a l'execution. Une cle absente vaut « ajoute les chemins en
     # fin de commande » ; un `null` explicite dit que ce type ne se cible pas, et
     # c'est ce qui evite qu'un agent conclue d'un refus d'argument que le repo
-    # entier n'est pas ciblable.
+    # entier n'est pas ciblable. `ut` appelle son runner sans npm, sinon la
+    # liste de `{glob}` serait developpee par le shell de npm ; le `PATH` rend
+    # les binaires locaux que npm y aurait mis.
     targeting:
-      ut: "-- -g {glob}"
+      ut: "-g {glob}"
       ft: null
     ciJobsToWatch: [build, test_ut, test_ft]
     description: >-

@@ -48,6 +48,11 @@ releases are tagged `v<version>` and published to npm as
   makes a command talk — a shutdown banner, a runner's summary — so the measure taken once the
   pipes close read a few milliseconds, and the escalation claimed the command had been dropped
   `apres 0s` of silence.
+- `redline check` warns when a command reaches its runner through `npm` or `npx` while its
+  `targeting` uses `{glob}`, and the example registry calls its runner directly. npm runs the line
+  through a second shell that expands the `{a,b}` list a multi-file lot renders, so the runner
+  received one word per file and a runner refusing positionals failed before any test ran — an
+  `environment` escalation that blamed the runner (#3).
 
 ## 4.0.1 — 2026-10-01
 

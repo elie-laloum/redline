@@ -3,6 +3,8 @@ import { AUTH_LABELS, authenticationProblem } from "../adapters/claude-agents.ts
 import { inspectImage, runtimeStatus } from "../adapters/container-runtime.ts";
 import { gitAllowFailure } from "../adapters/git.ts";
 import type { SecretKey } from "../adapters/secrets.ts";
+import { COMMAND_KINDS, commandFor, targetingFor } from "../domain/config.ts";
+import { globCrossesSecondShell } from "../domain/targeting.ts";
 import { type Connection, testChat, testDesign, testForge, testTracker } from "./connections.ts";
 import type { AppContext } from "./context.ts";
 import { expandTilde } from "./paths.ts";
@@ -17,7 +19,7 @@ export interface Finding {
 }
 
 export async function diagnose(app: AppContext): Promise<Finding[]> {
-  return [...configuration(app), ...secrets(app), ...(await connections(app)), ...(await containers(app)), claude(app), ...(await repositories(app))];
+  return [...configuration(app), ...secrets(app), ...(await connections(app)), ...(await containers(app)), claude(app), ...(await repositories(app)), ...targetings(app)];
 }
 
 function configuration(app: AppContext): Finding[] {
@@ -89,6 +91,25 @@ async function repositories(app: AppContext): Promise<Finding[]> {
         status: notes.length ? "warn" : "ok",
         detail: notes.length ? `${notes.join(", ")} : les scouts liront cet etat` : path,
       };
+    }),
+  );
+}
+
+/** A `{glob}` behind npm runs fine on a single file and fails only once a lot targets several. */
+function targetings(app: AppContext): Finding[] {
+  return app.configuration.registry.repositories.flatMap((repo) =>
+    COMMAND_KINDS.flatMap((kind): Finding[] => {
+      const command = commandFor(repo, kind);
+      const template = targetingFor(repo, kind);
+      if (!command || !template || !globCrossesSecondShell(command, template)) return [];
+      return [
+        {
+          section: "ciblage",
+          label: `${repo.name} ${kind}`,
+          status: "warn",
+          detail: "{glob} passe par npm, qui relance la ligne dans un second shell : une liste de plusieurs fichiers arrive au runner en mots separes. Appelle le runner sans npm ni npx (voir targeting dans repositories.example.yaml)",
+        },
+      ];
     }),
   );
 }
