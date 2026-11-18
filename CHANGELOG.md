@@ -57,6 +57,8 @@ releases are tagged `v<version>` and published to npm as
 
 ### Fixed
 
+- An answer given during closing reaches the closing workflow. The driver passed answers to the
+  framing only, so the open points review asked the same question again after every answer.
 - A text sent to Jira — comment or description — carries the line breaks inside a paragraph as
   hard breaks, the line break of Jira's document format, instead of raw newlines inside the text.
 - The test adversary receives the arbitrages the test writer is bound by, and its brief states
