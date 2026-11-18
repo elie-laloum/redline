@@ -119,7 +119,7 @@ plans the memory update, checks every operation, and applies it as one commit to
 knowledge base. The finalizer writes the merge request summaries, the Slack message and the Jira
 comment in your voice. Redline then pushes the branches, opens or updates the draft merge
 requests with links to one another, creates the Slack channel and invites the allowlist,
-comments on the ticket and moves it. When the product owner answered the functional framing, only
+comments on the ticket, and asks you before moving it — the merge requests are still drafts. When the product owner answered the functional framing, only
 the quoted passages of the ticket's description are rewritten — images, tables and formatting
 elsewhere stay as they were; a developer's answers never touch the ticket, and the merge request
 lists the divergences as awaiting the product owner's validation.

@@ -61,7 +61,7 @@ gitlab:
   mrDraft: true
 
 jira:
-  transitions:
+  transitions:                       # propose a la cloture, applique seulement si tu confirmes
     default:
       afterMergeRequest: VALIDATION
     bySquad: {}                      # par prefixe de cle Jira, par exemple :

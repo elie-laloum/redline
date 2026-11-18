@@ -6,7 +6,7 @@ import { conformityTask } from "./conformity.ts";
 import { type MemoryApplied, memoryApplyTask, memoryPlanTask } from "./memory.ts";
 import { openPointsTask } from "./open-points.ts";
 import { proseTask } from "./prose.ts";
-import { type JiraPublication, jiraTask, mergeRequestsTask, type OpenedMergeRequest, pushTask, type SlackPublication, slackTask } from "./publish.ts";
+import { type JiraPublication, jiraTask, mergeRequestsTask, type OpenedMergeRequest, pushTask, type SlackPublication, slackTask, transitionInterview } from "./publish.ts";
 
 export interface Publication {
   readonly memory: MemoryApplied;
@@ -34,9 +34,10 @@ export function defineClosing(run: ClosingContext): Closing {
   const push = pushTask(run, [prose]);
   const requests = mergeRequestsTask(run, prose, push, points, conformity);
   const slack = slackTask(run, prose, requests);
-  const jira = jiraTask(run, prose, points, [slack]);
+  const decision = transitionInterview(run, requests, points);
+  const jira = jiraTask(run, prose, decision, [slack]);
   return {
-    workflow: defineWorkflow("redline.closing", [points, conformity, plan, applied, prose, push, requests, slack, jira]),
+    workflow: defineWorkflow("redline.closing", [points, conformity, plan, applied, prose, push, requests, slack, decision, jira]),
     outcome: (result) => ({
       memory: result.value(applied),
       mergeRequests: result.value(requests),

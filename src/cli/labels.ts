@@ -16,6 +16,7 @@ const FIXED: Readonly<Record<string, string>> = {
   "push-branches": "Push des branches",
   "merge-requests": "Merge requests",
   slack: "Canal Slack",
+  "jira-transition": "Statut du ticket",
   jira: "Ticket Jira",
 };
 

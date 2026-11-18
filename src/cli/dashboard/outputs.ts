@@ -98,6 +98,10 @@ const DESCRIBE: Readonly<Record<string, (value: Json) => OutputLine[]>> = {
       return line(`${POINT_STATUSES[status] ?? status} · ${openPoint(point)}${decision}`, status === "open" ? "warning" : status === "settled" ? "success" : "muted");
     });
   },
+  "jira-transition": (interviewed) => {
+    const to = object(interviewed.output).to;
+    return [to ? line(`passe en ${text(to)}`, "success") : line("statut garde", "muted")];
+  },
   workspace: (prepared) => [
     line(`branche ${text(prepared.branch)}`),
     line(`base ${short(prepared.base)}`, "muted"),
