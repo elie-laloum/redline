@@ -12,6 +12,8 @@ import { migrateHome } from "../../src/app/migrate.ts";
 import { lockFile, pathsOf, ticketFile } from "../../src/app/paths.ts";
 import { loadConfiguration } from "../../src/app/settings.ts";
 import { exampleSettings, temporaryDirectory } from "../helpers.ts";
+import { approved } from "../kit/delivery.ts";
+import type { World } from "../kit/world.ts";
 
 const directory = temporaryDirectory();
 const paths = pathsOf(join(directory.path, "home"));
@@ -103,6 +105,18 @@ describe("le ledger", () => {
     assert.ok(ledger);
     assert.throws(() => approvedOf(ledger), (error: Error & { hint?: string }) => /Ledger illisible : FT-3, champ approved/.test(error.message) && /^ticket : /m.test(error.hint ?? ""));
     assert.throws(() => deliveredOf(ledger), /champ delivered/);
+  });
+
+  it("relit un plan approuve dont les points ouverts n'avaient pas d'identifiant, en les numerotant", () => {
+    const framing = approved({ jira: { url: "https://jira" } } as World);
+    const legacy = { ...framing, plan: { ...framing.plan, openPoints: ["Qui supprime la route ?", "Et le redatage ?"] } };
+    writeLedger(paths, { ...newLedger({ ...base, key: "FT-4" }), phase: "delivery", approved: legacy });
+    const ledger = readLedger(paths, "FT-4");
+    assert.ok(ledger);
+    assert.deepEqual(approvedOf(ledger).plan.openPoints, [
+      { id: "P1", text: "Qui supprime la route ?" },
+      { id: "P2", text: "Et le redatage ?" },
+    ]);
   });
 
   it("n'existe pas avant le premier start", () => {

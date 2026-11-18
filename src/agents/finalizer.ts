@@ -1,6 +1,7 @@
 import * as v from "valibot";
+import type { OpenPointStatus } from "../domain/open-points.ts";
 import type { TicketSnapshot } from "../domain/ticket.ts";
-import { feedback, ticket } from "./render.ts";
+import { bullets, feedback, ticket } from "./render.ts";
 import { defineRole } from "./role.ts";
 import { everyOnce, text } from "./shared.ts";
 
@@ -9,6 +10,8 @@ export interface FinalizerInput {
   readonly notes: string | null;
   readonly arbitrages: string;
   readonly plan: string;
+  /** The plan's open points as the human reviewed them at closing. */
+  readonly points: readonly { readonly status: OpenPointStatus; readonly text: string }[];
   readonly repos: readonly { readonly repo: string; readonly commits: readonly string[] }[];
   readonly voice: string;
   readonly calibrated: boolean;
@@ -35,6 +38,9 @@ export const finalizer = defineRole({
     TICKET: ticket(input.ticket, input.notes),
     ARBITRAGES: input.arbitrages,
     PLAN: input.plan,
+    SETTLED: bullets(pointsOf(input, "settled"), "(aucun)"),
+    DEFERRED: bullets(pointsOf(input, "deferred"), "(aucun)"),
+    STILL_OPEN: bullets(pointsOf(input, "open"), "(aucun)"),
     REPOS: input.repos.map((entry) => `### ${entry.repo}\n${entry.commits.map((commit) => `- ${commit}`).join("\n")}`).join("\n\n"),
     VOICE: input.voice,
     CALIBRATED: input.calibrated ? "oui" : "non : reste strictement factuel, n'imite aucun style",
@@ -47,3 +53,7 @@ export const finalizer = defineRole({
     FEEDBACK: feedback(input.feedback),
   }),
 });
+
+function pointsOf(input: FinalizerInput, status: OpenPointStatus): string[] {
+  return input.points.filter((point) => point.status === status).map((point) => point.text);
+}

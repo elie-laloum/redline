@@ -5,9 +5,11 @@ import { inviteesFor } from "../../domain/allowlist.ts";
 import { resolveBySquad } from "../../domain/config.ts";
 import { RedlineError } from "../../domain/failure.ts";
 import { mergeRequestName, slackChannelName } from "../../domain/naming.ts";
+import { renderReviewedPoint, type ReviewedPoint, stillOpen } from "../../domain/open-points.ts";
 import { divergenceStatus } from "../../domain/respondent.ts";
 import type { Converged } from "../../workflow/converge.ts";
 import { Escalation } from "../../workflow/escalation.ts";
+import type { Interviewed } from "../../workflow/interview.ts";
 import { renderDivergences } from "../framing/grills.ts";
 import { emit } from "../run.ts";
 import type { ClosingContext } from "./context.ts";
@@ -48,29 +50,55 @@ export function pushTask(run: ClosingContext, after: readonly Task[]): Task<read
   });
 }
 
-export function description(run: ClosingContext, summary: string, others: readonly OpenedMergeRequest[]): string {
-  const decisions = framingArbitrages(run.framing.functional, run.framing.technical.arbitrages);
+/** A point still open heads the description, where the reviewer reads first. */
+export function description(run: ClosingContext, summary: string, others: readonly OpenedMergeRequest[], points: readonly ReviewedPoint[]): string {
+  const section = (title: string, status: ReviewedPoint["status"]) => {
+    const listed = points.filter((point) => point.status === status).map((point) => `- ${renderReviewedPoint(point)}`);
+    return listed.length ? [title, ...listed] : [];
+  };
+  const open = section("## Points encore ouverts", "open");
+  const settled = section("", "settled");
+  const deferred = section("## Points reportes hors du perimetre", "deferred");
+  const decisions = [framingArbitrages(run.framing.functional, run.framing.technical.arbitrages), ...(settled.length ? ["", "Points ouverts tranches a la cloture :", ...settled.slice(1)] : [])].join("\n");
   const links = others.length ? ["", "## Les autres MR de ce ticket", ...others.map((other) => `- ${other.repo} — ${other.url}`)] : [];
   const body = summary.trim().replace(/^(#+ [^\n]*\n+)+/, "");
   const functional = run.framing.functional;
   const divergences = functional.divergences.length ? ["", `## Divergences avec l'US (${divergenceStatus(functional.respondent)})`, ...renderDivergences(functional)] : [];
-  return ["## Ce que fait ce changement", body, ...divergences, "", "## Arbitrages", decisions, ...links, "", `Refs: ${run.ledger.key}`].join("\n");
+  return [
+    ...(open.length ? [...open, ""] : []),
+    "## Ce que fait ce changement",
+    body,
+    ...divergences,
+    "",
+    "## Arbitrages",
+    decisions,
+    ...(deferred.length ? ["", ...deferred] : []),
+    ...links,
+    "",
+    `Refs: ${run.ledger.key}`,
+  ].join("\n");
 }
 
-export function mergeRequestsTask(run: ClosingContext, prose: Task<Converged<Prose>>, push: Task<readonly string[]>): Task<readonly OpenedMergeRequest[]> {
+export function mergeRequestsTask(
+  run: ClosingContext,
+  prose: Task<Converged<Prose>>,
+  push: Task<readonly string[]>,
+  reviewed: Task<Interviewed<readonly ReviewedPoint[]>>,
+): Task<readonly OpenedMergeRequest[]> {
   const { settings } = run.app.configuration;
   const forge = () => run.app.services.forge;
   return defineTask({
     key: "merge-requests",
-    after: [prose, push],
+    after: [prose, push, reviewed],
     async perform(context) {
+      const points = context.value(reviewed).output;
       const summaries = new Map(context.value(prose).candidate.mergeRequests.map((entry) => [entry.repo, entry.summary]));
       const summaryOf = (repo: string) => summaries.get(repo) ?? "";
       const opened: OpenedMergeRequest[] = [];
       for (const repo of run.delivered) {
         const type = run.framing.plan.repos.find((entry) => entry.repo === repo.repo)?.type ?? "task";
         const title = mergeRequestName(settings.naming, { type, ticket: run.ledger.key, title: run.ledger.title }, settings.gitlab.mrDraft);
-        const body = description(run, summaryOf(repo.repo), []);
+        const body = description(run, summaryOf(repo.repo), [], points);
         const existing = await forge().findMergeRequest(repo.project, repo.branch);
         const request = existing
           ? await forge().updateMergeRequest(repo.project, existing.iid, { title, description: body })
@@ -80,7 +108,7 @@ export function mergeRequestsTask(run: ClosingContext, prose: Task<Converged<Pro
       }
       if (opened.length > 1) {
         for (const request of opened) {
-          await forge().updateMergeRequest(request.project, request.iid, { description: description(run, summaryOf(request.repo), opened.filter((other) => other !== request)) });
+          await forge().updateMergeRequest(request.project, request.iid, { description: description(run, summaryOf(request.repo), opened.filter((other) => other !== request), points) });
         }
       }
       return opened;
@@ -121,18 +149,22 @@ export function slackTask(run: ClosingContext, prose: Task<Converged<Prose>>, re
   });
 }
 
-export function jiraTask(run: ClosingContext, prose: Task<Converged<Prose>>, after: readonly Task[]): Task<JiraPublication> {
+/** A ticket with points still open keeps its status: it is commented, never moved. */
+export function jiraTask(run: ClosingContext, prose: Task<Converged<Prose>>, reviewed: Task<Interviewed<readonly ReviewedPoint[]>>, after: readonly Task[]): Task<JiraPublication> {
   const { settings } = run.app.configuration;
   return defineTask({
     key: "jira",
-    after: [prose, ...after],
+    after: [prose, reviewed, ...after],
     async perform(context) {
       if (!settings.services.jiraWrites) return { transition: null, commented: false, edits: { applied: 0, missed: [] } };
       const tracker = run.app.services.tracker;
       const target = resolveBySquad(settings.jira.transitions, run.framing.ticket.squad).afterMergeRequest;
       const current = (await tracker.getTicket(run.ledger.key)).status;
       const edits = await editTicket(run);
-      const transition = current.trim().toLowerCase() === target.trim().toLowerCase() ? null : (await tracker.transition(run.ledger.key, target)).name;
+      const reserved = stillOpen(context.value(reviewed).output).length > 0;
+      const kept = reserved || current.trim().toLowerCase() === target.trim().toLowerCase();
+      const transition = kept ? null : (await tracker.transition(run.ledger.key, target)).name;
+      if (reserved) emit(run, { type: "warning", task: "jira", text: `${run.ledger.key} garde son statut ${current} : des points restent ouverts` });
       const text = context.value(prose).candidate.jira.trim();
       const already = (await tracker.comments(run.ledger.key)).some((comment) => comment.trim().startsWith(text.slice(0, 120)));
       if (transition) emit(run, { type: "publication", task: "jira", action: "jira", detail: `${run.ledger.key} passe en ${transition}`, url: run.framing.ticket.url });

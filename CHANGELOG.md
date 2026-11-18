@@ -23,6 +23,13 @@ releases are tagged `v<version>` and published to npm as
   only those passages in the Jira description, leaving images, tables and formatting elsewhere
   untouched, and reports any passage it could not find; a developer's answers never touch the
   ticket.
+- Closing goes back over the plan's open points — and the divergences awaiting the product owner
+  when the developer answered the functional framing — and asks the human whether each is
+  settled, deferred out of scope, or still open. A settled point joins the merge request's
+  arbitrages with its decision, a deferred one gets its own section; a point still open heads the
+  merge request, keeps the Jira ticket in its status, and the run ends delivered with reserves.
+  The plan's open points carry an id, `P1`, `P2`…. They used to be written once and forgotten:
+  the plan was approved with them, the run ended `done` and the ticket moved on.
 - The dashboard's right panel has three views, cycled with `v`: the inspector; the changes the
   run made in each worktree — path, branch, commits and diff stat against the base branch, read
   from git while the view is shown; and an explanation of the run in plain words — where it is,

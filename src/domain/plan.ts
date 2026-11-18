@@ -26,15 +26,21 @@ export const PlanRepoSchema = v.object({
   code: v.pipe(v.array(PlanCodeSchema), v.minLength(1)),
 });
 
+export const OpenPointSchema = v.object({
+  id: v.pipe(v.string(), v.regex(/^P\d+$/, "identifiant de point ouvert attendu : P1, P2…")),
+  text,
+});
+
 export const PlanSchema = v.object({
   summary: text,
   repos: v.pipe(v.array(PlanRepoSchema), v.minLength(1)),
-  openPoints: v.array(text),
+  openPoints: v.array(OpenPointSchema),
 });
 
 export type PlanTest = v.InferOutput<typeof PlanTestSchema>;
 export type PlanCode = v.InferOutput<typeof PlanCodeSchema>;
 export type PlanRepo = v.InferOutput<typeof PlanRepoSchema>;
+export type OpenPoint = v.InferOutput<typeof OpenPointSchema>;
 export type Plan = v.InferOutput<typeof PlanSchema>;
 
 export interface PlanContext {
@@ -53,7 +59,7 @@ export function planProblems(plan: Plan, context: PlanContext): string[] {
   const kept = planned.filter((repo) => expected.includes(repo));
   if (kept.join() !== expected.filter((repo) => planned.includes(repo)).join()) problems.push(`ordre attendu (level croissant) : ${expected.join(" → ")}`);
 
-  const ids = plan.repos.flatMap((entry) => [...entry.tests, ...entry.code].map((line) => line.id));
+  const ids = [...plan.repos.flatMap((entry) => [...entry.tests, ...entry.code].map((line) => line.id)), ...plan.openPoints.map((point) => point.id)];
   for (const id of new Set(ids.filter((id, index) => ids.indexOf(id) !== index))) problems.push(`l'identifiant ${id} apparait plusieurs fois`);
 
   const known = new Set(context.criteria.map((criterion) => criterion.id));
@@ -93,6 +99,6 @@ export function renderPlan(plan: Plan): string {
       ...entry.code.map((line) => `   ${line.id} ${line.criterion}`),
     ].join("\n"),
   );
-  const open = plan.openPoints.length ? ["", "Points ouverts :", ...plan.openPoints.map((point) => `- ${point}`)] : [];
+  const open = plan.openPoints.length ? ["", "Points ouverts :", ...plan.openPoints.map((point) => `- ${point.id} ${point.text}`)] : [];
   return [plan.summary, "", ...sections, ...open].join("\n");
 }

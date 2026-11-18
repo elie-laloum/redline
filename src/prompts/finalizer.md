@@ -15,6 +15,24 @@ textes que tu ecris ci-dessous. Tu ecris les textes, rien d'autre.
 
 {{PLAN}}
 
+## Les points ouverts, repris avec l'humain a la cloture
+
+Tranches, la decision faisant suite au point : ils comptent comme des arbitrages.
+
+{{SETTLED}}
+
+Reportes hors du perimetre, assumes :
+
+{{DEFERRED}}
+
+Encore ouverts :
+
+{{STILL_OPEN}}
+
+Un point encore ouvert veut dire que la livraison part avec des reserves : le message Slack et
+le commentaire Jira le disent et nomment chaque point, sans annoncer le ticket termine. Redline
+place deja ces points en tete de la merge request : le `summary` ne les reprend pas.
+
 ## Les commits par repo
 
 {{REPOS}}

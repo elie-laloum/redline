@@ -1,5 +1,6 @@
 import * as clack from "@clack/prompts";
 import type { DriveOutcome } from "../app/driver.ts";
+import { renderReviewedPoint, stillOpen } from "../domain/open-points.ts";
 import type { Tone } from "./dashboard/model.ts";
 
 const NEXT: Readonly<Record<string, string>> = {
@@ -20,6 +21,12 @@ export function report(key: string, outcome: DriveOutcome): number {
       const published = [publication.slack ? `Canal #${publication.slack.channel.name}` : "", publication.jira.transition ? `ticket passe en ${publication.jira.transition}` : ""].filter(Boolean);
       if (published.length) clack.log.info(published.join(" — "));
       if (publication.memory.commit) clack.log.info(`Memoire : commit ${publication.memory.commit}`);
+      const reserves = stillOpen(publication.openPoints);
+      if (reserves.length) {
+        clack.log.warn(`Points encore ouverts, en tete des MR ; le ticket garde son statut :\n${reserves.map((point) => `- ${renderReviewedPoint(point)}`).join("\n")}`);
+        clack.outro(`${key} livre avec reserves.`);
+        return 0;
+      }
       clack.outro(`${key} publie.`);
       return 0;
     }
@@ -47,6 +54,8 @@ export function outcomeNotice(key: string, outcome: DriveOutcome): { readonly to
     case "done": {
       const requests = outcome.publication.mergeRequests.length;
       const channel = outcome.publication.slack ? `, canal #${outcome.publication.slack.channel.name}` : "";
+      const reserves = stillOpen(outcome.publication.openPoints);
+      if (reserves.length) return { tone: "warning", text: `${key} livre avec reserves : ${requests} MR${channel}, ${reserves.length} point(s) encore ouvert(s) (${reserves.map((point) => point.id).join(", ")}).` };
       return { tone: "success", text: `${key} publie : ${requests} MR${channel}.` };
     }
     case "escalated": {

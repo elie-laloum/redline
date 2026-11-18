@@ -69,7 +69,10 @@ code : un sujet, un verbe, un fait constatable. Pas d'identifiant nu, pas de pre
 « Une periode vide renvoie une liste vide, pas une erreur. »
 
 `summary` resume le plan en trois phrases pour l'humain. `openPoints` liste ce qui reste a
-decider hors du plan ; laisse-le vide s'il n'y a rien.
+decider hors du plan, chaque point avec un identifiant unique (P1, P2…) et son `text`, une
+question que l'humain peut trancher d'une phrase ; laisse-le vide s'il n'y a rien. Chaque point
+lui est repose a la cloture : tranche, reporte ou encore ouvert, et un point encore ouvert fait
+partir la livraison avec des reserves.
 
 Si tu decouvres une ambiguite en planifiant, ne la tranche pas : mets-la dans `openPoints`.
 

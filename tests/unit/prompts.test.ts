@@ -87,7 +87,7 @@ const CASES: Case[] = [
   },
   {
     role: roles.finalizer,
-    input: { ticket: TICKET, notes: null, arbitrages: "", plan: "", repos: [{ repo: "core", commits: ["feat: x"] }], voice: "", calibrated: false, channels: { slack: true, jira: true }, feedback: null },
+    input: { ticket: TICKET, notes: null, arbitrages: "", plan: "", points: [], repos: [{ repo: "core", commits: ["feat: x"] }], voice: "", calibrated: false, channels: { slack: true, jira: true }, feedback: null },
     ok: { mergeRequests: [{ repo: "core", summary: "Ajoute la periode." }], slack: "Salut.", jira: "Decisions." },
     ko: { mergeRequests: [], slack: "Salut.", jira: "Decisions." },
   },

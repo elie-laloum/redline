@@ -69,7 +69,7 @@ describe("la cloture", () => {
     const { ledger, framing, repos } = await delivered(world);
     const divergence = { said: "La liste s'ouvre sur toutes les feuilles.", decided: "La liste s'ouvre sur le mois en cours.", why: "trop long a charger" };
     const edited = { ...framing, functional: { ...framing.functional, divergences: [divergence], edits: [{ before: "La liste des feuilles", after: "La liste du mois" }], respondent: "developer" as const } };
-    const { result, outcome } = await close(world, ledger, edited, repos);
+    const { result, outcome } = await close(world, ledger, edited, repos, { answers: ["Encore ouvert"] });
     result.unwrap();
 
     assert.match(
@@ -78,6 +78,60 @@ describe("la cloture", () => {
     );
     assert.deepEqual(world.jira.descriptions, []);
     assert.deepEqual(outcome?.jira.edits, { applied: 0, missed: [] });
+  });
+
+  it("reprend chaque point ouvert avec l'humain, et livre avec reserves tant qu'il en reste", async () => {
+    world = await createWorld({
+      issues: [ISSUE],
+      slackUsers: USERS,
+      script: { ...delivery, "memory-planner": [{ reply: memoryReply }], finalizer: [{ reply: proseReply(["fixture-core"]) }] } as Script,
+    });
+    const { ledger, framing, repos } = await delivered(world);
+    const points = [
+      { id: "P1", text: "Qui supprime la route de report ?" },
+      { id: "P2", text: "Le redatage de l'import est-il garde ?" },
+      { id: "P3", text: "Faut-il un export CSV ?" },
+    ];
+    const withPoints = { ...framing, plan: { ...framing.plan, openPoints: points } };
+    const { result, outcome, asked } = await close(world, ledger, withPoints, repos, {
+      answers: ["Tranche", "Encore ouvert", "Reporte hors du perimetre", "Le back la supprime au sprint suivant."],
+    });
+    result.unwrap();
+
+    assert.deepEqual(
+      asked.map((question) => question.split("\n")[0]),
+      ["Points ouverts · 1/3 — Point ouvert P1", "Points ouverts · 2/3 — Point ouvert P2", "Points ouverts · 3/3 — Point ouvert P3", "Points ouverts · 4/4 — Decision sur P1"],
+    );
+    const mr = world.gitlab.mergeRequests[0]?.description ?? "";
+    assert.match(mr, /^## Points encore ouverts\n- P2 Le redatage de l'import est-il garde \?\n\n## Ce que fait ce changement/);
+    assert.match(mr, /## Arbitrages\n[\s\S]*Points ouverts tranches a la cloture :\n- P1 Qui supprime la route de report \? → Le back la supprime au sprint suivant\.\n\n## Points reportes hors du perimetre\n- P3 Faut-il un export CSV \?\n/);
+    const finalizer = world.agents.prompts.finalizer?.[0] ?? "";
+    assert.match(finalizer, /Encore ouverts :\n\n- P2 Le redatage de l'import est-il garde \?/);
+    assert.deepEqual(world.jira.transitions, []);
+    assert.equal(world.jira.comments.length, 1);
+    assert.deepEqual(outcome?.jira.transition, null);
+    assert.deepEqual(outcome?.openPoints.map((point) => [point.id, point.status, point.decision]), [
+      ["P1", "settled", "Le back la supprime au sprint suivant."],
+      ["P2", "open", null],
+      ["P3", "deferred", null],
+    ]);
+  });
+
+  it("repose les divergences en attente du PO comme points ouverts, et deplace le ticket une fois tout tranche", async () => {
+    world = await createWorld({
+      issues: [ISSUE],
+      slackUsers: USERS,
+      script: { ...delivery, "memory-planner": [{ reply: memoryReply }], finalizer: [{ reply: proseReply(["fixture-core"]) }] } as Script,
+    });
+    const { ledger, framing, repos } = await delivered(world);
+    const divergence = { said: "La liste s'ouvre sur toutes les feuilles.", decided: "La liste s'ouvre sur le mois en cours.", why: "trop long a charger" };
+    const edited = { ...framing, functional: { ...framing.functional, divergences: [divergence], respondent: "developer" as const } };
+    const { result, outcome, asked } = await close(world, ledger, edited, repos, { answers: ["Tranche", "Valide par le PO en daily."] });
+    result.unwrap();
+
+    assert.match(asked[0] ?? "", /Point ouvert D1\n\nA valider par le PO : l'US dit « La liste s'ouvre sur toutes les feuilles\. »/);
+    assert.deepEqual(outcome?.openPoints.map((point) => [point.id, point.status]), [["D1", "settled"]]);
+    assert.deepEqual(world.jira.transitions, [{ key: "FT-1", to: "VALIDATION" }]);
   });
 
   it("ne publie ni sur Slack ni sur le ticket quand ces services sont coupes, et ne fait pas ecrire leurs textes", async () => {

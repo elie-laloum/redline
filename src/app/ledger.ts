@@ -6,7 +6,8 @@ import { SettingsSchema } from "../domain/config.ts";
 import { DEROGATION_GROUNDS } from "../domain/derogation.ts";
 import { ESCALATION_KINDS } from "../domain/escalation.ts";
 import { fail } from "../domain/failure.ts";
-import { PlanSchema } from "../domain/plan.ts";
+import { OPEN_POINT_STATUSES } from "../domain/open-points.ts";
+import { type OpenPoint, OpenPointSchema, type Plan, PlanSchema } from "../domain/plan.ts";
 import { RESPONDENTS } from "../domain/respondent.ts";
 import type { Publication } from "../phases/closing/workflow.ts";
 import type { DeliveredRepo } from "../phases/delivery/summary.ts";
@@ -34,6 +35,15 @@ const FunctionalOutcomeSchema = v.object({
 });
 const TicketReferenceSchema = v.object({ key: v.string(), relation: v.string() });
 const TokensSchema = v.object({ input: v.number(), cached: v.number(), output: v.number() });
+
+/** A plan approved before open points carried an id lists them as bare strings, numbered here in order. */
+const LedgerPlanSchema: v.GenericSchema<unknown, Plan> = v.object({
+  ...PlanSchema.entries,
+  openPoints: v.pipe(
+    v.array(v.union([OpenPointSchema, v.string()])),
+    v.transform((points): OpenPoint[] => points.map((point, index) => (typeof point === "string" ? { id: `P${index + 1}`, text: point } : point))),
+  ),
+});
 
 const FramingOutcomeSchema: v.GenericSchema<unknown, FramingOutcome> = v.object({
   decision: v.picklist(["approve", "amend", "reject-functional", "reject-technical"]),
@@ -67,7 +77,7 @@ const FramingOutcomeSchema: v.GenericSchema<unknown, FramingOutcome> = v.object(
     impacted: v.array(v.object({ repo: v.string(), level: v.number(), area: v.string(), evidence: v.array(v.string()) })),
     excluded: v.array(v.object({ repo: v.string(), reason: v.string() })),
   }),
-  plan: PlanSchema,
+  plan: LedgerPlanSchema,
   contradictions: v.array(ContradictionSchema),
 });
 
@@ -97,6 +107,7 @@ const PublicationSchema: v.GenericSchema<unknown, Publication> = v.object({
     commented: v.boolean(),
     edits: v.optional(v.object({ applied: v.number(), missed: v.array(v.string()) }), { applied: 0, missed: [] }),
   }),
+  openPoints: v.optional(v.array(v.object({ id: v.string(), text: v.string(), status: v.picklist(OPEN_POINT_STATUSES), decision: v.nullable(v.string()) })), []),
 });
 
 export const LedgerSchema = v.object({
