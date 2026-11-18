@@ -61,6 +61,18 @@ describe("une session redline", () => {
     assert.deepEqual(world.agents.remaining(), {});
   });
 
+  it("transmet a la cloture les reponses de l'humain", async () => {
+    const withPoint = { ...framing, planner: [{ reply: { ...plan(), openPoints: [{ id: "P1", text: "Faut-il un export CSV ?" }] } }] };
+    world = await createWorld({ issues: [ISSUE], script: merge(withPoint, testsPhase, { developer: [implement], "code-adversary": [{ reply: codePass(["C1"]) }] }, closing) as Script });
+    world.ledger("FT-1");
+    const prompter = scripted(["Le PO", "Mois en cours", "Approuver", "Reporte hors du perimetre"]);
+    const outcome = await runSession(world.app, "FT-1", {}, { prompter, progress: silentProgress });
+
+    assert.equal(outcome.status, "done");
+    assert.deepEqual(prompter.asked.slice(3), ["Points ouverts · 1/1 — Point ouvert P1"]);
+    assert.match(world.gitlab.mergeRequests[0]?.description ?? "", /## Points reportes hors du perimetre\n- P1 Faut-il un export CSV \?/);
+  });
+
   it("publie ce qui se passe sur un seul canal, chaque agent rattache a sa tache", async () => {
     world = await createWorld({ issues: [ISSUE], script: merge(framing, testsPhase, { developer: [implement], "code-adversary": [{ reply: codePass(["C1"]) }] }, closing) as Script });
     world.ledger("FT-1");

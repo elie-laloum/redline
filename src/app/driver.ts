@@ -115,7 +115,7 @@ async function step(app: AppContext, ledger: Ledger, answers: readonly WorkflowA
       const context: ClosingContext = { ...run, framing: approvedOf(ledger), delivered: deliveredOf(ledger) };
       const closing = defineClosing(context);
       const repos = deliveredOf(ledger).map((repo) => repo.repo);
-      const result = await start(app, ledger, closing.workflow, { phase: "closing", runId: runIdOf(ledger, "closing"), repos }, undefined, options);
+      const result = await start(app, ledger, closing.workflow, { phase: "closing", runId: runIdOf(ledger, "closing"), repos }, answers, options);
       const halted = await halt(app, ledger, "closing", result);
       if (halted) return halted;
       return { ledger: save(app, recordEvent({ ...latest(app, ledger), phase: "done", publication: closing.outcome(result) }, "publication terminee")) };
