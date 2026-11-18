@@ -79,7 +79,7 @@ const DESCRIBE: Readonly<Record<string, (value: Json) => OutputLine[]>> = {
           ...list(entry.code).map((code) => line(`${text(object(code).id)} ${text(object(code).criterion)}`, "muted", 2)),
         ];
       }),
-      ...section("Points ouverts", list(plan.openPoints).map((point) => line(text(point), "warning"))),
+      ...section("Points ouverts", list(plan.openPoints).map((point) => line(openPoint(point), "warning"))),
       ...rounds(converged),
     ];
   },
@@ -87,6 +87,16 @@ const DESCRIBE: Readonly<Record<string, (value: Json) => OutputLine[]>> = {
     const review = object(interviewed.output);
     const decision = text(review.decision);
     return [line(DECISIONS[decision] ?? decision, decision === "approve" ? "success" : "warning"), ...(review.note ? [line(text(review.note), "text", 2)] : [])];
+  },
+  "open-points": (interviewed) => {
+    const points = list(interviewed.output);
+    if (!points.length) return [line("Aucun point ouvert.", "muted")];
+    return points.map((reviewed) => {
+      const point = object(reviewed);
+      const status = text(point.status);
+      const decision = point.decision ? ` → ${text(point.decision)}` : "";
+      return line(`${POINT_STATUSES[status] ?? status} · ${openPoint(point)}${decision}`, status === "open" ? "warning" : status === "settled" ? "success" : "muted");
+    });
   },
   workspace: (prepared) => [
     line(`branche ${text(prepared.branch)}`),
@@ -223,6 +233,15 @@ function yaml(value: unknown): OutputLine[] {
 
 function line(content: string, tone: OutputTone = "text", indent = 0): OutputLine {
   return { text: content, tone, indent };
+}
+
+const POINT_STATUSES: Readonly<Record<string, string>> = { settled: "tranche", deferred: "reporte", open: "encore ouvert" };
+
+/** A plan approved before open points carried an id lists them as bare strings. */
+function openPoint(value: unknown): string {
+  if (typeof value === "string") return value;
+  const point = object(value);
+  return `${text(point.id)} ${text(point.text)}`;
 }
 
 function object(value: unknown): Json {

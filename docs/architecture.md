@@ -58,7 +58,7 @@ finished task.
 |---|---|
 | framing | `ticket`, `figma`, `memory-broad`, `functional`, `scope`, `memory-targeted`, `technical`, `plan`, `review` |
 | delivery | per repository: `<repo>.workspace`, `<repo>.tests`, `<repo>.code-<n>` per batch, `<repo>.code`, `<repo>.release` when a downstream repository in scope depends on it |
-| closing | `memory-plan`, `memory-apply`, `prose`, `push-branches`, `merge-requests`, `slack`, `jira` |
+| closing | `open-points`, `memory-plan`, `memory-apply`, `prose`, `push-branches`, `merge-requests`, `slack`, `jira` |
 
 Delivery chains the repositories by ascending level: a repository's workspace waits for the
 previous repository to finish and for the release of every upstream it depends on.
@@ -123,6 +123,17 @@ Closing applies the edits only when the product owner answered: `editDescription
 holds it, whitespace-insensitively, and leaves every other node — images, tables, marks — as it
 was. A passage found nowhere or twice is not applied and is reported; one already rewritten by an
 earlier run is recognised, so a resume does not rewrite twice.
+
+The plan's open points carry an id, `P1`, `P2`…; when the developer answered the functional
+framing, each divergence becomes one more, `D1`, `D2`…, awaiting the product owner. Closing opens on
+the `open-points` interview, plain code behind its `think`: it asks the status of every point —
+settled, deferred out of scope, still open, with no free text — then the decision of each settled
+one. A run whose plan has no open point asks nothing. The reviewed points feed the finalizer, head
+the merge request when still open, join its arbitrages when settled, and are recorded in the
+publication; a point still open keeps the Jira ticket in its status, and the run ends delivered
+with reserves. The interview is memoised on its points, so a closing reopened after a failure
+does not ask again. A ledger approved before the ids existed lists its open points as bare
+strings, numbered in order when read.
 
 The technical grill's `think` adds questions of its own. A technical arbitrage that departs from
 a functional one names it — `overrides: { functional: "F2", ground }`, the ground being

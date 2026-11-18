@@ -70,7 +70,8 @@ DELIVERY   per repository, by ascending level
            ⟲ ◆ developer     | ■ appeals → ◆ arbiter · ■ green (typecheck, lint, suites) · ◆ code adversary
            ■ upstream release: dev tag → push the tag only → watch CI → ■ bump downstream
 
-CLOSING    ◆ memory planner ⟲ ■ ops check → ■ one memory commit
+CLOSING    ■ open points: settled, deferred or still open, asked to the human
+           ◆ memory planner ⟲ ■ ops check → ■ one memory commit
            → ◆ finalizer ⟲ ■ publishable → ■ push · draft MRs · Slack · Jira
 ```
 
@@ -103,7 +104,12 @@ must pass the registry's typecheck, lint and test commands, then a code adversar
 that others in scope depend on is released as a dev tag, its CI is watched, and the downstream
 repositories adopt that version before their own turn.
 
-**Closing** plans the memory update, checks every operation, and applies it as one commit to the
+**Closing** first goes back over every open point the plan left — and, when the developer answered
+the functional framing, every divergence awaiting the product owner — and asks the human whether
+each is settled, deferred out of scope, or still open. A settled point joins the arbitrages with
+its decision, a deferred one is listed in the merge request; a point still open heads the merge
+request, the run ends delivered with reserves, and the Jira ticket keeps its status. Closing then
+plans the memory update, checks every operation, and applies it as one commit to the
 knowledge base. The finalizer writes the merge request summaries, the Slack message and the Jira
 comment in your voice. Redline then pushes the branches, opens or updates the draft merge
 requests with links to one another, creates the Slack channel and invites the allowlist,

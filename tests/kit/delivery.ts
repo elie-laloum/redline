@@ -5,7 +5,7 @@ import { defineDelivery } from "../../src/phases/delivery/workflow.ts";
 import { defineClosing } from "../../src/phases/closing/workflow.ts";
 import type { FramingOutcome } from "../../src/phases/framing/workflow.ts";
 import { ISSUE, plan } from "./framing.ts";
-import type { World } from "./world.ts";
+import { type Answerer, answering, type World } from "./world.ts";
 
 export function approved(world: World, override?: Plan): FramingOutcome {
   const chosen = override ?? (plan() as Plan);
@@ -97,11 +97,11 @@ export function merge(...scripts: Record<string, unknown[]>[]): Record<string, u
   return merged;
 }
 
-export async function close(world: World, ledger: Ledger, framing: FramingOutcome, delivered: DeliveredRepo[], options: { resume?: boolean } = {}) {
+export async function close(world: World, ledger: Ledger, framing: FramingOutcome, delivered: DeliveredRepo[], options: { resume?: boolean; answers?: readonly (string | Answerer)[] } = {}) {
   const closing = defineClosing({ ...world.run(ledger), framing, delivered });
   const checkpoint = { store: world.storage(ledger.key).checkpoints, runId: `${ledger.key}/closing/${ledger.closing.attempt}`, version: "test", ...(options.resume ? { resume: "retry-incomplete" as const } : {}) };
-  const result = await closing.workflow.start({ checkpoint });
-  return { result, outcome: result.status === "done" ? closing.outcome(result) : null };
+  const { result, asked } = await answering((given) => closing.workflow.start({ checkpoint, ...(given ? { answers: given } : {}) }), options.answers ?? []);
+  return { result, asked, outcome: result.status === "done" ? closing.outcome(result) : null };
 }
 
 export const memoryReply = { operations: [{ action: "create", path: "features/periode/filtre.md", why: "etat consolide du filtre", frontmatter: { type: "knowledge", scope: "feature", last_verified: "2026-09-30", repos: ["fixture-core"], source: { ticket: "FT-1" } }, body: "La periode par defaut est le mois en cours." }], decisions: [] };

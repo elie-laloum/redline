@@ -8,6 +8,7 @@ const FIXED: Readonly<Record<string, string>> = {
   technical: "Grill technique",
   plan: "Plan",
   review: "Revue du plan",
+  "open-points": "Points ouverts",
   "memory-plan": "Plan memoire",
   "memory-apply": "Commit memoire",
   prose: "Redaction",
