@@ -1,5 +1,6 @@
 export { appealArbiter } from "./appeal-arbiter.ts";
 export { codeAdversary } from "./code-adversary.ts";
+export { conformityChecker } from "./conformity-checker.ts";
 export { developer } from "./developer.ts";
 export { finalizer } from "./finalizer.ts";
 export { functionalGrill } from "./functional-grill.ts";

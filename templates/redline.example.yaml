@@ -90,6 +90,7 @@ agents:
     test-adversary: { model: opus }
     developer: { model: opus }
     code-adversary: { model: opus, reasoning: high }
+    conformity-checker: { model: opus, reasoning: high }
     memory-planner: { model: opus }
     finalizer: { model: opus }
 

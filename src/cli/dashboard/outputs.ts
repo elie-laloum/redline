@@ -151,6 +151,12 @@ const DESCRIBE: Readonly<Record<string, (value: Json) => OutputLine[]>> = {
 const LISTS: Readonly<Record<string, (value: readonly unknown[]) => OutputLine[]>> = {
   "push-branches": (branches) => branches.map((branch) => line(`${text(branch)} pousse`, "success")),
   "merge-requests": (requests) => requests.map((request) => line(`${text(object(request).repo)} — ${text(object(request).url)}`, "info")),
+  conformity: (reports) => reports.flatMap((value) => {
+    const report = object(value);
+    const gaps = list(report.gaps);
+    if (!gaps.length) return [line(`${text(report.repo)} : conforme au cadrage`, "success")];
+    return [line(`${text(report.repo)} : ${gaps.length} ecart(s)`, "warning"), ...gaps.map((gap) => line(`${text(object(gap).id)} ${text(object(gap).comment)}`, "text", 2))];
+  }),
 };
 
 function memory(brief: Json): OutputLine[] {

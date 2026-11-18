@@ -53,6 +53,10 @@ export const goodRed = { tests: [{ name: "sans periode, clamp rend le mois en co
 
 export const codeReply = (appeals: unknown[] = []) => ({ commit: { type: "feat", scope: "period", subject: "default to the current month" }, appeals, contradictions: [] });
 export const codePass = (ids: string[]) => ({ lines: ids.map((id) => ({ id, verdict: "passe", evidence: "src/period.js:2", comment: "" })), remarks: [] });
+export const conformityPass = (decisions: string[], checklist: string[]) => ({
+  decisions: decisions.map((id) => ({ id, verdict: "conforme", evidence: "src/period.js:2", comment: "" })),
+  checklist: checklist.map((id) => ({ id, verdict: "conforme", evidence: "src/period.js:2", comment: "" })),
+});
 export const codeRefuse = (ids: string[]) => ({ lines: ids.map((id) => ({ id, verdict: "manque", evidence: "src/period.js:2", comment: "le mois est fige" })), remarks: [] });
 export const testsPhase = {
   "test-writer": [{ writes: { "tests/period-default.test.js": FAILING_TEST }, reply: testsReply() }],

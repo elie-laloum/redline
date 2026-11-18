@@ -71,6 +71,7 @@ DELIVERY   per repository, by ascending level
            ■ upstream release: dev tag → push the tag only → watch CI → ■ bump downstream
 
 CLOSING    ■ open points: settled, deferred or still open, asked to the human
+           ◆ conformity checker, per repository: code against the functional decisions and the checklist
            ◆ memory planner ⟲ ■ ops check → ■ one memory commit
            → ◆ finalizer ⟲ ■ publishable → ■ push · draft MRs · Slack · Jira
 ```
@@ -108,7 +109,12 @@ repositories adopt that version before their own turn.
 the functional framing, every divergence awaiting the product owner — and asks the human whether
 each is settled, deferred out of scope, or still open. A settled point joins the arbitrages with
 its decision, a deferred one is listed in the merge request; a point still open heads the merge
-request, the run ends delivered with reserves, and the Jira ticket keeps its status. Closing then
+request, the run ends delivered with reserves, and the Jira ticket keeps its status. A conformity
+checker then reads each delivered worktree against every functional decision — or the accepted
+derogation that replaces it — and every line of the repository's checklist. It is a report, not a
+gate: its gaps head the merge request and the end-of-run report, and nothing goes back to the
+developer. A delivery can be fully tested and green, and still do the opposite of what was
+decided; no judge of the delivery loop reads the functional framing. Closing then
 plans the memory update, checks every operation, and applies it as one commit to the
 knowledge base. The finalizer writes the merge request summaries, the Slack message and the Jira
 comment in your voice. Redline then pushes the branches, opens or updates the draft merge
@@ -118,9 +124,9 @@ the quoted passages of the ticket's description are rewritten — images, tables
 elsewhere stay as they were; a developer's answers never touch the ticket, and the merge request
 lists the divergences as awaiting the product owner's validation.
 
-**Twelve roles**, one brief each in [src/prompts/](src/prompts/): functional grill, scope scout,
+**Thirteen roles**, one brief each in [src/prompts/](src/prompts/): functional grill, scope scout,
 technical grill, planner, test writer, test adversary, red checker, developer, appeal arbiter,
-code adversary, memory planner and finalizer. The model and reasoning effort of each role are
+code adversary, conformity checker, memory planner and finalizer. The model and reasoning effort of each role are
 set in `redline.yaml`.
 
 Agents never commit. Redline folds their changes into a commit whose message it builds itself,

@@ -68,6 +68,7 @@ describe("les points ouverts", () => {
       slack: null,
       jira: { transition: null, commented: true, edits: { applied: 0, missed: [] } },
       openPoints,
+      conformity: [],
     });
     const reserved = outcomeNotice("FT-1", { status: "done", publication: publication([{ ...P1, status: "open", decision: null }, { ...P2, status: "deferred", decision: null }]) });
     assert.deepEqual(reserved, { tone: "warning", text: "FT-1 livre avec reserves : 1 MR, 1 point(s) encore ouvert(s) (P1)." });

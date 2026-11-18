@@ -8,7 +8,7 @@ import type { RoleName } from "../domain/roles.ts";
 import type { AgentFactory } from "../ports/agents.ts";
 import type { SecretKey, Secrets } from "./secrets.ts";
 
-const JUDGES_IN_WORKTREE: readonly RoleName[] = ["test-adversary", "red-checker", "code-adversary"];
+const JUDGES_IN_WORKTREE: readonly RoleName[] = ["test-adversary", "red-checker", "code-adversary", "conformity-checker"];
 
 /** The secret each mode reads from the .env; the account mode reads the host's login file instead. */
 export const AUTH_SECRETS: Readonly<Record<AuthMode, SecretKey | null>> = { account: null, oauth: "CLAUDE_CODE_OAUTH_TOKEN", key: "ANTHROPIC_API_KEY" };
