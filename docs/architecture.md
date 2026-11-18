@@ -58,7 +58,7 @@ finished task.
 |---|---|
 | framing | `ticket`, `figma`, `memory-broad`, `functional`, `scope`, `memory-targeted`, `technical`, `plan`, `review` |
 | delivery | per repository: `<repo>.workspace`, `<repo>.tests`, `<repo>.code-<n>` per batch, `<repo>.code`, `<repo>.release` when a downstream repository in scope depends on it |
-| closing | `open-points`, `memory-plan`, `memory-apply`, `prose`, `push-branches`, `merge-requests`, `slack`, `jira` |
+| closing | `open-points`, `conformity`, `memory-plan`, `memory-apply`, `prose`, `push-branches`, `merge-requests`, `slack`, `jira` |
 
 Delivery chains the repositories by ascending level: a repository's workspace waits for the
 previous repository to finish and for the release of every upstream it depends on.
@@ -135,6 +135,14 @@ with reserves. The interview is memoised on its points, so a closing reopened af
 does not ask again. A ledger approved before the ids existed lists its open points as bare
 strings, numbered in order when read.
 
+The `conformity` task opens each delivered worktree again and asks the conformity checker to
+judge the diff since the branch's base against the functional decisions, `F1`, `F2`… — each
+replaced by the derogation the human accepted, if any — and against the repository's `T` and `C`
+lines. Its verdicts are `conforme`, `ecart`, or `sans-objet` for a decision that belongs to another
+repository. Only the gaps are kept: they head that repository's merge request and are recorded in
+the publication. The task is cached on the decisions, the plan and the delivered repositories, and
+it never feeds back into delivery.
+
 The technical grill's `think` adds questions of its own. A technical arbitrage that departs from
 a functional one names it — `overrides: { functional: "F2", ground }`, the ground being
 `impossibilite-technique` or `raison-metier` — and each derogation the transcript has not ruled
@@ -165,8 +173,8 @@ Agents work in two kinds of sandboxes:
   over the redline home: the memory and a short reading guide, with every registry repository
   mounted read-only under `/repos/<name>`. Anything a reader writes is discarded when it closes.
 - **Delivery roles** — the test writer, the test adversary, the red checker, the developer, the
-  arbiter and the code adversary — run over the repository's git worktree, on the ticket's
-  branch. Only the test writer, the developer and the arbiter produce commits.
+  arbiter and the code adversary, and at closing the conformity checker — run over the
+  repository's git worktree, on the ticket's branch. Only the test writer, the developer and the arbiter produce commits.
 
 ## Commits and write zones
 

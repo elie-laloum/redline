@@ -1,5 +1,6 @@
 import * as clack from "@clack/prompts";
 import type { DriveOutcome } from "../app/driver.ts";
+import { gapCount, renderGap } from "../domain/conformity.ts";
 import { renderReviewedPoint, stillOpen } from "../domain/open-points.ts";
 import type { Tone } from "./dashboard/model.ts";
 
@@ -21,6 +22,8 @@ export function report(key: string, outcome: DriveOutcome): number {
       const published = [publication.slack ? `Canal #${publication.slack.channel.name}` : "", publication.jira.transition ? `ticket passe en ${publication.jira.transition}` : ""].filter(Boolean);
       if (published.length) clack.log.info(published.join(" — "));
       if (publication.memory.commit) clack.log.info(`Memoire : commit ${publication.memory.commit}`);
+      const gaps = publication.conformity.flatMap((report) => report.gaps.map((gap) => `- ${report.repo} — ${renderGap(gap)}`));
+      if (gaps.length) clack.log.warn(`Ecarts au cadrage constates a la cloture, en tete des MR :\n${gaps.join("\n")}`);
       const reserves = stillOpen(publication.openPoints);
       if (reserves.length) {
         clack.log.warn(`Points encore ouverts, en tete des MR ; le ticket garde son statut :\n${reserves.map((point) => `- ${renderReviewedPoint(point)}`).join("\n")}`);
@@ -55,8 +58,10 @@ export function outcomeNotice(key: string, outcome: DriveOutcome): { readonly to
       const requests = outcome.publication.mergeRequests.length;
       const channel = outcome.publication.slack ? `, canal #${outcome.publication.slack.channel.name}` : "";
       const reserves = stillOpen(outcome.publication.openPoints);
-      if (reserves.length) return { tone: "warning", text: `${key} livre avec reserves : ${requests} MR${channel}, ${reserves.length} point(s) encore ouvert(s) (${reserves.map((point) => point.id).join(", ")}).` };
-      return { tone: "success", text: `${key} publie : ${requests} MR${channel}.` };
+      const gaps = gapCount(outcome.publication.conformity);
+      const departures = gaps ? `, ${gaps} ecart(s) au cadrage` : "";
+      if (reserves.length) return { tone: "warning", text: `${key} livre avec reserves : ${requests} MR${channel}, ${reserves.length} point(s) encore ouvert(s) (${reserves.map((point) => point.id).join(", ")})${departures}.` };
+      return { tone: gaps ? "warning" : "success", text: `${key} publie : ${requests} MR${channel}${departures}.` };
     }
     case "escalated": {
       const { escalation } = outcome;

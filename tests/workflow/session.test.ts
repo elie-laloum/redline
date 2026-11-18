@@ -14,7 +14,7 @@ import { silentProgress } from "../../src/cli/progress.ts";
 import type { RunEvent } from "../../src/domain/run-events.ts";
 import { runSession } from "../../src/cli/session.ts";
 import type { Script } from "../kit/agents.ts";
-import { codePass, codeRefuse, codeReply, IMPLEMENTATION, memoryReply, merge, proseReply, testsPhase } from "../kit/delivery.ts";
+import { codePass, codeRefuse, codeReply, conformityPass, IMPLEMENTATION, memoryReply, merge, proseReply, testsPhase } from "../kit/delivery.ts";
 import { functionalAsk, functionalDone, ISSUE, plan, scoutCore, technicalDone } from "../kit/framing.ts";
 import { createWorld, type World } from "../kit/world.ts";
 
@@ -25,7 +25,7 @@ afterEach(async () => {
 });
 
 const framing = { "functional-grill": [{ reply: functionalAsk }, { reply: functionalDone }], "scope-scout": [{ reply: scoutCore }, { reply: scoutCore }], "technical-grill": [{ reply: technicalDone() }], planner: [{ reply: plan() }] };
-const closing = { "memory-planner": [{ reply: memoryReply }], finalizer: [{ reply: proseReply(["fixture-core"]) }] };
+const closing = { "conformity-checker": [{ reply: conformityPass(["F1"], ["T1", "C1"]) }], "memory-planner": [{ reply: memoryReply }], finalizer: [{ reply: proseReply(["fixture-core"]) }] };
 const implement = { writes: { "src/period.js": IMPLEMENTATION }, reply: codeReply() };
 
 function scripted(answers: string[]): Prompter & { asked: string[] } {

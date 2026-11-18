@@ -1,6 +1,8 @@
 import { defineWorkflow, type Workflow, type WorkflowResult } from "@elie-laloum/outpost/workflows";
 import type { ClosingContext } from "./context.ts";
+import type { ConformityReport } from "../../domain/conformity.ts";
 import type { ReviewedPoint } from "../../domain/open-points.ts";
+import { conformityTask } from "./conformity.ts";
 import { type MemoryApplied, memoryApplyTask, memoryPlanTask } from "./memory.ts";
 import { openPointsTask } from "./open-points.ts";
 import { proseTask } from "./prose.ts";
@@ -14,6 +16,8 @@ export interface Publication {
   readonly jira: JiraPublication;
   /** The plan's open points, and the divergences awaiting the product owner, as the human reviewed them. */
   readonly openPoints: readonly ReviewedPoint[];
+  /** Per delivered repository, where the code departs from the functional decisions or the checklist. */
+  readonly conformity: readonly ConformityReport[];
 }
 
 export interface Closing {
@@ -23,21 +27,23 @@ export interface Closing {
 
 export function defineClosing(run: ClosingContext): Closing {
   const points = openPointsTask(run);
+  const conformity = conformityTask(run);
   const plan = memoryPlanTask(run);
   const applied = memoryApplyTask(run, plan);
   const prose = proseTask(run, points, [applied]);
   const push = pushTask(run, [prose]);
-  const requests = mergeRequestsTask(run, prose, push, points);
+  const requests = mergeRequestsTask(run, prose, push, points, conformity);
   const slack = slackTask(run, prose, requests);
   const jira = jiraTask(run, prose, points, [slack]);
   return {
-    workflow: defineWorkflow("redline.closing", [points, plan, applied, prose, push, requests, slack, jira]),
+    workflow: defineWorkflow("redline.closing", [points, conformity, plan, applied, prose, push, requests, slack, jira]),
     outcome: (result) => ({
       memory: result.value(applied),
       mergeRequests: result.value(requests),
       slack: result.value(slack),
       jira: result.value(jira),
       openPoints: result.value(points).output,
+      conformity: result.value(conformity),
     }),
   };
 }

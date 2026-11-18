@@ -3,6 +3,7 @@ import { framingArbitrages } from "../../agents/render.ts";
 import { gitAllowFailure } from "../../adapters/git.ts";
 import { inviteesFor } from "../../domain/allowlist.ts";
 import { resolveBySquad } from "../../domain/config.ts";
+import { type ConformityReport, renderGap } from "../../domain/conformity.ts";
 import { RedlineError } from "../../domain/failure.ts";
 import { mergeRequestName, slackChannelName } from "../../domain/naming.ts";
 import { renderReviewedPoint, type ReviewedPoint, stillOpen } from "../../domain/open-points.ts";
@@ -50,13 +51,14 @@ export function pushTask(run: ClosingContext, after: readonly Task[]): Task<read
   });
 }
 
-/** A point still open heads the description, where the reviewer reads first. */
-export function description(run: ClosingContext, summary: string, others: readonly OpenedMergeRequest[], points: readonly ReviewedPoint[]): string {
+/** A point still open and a conformity gap head the description, where the reviewer reads first. */
+export function description(run: ClosingContext, summary: string, others: readonly OpenedMergeRequest[], points: readonly ReviewedPoint[], gaps: ConformityReport["gaps"] = []): string {
   const section = (title: string, status: ReviewedPoint["status"]) => {
     const listed = points.filter((point) => point.status === status).map((point) => `- ${renderReviewedPoint(point)}`);
     return listed.length ? [title, ...listed] : [];
   };
   const open = section("## Points encore ouverts", "open");
+  const departures = gaps.length ? ["## Ecarts au cadrage constates a la cloture", ...gaps.map((gap) => `- ${renderGap(gap)}`), ""] : [];
   const settled = section("", "settled");
   const deferred = section("## Points reportes hors du perimetre", "deferred");
   const decisions = [framingArbitrages(run.framing.functional, run.framing.technical.arbitrages), ...(settled.length ? ["", "Points ouverts tranches a la cloture :", ...settled.slice(1)] : [])].join("\n");
@@ -66,6 +68,7 @@ export function description(run: ClosingContext, summary: string, others: readon
   const divergences = functional.divergences.length ? ["", `## Divergences avec l'US (${divergenceStatus(functional.respondent)})`, ...renderDivergences(functional)] : [];
   return [
     ...(open.length ? [...open, ""] : []),
+    ...departures,
     "## Ce que fait ce changement",
     body,
     ...divergences,
@@ -84,21 +87,24 @@ export function mergeRequestsTask(
   prose: Task<Converged<Prose>>,
   push: Task<readonly string[]>,
   reviewed: Task<Interviewed<readonly ReviewedPoint[]>>,
+  conformity: Task<readonly ConformityReport[]>,
 ): Task<readonly OpenedMergeRequest[]> {
   const { settings } = run.app.configuration;
   const forge = () => run.app.services.forge;
   return defineTask({
     key: "merge-requests",
-    after: [prose, push, reviewed],
+    after: [prose, push, reviewed, conformity],
     async perform(context) {
       const points = context.value(reviewed).output;
+      const reports = context.value(conformity);
+      const gapsOf = (repo: string) => reports.find((report) => report.repo === repo)?.gaps ?? [];
       const summaries = new Map(context.value(prose).candidate.mergeRequests.map((entry) => [entry.repo, entry.summary]));
       const summaryOf = (repo: string) => summaries.get(repo) ?? "";
       const opened: OpenedMergeRequest[] = [];
       for (const repo of run.delivered) {
         const type = run.framing.plan.repos.find((entry) => entry.repo === repo.repo)?.type ?? "task";
         const title = mergeRequestName(settings.naming, { type, ticket: run.ledger.key, title: run.ledger.title }, settings.gitlab.mrDraft);
-        const body = description(run, summaryOf(repo.repo), [], points);
+        const body = description(run, summaryOf(repo.repo), [], points, gapsOf(repo.repo));
         const existing = await forge().findMergeRequest(repo.project, repo.branch);
         const request = existing
           ? await forge().updateMergeRequest(repo.project, existing.iid, { title, description: body })
@@ -108,7 +114,7 @@ export function mergeRequestsTask(
       }
       if (opened.length > 1) {
         for (const request of opened) {
-          await forge().updateMergeRequest(request.project, request.iid, { description: description(run, summaryOf(request.repo), opened.filter((other) => other !== request), points) });
+          await forge().updateMergeRequest(request.project, request.iid, { description: description(run, summaryOf(request.repo), opened.filter((other) => other !== request), points, gapsOf(request.repo)) });
         }
       }
       return opened;

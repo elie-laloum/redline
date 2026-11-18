@@ -80,6 +80,12 @@ const CASES: Case[] = [
     ko: { lines: [], remarks: [] },
   },
   {
+    role: roles.conformityChecker,
+    input: { ticket: TICKET, notes: null, repo: "core", decisions: [{ id: "F1", text: "Periode par defaut ? → Mois en cours" }], checklist: [{ id: "C1", text: "Les appelants ne changent pas." }], base: "abc123" },
+    ok: { decisions: [{ id: "F1", verdict: "sans-objet", evidence: "", comment: "" }], checklist: [{ id: "C1", verdict: "ecart", evidence: "src/x.js:3", comment: "un appelant change" }] },
+    ko: { decisions: [], checklist: [{ id: "C1", verdict: "manque", evidence: "", comment: "" }] },
+  },
+  {
     role: roles.memoryPlanner,
     input: { ticket: TICKET, notes: null, arbitrages: "", plan: "", delivered: "", contradictions: "", index: "", today: "2026-09-30", maxNoteLines: 100, feedback: null },
     ok: { operations: [{ action: "delete", path: "changes/x.md", why: "fusionnee" }], decisions: [] },

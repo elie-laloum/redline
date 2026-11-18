@@ -108,6 +108,7 @@ const PublicationSchema: v.GenericSchema<unknown, Publication> = v.object({
     edits: v.optional(v.object({ applied: v.number(), missed: v.array(v.string()) }), { applied: 0, missed: [] }),
   }),
   openPoints: v.optional(v.array(v.object({ id: v.string(), text: v.string(), status: v.picklist(OPEN_POINT_STATUSES), decision: v.nullable(v.string()) })), []),
+  conformity: v.optional(v.array(v.object({ repo: v.string(), gaps: v.array(v.object({ id: v.string(), text: v.string(), evidence: v.string(), comment: v.string() })) })), []),
 });
 
 export const LedgerSchema = v.object({

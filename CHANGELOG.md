@@ -23,6 +23,12 @@ releases are tagged `v<version>` and published to npm as
   only those passages in the Jira description, leaving images, tables and formatting elsewhere
   untouched, and reports any passage it could not find; a developer's answers never touch the
   ticket.
+- A conformity checker, a thirteenth role, reads each delivered repository at closing against every
+  functional decision — or the accepted derogation that replaces it — and every line of the
+  repository's checklist. Its gaps head the merge request and the end-of-run report; it is a
+  report, not a gate, and nothing goes back to the developer. No judge of the delivery loop read
+  the functional framing, so a fully tested, green delivery could do the opposite of what was
+  decided.
 - Closing goes back over the plan's open points — and the divergences awaiting the product owner
   when the developer answered the functional framing — and asks the human whether each is
   settled, deferred out of scope, or still open. A settled point joins the merge request's

@@ -9,6 +9,7 @@ export const ROLE_NAMES = [
   "red-checker",
   "developer",
   "code-adversary",
+  "conformity-checker",
   "memory-planner",
   "finalizer",
 ] as const;

@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, it } from "bun:test";
 import type { Script } from "../kit/agents.ts";
-import { approved, close, codePass, codeReply, deliver, IMPLEMENTATION, memoryReply, proseReply, testsPhase } from "../kit/delivery.ts";
+import { approved, close, codePass, codeReply, conformityPass, deliver, IMPLEMENTATION, memoryReply, proseReply, testsPhase } from "../kit/delivery.ts";
 import { ISSUE } from "../kit/framing.ts";
 import { createWorld, type World } from "../kit/world.ts";
 import { temporaryDirectory } from "../helpers.ts";
@@ -16,7 +16,12 @@ afterEach(async () => {
 });
 
 const git = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
-const delivery = { ...testsPhase, developer: [{ writes: { "src/period.js": IMPLEMENTATION }, reply: codeReply() }], "code-adversary": [{ reply: codePass(["C1"]) }] };
+const delivery = {
+  ...testsPhase,
+  developer: [{ writes: { "src/period.js": IMPLEMENTATION }, reply: codeReply() }],
+  "code-adversary": [{ reply: codePass(["C1"]) }],
+  "conformity-checker": [{ reply: conformityPass(["F1"], ["T1", "C1"]) }],
+};
 const USERS = { "first.dev@example.com": "U1" };
 /** The package invites nobody by default: this squad's allowlist is declared here. */
 const INVITEES = (template: string) => template.replace(/ {4}bySquad: \{\}( +# par exemple :)/, "    bySquad:\n      FT: [first.dev@example.com, second.dev@example.com]");
@@ -132,6 +137,29 @@ describe("la cloture", () => {
     assert.match(asked[0] ?? "", /Point ouvert D1\n\nA valider par le PO : l'US dit « La liste s'ouvre sur toutes les feuilles\. »/);
     assert.deepEqual(outcome?.openPoints.map((point) => [point.id, point.status]), [["D1", "settled"]]);
     assert.deepEqual(world.jira.transitions, [{ key: "FT-1", to: "VALIDATION" }]);
+  });
+
+  it("confronte le code livre au cadrage et met les ecarts en tete de la MR, sans rien renvoyer au developpeur", async () => {
+    const gap = { decisions: [{ id: "F1", verdict: "ecart", evidence: "src/period.js:2", comment: "rend toujours 2026-09, pas le mois en cours" }], checklist: conformityPass([], ["T1", "C1"]).checklist };
+    world = await createWorld({
+      issues: [ISSUE],
+      slackUsers: USERS,
+      script: { ...delivery, "conformity-checker": [{ reply: gap }], "memory-planner": [{ reply: memoryReply }], finalizer: [{ reply: proseReply(["fixture-core"]) }] } as Script,
+    });
+    const { ledger, framing, repos } = await delivered(world);
+    const { result, outcome } = await close(world, ledger, framing, repos);
+    result.unwrap();
+
+    const prompt = world.agents.prompts["conformity-checker"]?.[0] ?? "";
+    assert.match(prompt, /- F1 : Periode par defaut \? → Mois en cours \(humain\)/);
+    assert.match(prompt, /- T1 Sans periode, clamp rend le mois en cours\.\n- C1 Les appelants de clamp ne changent pas\./);
+    assert.match(
+      world.gitlab.mergeRequests[0]?.description ?? "",
+      /^## Ecarts au cadrage constates a la cloture\n- F1 Periode par defaut \? → Mois en cours \(humain\) : rend toujours 2026-09, pas le mois en cours \(src\/period\.js:2\)\n\n## Ce que fait ce changement/,
+    );
+    assert.deepEqual(outcome?.conformity.map((report) => [report.repo, report.gaps.map((entry) => entry.id)]), [["fixture-core", ["F1"]]]);
+    assert.deepEqual(world.jira.transitions, [{ key: "FT-1", to: "VALIDATION" }]);
+    assert.deepEqual(world.agents.remaining(), {});
   });
 
   it("ne publie ni sur Slack ni sur le ticket quand ces services sont coupes, et ne fait pas ecrire leurs textes", async () => {
