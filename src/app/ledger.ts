@@ -7,6 +7,7 @@ import { DEROGATION_GROUNDS } from "../domain/derogation.ts";
 import { ESCALATION_KINDS } from "../domain/escalation.ts";
 import { fail } from "../domain/failure.ts";
 import { PlanSchema } from "../domain/plan.ts";
+import { RESPONDENTS } from "../domain/respondent.ts";
 import type { Publication } from "../phases/closing/workflow.ts";
 import type { DeliveredRepo } from "../phases/delivery/summary.ts";
 import type { FramingOutcome } from "../phases/framing/workflow.ts";
@@ -25,6 +26,12 @@ const ArbitrageSchema = v.object({
   overrides: v.optional(v.nullable(v.object({ functional: v.string(), ground: v.picklist(DEROGATION_GROUNDS) }))),
 });
 const GrillOutcomeSchema = v.object({ arbitrages: v.array(ArbitrageSchema), contradictions: v.array(ContradictionSchema) });
+const FunctionalOutcomeSchema = v.object({
+  ...GrillOutcomeSchema.entries,
+  divergences: v.optional(v.array(v.object({ said: v.string(), decided: v.string(), why: v.string() })), []),
+  edits: v.optional(v.array(v.object({ before: v.string(), after: v.string() })), []),
+  respondent: v.optional(v.nullable(v.picklist(RESPONDENTS)), null),
+});
 const TicketReferenceSchema = v.object({ key: v.string(), relation: v.string() });
 const TokensSchema = v.object({ input: v.number(), cached: v.number(), output: v.number() });
 
@@ -54,7 +61,7 @@ const FramingOutcomeSchema: v.GenericSchema<unknown, FramingOutcome> = v.object(
     frames: v.array(v.object({ url: v.string(), name: v.string(), outline: v.string(), image: v.nullable(v.string()) })),
     skipped: v.array(v.string()),
   }),
-  functional: GrillOutcomeSchema,
+  functional: FunctionalOutcomeSchema,
   technical: GrillOutcomeSchema,
   scope: v.object({
     impacted: v.array(v.object({ repo: v.string(), level: v.number(), area: v.string(), evidence: v.array(v.string()) })),
@@ -85,7 +92,11 @@ const PublicationSchema: v.GenericSchema<unknown, Publication> = v.object({
   }),
   mergeRequests: v.array(v.object({ repo: v.string(), project: v.string(), iid: v.number(), url: v.string() })),
   slack: v.nullable(v.object({ channel: v.object({ id: v.string(), name: v.string() }), invited: v.array(v.string()), unknown: v.array(v.string()) })),
-  jira: v.object({ transition: v.nullable(v.string()), commented: v.boolean() }),
+  jira: v.object({
+    transition: v.nullable(v.string()),
+    commented: v.boolean(),
+    edits: v.optional(v.object({ applied: v.number(), missed: v.array(v.string()) }), { applied: 0, missed: [] }),
+  }),
 });
 
 export const LedgerSchema = v.object({

@@ -5,8 +5,10 @@ import { inviteesFor } from "../../domain/allowlist.ts";
 import { resolveBySquad } from "../../domain/config.ts";
 import { RedlineError } from "../../domain/failure.ts";
 import { mergeRequestName, slackChannelName } from "../../domain/naming.ts";
+import { divergenceStatus } from "../../domain/respondent.ts";
 import type { Converged } from "../../workflow/converge.ts";
 import { Escalation } from "../../workflow/escalation.ts";
+import { renderDivergences } from "../framing/grills.ts";
 import { emit } from "../run.ts";
 import type { ClosingContext } from "./context.ts";
 import type { Prose } from "./prose.ts";
@@ -27,6 +29,8 @@ export interface SlackPublication {
 export interface JiraPublication {
   readonly transition: string | null;
   readonly commented: boolean;
+  /** The passages of the description rewritten, and those that could not be found. */
+  readonly edits: { readonly applied: number; readonly missed: readonly string[] };
 }
 
 export function pushTask(run: ClosingContext, after: readonly Task[]): Task<readonly string[]> {
@@ -45,10 +49,12 @@ export function pushTask(run: ClosingContext, after: readonly Task[]): Task<read
 }
 
 export function description(run: ClosingContext, summary: string, others: readonly OpenedMergeRequest[]): string {
-  const decisions = framingArbitrages(run.framing.functional.arbitrages, run.framing.technical.arbitrages);
+  const decisions = framingArbitrages(run.framing.functional, run.framing.technical.arbitrages);
   const links = others.length ? ["", "## Les autres MR de ce ticket", ...others.map((other) => `- ${other.repo} — ${other.url}`)] : [];
   const body = summary.trim().replace(/^(#+ [^\n]*\n+)+/, "");
-  return ["## Ce que fait ce changement", body, "", "## Arbitrages", decisions, ...links, "", `Refs: ${run.ledger.key}`].join("\n");
+  const functional = run.framing.functional;
+  const divergences = functional.divergences.length ? ["", `## Divergences avec l'US (${divergenceStatus(functional.respondent)})`, ...renderDivergences(functional)] : [];
+  return ["## Ce que fait ce changement", body, ...divergences, "", "## Arbitrages", decisions, ...links, "", `Refs: ${run.ledger.key}`].join("\n");
 }
 
 export function mergeRequestsTask(run: ClosingContext, prose: Task<Converged<Prose>>, push: Task<readonly string[]>): Task<readonly OpenedMergeRequest[]> {
@@ -121,10 +127,11 @@ export function jiraTask(run: ClosingContext, prose: Task<Converged<Prose>>, aft
     key: "jira",
     after: [prose, ...after],
     async perform(context) {
-      if (!settings.services.jiraWrites) return { transition: null, commented: false };
+      if (!settings.services.jiraWrites) return { transition: null, commented: false, edits: { applied: 0, missed: [] } };
       const tracker = run.app.services.tracker;
       const target = resolveBySquad(settings.jira.transitions, run.framing.ticket.squad).afterMergeRequest;
       const current = (await tracker.getTicket(run.ledger.key)).status;
+      const edits = await editTicket(run);
       const transition = current.trim().toLowerCase() === target.trim().toLowerCase() ? null : (await tracker.transition(run.ledger.key, target)).name;
       const text = context.value(prose).candidate.jira.trim();
       const already = (await tracker.comments(run.ledger.key)).some((comment) => comment.trim().startsWith(text.slice(0, 120)));
@@ -133,7 +140,20 @@ export function jiraTask(run: ClosingContext, prose: Task<Converged<Prose>>, aft
         await tracker.comment(run.ledger.key, text);
         emit(run, { type: "publication", task: "jira", action: "jira", detail: `commentaire poste sur ${run.ledger.key}`, url: run.framing.ticket.url });
       }
-      return { transition, commented: !already };
+      return { transition, commented: !already, edits };
     },
   });
+}
+
+/** Only the product owner's answers rewrite the ticket; a developer's stay an alternative awaiting validation. */
+async function editTicket(run: ClosingContext): Promise<JiraPublication["edits"]> {
+  const { respondent, edits } = run.framing.functional;
+  if (respondent !== "po" || edits.length === 0) return { applied: 0, missed: [] };
+  const result = await run.app.services.tracker.editDescription(run.ledger.key, edits);
+  if (result.applied) {
+    emit(run, { type: "publication", task: "jira", action: "jira", detail: `${result.applied} passage(s) de la description de ${run.ledger.key} reecrit(s)`, url: run.framing.ticket.url });
+  }
+  const missed = result.missed.map((edit) => edit.before);
+  if (missed.length) emit(run, { type: "warning", task: "jira", text: `passage(s) introuvable(s) dans la description de ${run.ledger.key}, non reecrit(s) : ${missed.map((before) => `« ${before} »`).join(", ")}` });
+  return { applied: result.applied, missed };
 }

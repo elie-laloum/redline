@@ -27,7 +27,7 @@ export function approved(world: World, override?: Plan): FramingOutcome {
       related: [],
     },
     figma: { frames: [], skipped: [] },
-    functional: { arbitrages: [{ question: "Periode par defaut ?", answer: "Mois en cours", why: "humain" }], contradictions: [] },
+    functional: { arbitrages: [{ question: "Periode par defaut ?", answer: "Mois en cours", why: "humain" }], divergences: [], edits: [], respondent: null, contradictions: [] },
     technical: { arbitrages: [], contradictions: [] },
     scope: { impacted: chosen.repos.map((entry, index) => ({ repo: entry.repo, level: index + 1, area: "zone", evidence: ["src/x.js:1 — x"] })), excluded: [] },
     plan: chosen,

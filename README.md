@@ -82,7 +82,13 @@ repository in parallel and must cite `file:line` evidence, which redline checks 
 technical grill settles the remaining choices, and the planner writes a plan per repository with
 two checklists — tests and code — that the plan rules validate before a human sees it.
 
-The functional framing prevails over the ticket and over the technical one: the technical grill
+The functional framing completes the ticket, may change it, and prevails over it. Before its first
+question, the functional grill asks who answers: the product owner, or the developer standing in
+until the product owner validates. It concludes with the divergences from the ticket and the
+passages of the ticket to rewrite, both shown at the plan review; every agent downstream
+receives the divergences.
+
+The functional framing also prevails over the technical one: the technical grill
 decides how, never what. It may depart from a functional arbitrage only for a technical
 impossibility or a defensible business reason, and only once the human accepts it; a refused
 derogation sends the grill back to another way. Every agent downstream receives the two framings
@@ -101,7 +107,10 @@ repositories adopt that version before their own turn.
 knowledge base. The finalizer writes the merge request summaries, the Slack message and the Jira
 comment in your voice. Redline then pushes the branches, opens or updates the draft merge
 requests with links to one another, creates the Slack channel and invites the allowlist,
-comments on the ticket and moves it.
+comments on the ticket and moves it. When the product owner answered the functional framing, only
+the quoted passages of the ticket's description are rewritten — images, tables and formatting
+elsewhere stay as they were; a developer's answers never touch the ticket, and the merge request
+lists the divergences as awaiting the product owner's validation.
 
 **Twelve roles**, one brief each in [src/prompts/](src/prompts/): functional grill, scope scout,
 technical grill, planner, test writer, test adversary, red checker, developer, appeal arbiter,

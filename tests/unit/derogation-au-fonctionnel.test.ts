@@ -51,7 +51,7 @@ describe("une derogation du cadrage technique au fonctionnel", () => {
 
 describe("les arbitrages donnes aux agents", () => {
   it("disent que le fonctionnel fait foi, puis signalent chaque derogation acceptee", () => {
-    const rendered = framingArbitrages(FUNCTIONAL, [plain, departing]);
+    const rendered = framingArbitrages({ arbitrages: FUNCTIONAL }, [plain, departing]);
     assert.equal(
       rendered,
       [

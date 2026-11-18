@@ -1,4 +1,5 @@
 import { collectUrls, extractAcceptanceCriteria, flattenDocument, splitCriteria, toDocument } from "../domain/acceptance.ts";
+import { editDescription } from "../domain/description-edits.ts";
 import { fail } from "../domain/failure.ts";
 import { type ReferenceSources, referencesOf, squadOf } from "../domain/ticket.ts";
 import type { Tracker, TrackerIdentity } from "../ports/tracker.ts";
@@ -95,6 +96,13 @@ export function createJira(credentials: JiraCredentials): Tracker {
     async comment(key, text) {
       const { data } = await request<{ id: string }>(issue(key, "/comment"), { method: "POST", headers, body: { body: toDocument(text) } });
       return { id: String(data?.id ?? "") };
+    },
+
+    async editDescription(key, edits) {
+      const { data } = await request<IssuePayload>(issue(key, "?fields=description"), { headers });
+      const edited = editDescription(data?.fields?.description ?? { type: "doc", version: 1, content: [] }, edits);
+      if (edited.applied.length) await request(issue(key), { method: "PUT", headers, body: { fields: { description: edited.document } } });
+      return { applied: edited.applied.length, present: edited.present.length, missed: edited.missed };
     },
 
     async comments(key) {

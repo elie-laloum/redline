@@ -1,4 +1,5 @@
 import { createServer, type Server } from "node:http";
+import { flattenDocument } from "../../src/domain/acceptance.ts";
 
 // Faux Jira, GitLab, Slack et Figma, sur des ports locaux. Git, lui, n'est jamais simule :
 // les repos de fixture sont de vrais depots avec un vrai remote bare.
@@ -66,6 +67,8 @@ export interface FakeJira extends FakeService {
   readonly issues: Map<string, Required<Omit<IssueSeed, "parent">> & { parent: string | null }>;
   readonly comments: { key: string; body: string; document: unknown }[];
   readonly transitions: { key: string; to: string }[];
+  /** Chaque description ecrite par PUT, dans l'ordre, au format document de Jira. */
+  readonly descriptions: { key: string; document: unknown }[];
   /** Statuts accessibles depuis l'etat courant. Scriptable par scenario. */
   available: string[];
   /** Comme Jira Cloud avec un jeton revoque : /myself en 401, les tickets en 404. */
@@ -90,6 +93,8 @@ export async function fakeJira(seed: IssueSeed[]): Promise<FakeJira> {
   );
   const comments: { key: string; body: string; document: unknown }[] = [];
   const transitions: { key: string; to: string }[] = [];
+  const descriptions: { key: string; document: unknown }[] = [];
+  const documents = new Map<string, unknown>();
   const state = { available: ["VALIDATION", "En cours"], rejectCredentials: false };
 
   const service = await serve((method, path, _query, body) => {
@@ -105,7 +110,7 @@ export async function fakeJira(seed: IssueSeed[]): Promise<FakeJira> {
           key: issue.key,
           fields: {
             summary: issue.summary,
-            description: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: issue.description }] }] },
+            description: documents.get(issue.key) ?? { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: issue.description }] }] },
             status: { name: issue.status },
             issuetype: { name: issue.issueType },
             labels: [],
@@ -116,6 +121,15 @@ export async function fakeJira(seed: IssueSeed[]): Promise<FakeJira> {
           },
         },
       };
+    }
+
+    if (issueMatch && method === "PUT") {
+      const issue = issues.get(decodeURIComponent(issueMatch[1] ?? ""));
+      if (!issue) return { status: 404, body: { errorMessages: ["Issue does not exist"] } };
+      documents.set(issue.key, body?.fields?.description);
+      issue.description = flattenDocument(body?.fields?.description).trim();
+      descriptions.push({ key: issue.key, document: body?.fields?.description });
+      return { status: 204, body: {} };
     }
 
     const transitionsMatch = /^\/rest\/api\/3\/issue\/([^/]+)\/transitions$/.exec(path);
@@ -149,6 +163,7 @@ export async function fakeJira(seed: IssueSeed[]): Promise<FakeJira> {
     issues,
     comments,
     transitions,
+    descriptions,
     get available() { return state.available; },
     set available(value: string[]) { state.available = value; },
     get rejectCredentials() { return state.rejectCredentials; },

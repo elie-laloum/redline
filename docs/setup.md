@@ -166,7 +166,7 @@ land on them, and a ticket from those projects touches no production repository.
 | `agents` | the authentication mode, and the model and reasoning effort by default and per role |
 | `sandbox` | the agent image, container limits, `agentChecks` |
 | `scope.concurrency` | how many scope scouts run in parallel |
-| `services` | `slack`, `figma`, `jiraWrites`: switch off the Slack channel and message, the mockups, or the Jira transition and comment. The ticket is always read, and GitLab always used. `start` and `resume` check the tokens of the services that are on before anything runs. |
+| `services` | `slack`, `figma`, `jiraWrites`: switch off the Slack channel and message, the mockups, or the Jira transition, comment and the rewrite of the ticket's passages. The ticket is always read, and GitLab always used. `start` and `resume` check the tokens of the services that are on before anything runs. |
 
 `commandSilenceSeconds` deserves a measurement rather than a guess: beyond it, a silent command
 is treated as waiting on infrastructure and escalates as `environment`.

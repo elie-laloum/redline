@@ -60,6 +60,26 @@ describe("la cloture", () => {
     assert.match(git(coreRepo, "ls-remote", "--heads", "origin"), /feature\/FT-1-filtrer-la-liste-par-periode/);
   });
 
+  it("garde la fiche Jira quand le developpeur a repondu au cadrage, et annonce les divergences en attente du PO", async () => {
+    world = await createWorld({
+      issues: [ISSUE],
+      slackUsers: USERS,
+      script: { ...delivery, "memory-planner": [{ reply: memoryReply }], finalizer: [{ reply: proseReply(["fixture-core"]) }] } as Script,
+    });
+    const { ledger, framing, repos } = await delivered(world);
+    const divergence = { said: "La liste s'ouvre sur toutes les feuilles.", decided: "La liste s'ouvre sur le mois en cours.", why: "trop long a charger" };
+    const edited = { ...framing, functional: { ...framing.functional, divergences: [divergence], edits: [{ before: "La liste des feuilles", after: "La liste du mois" }], respondent: "developer" as const } };
+    const { result, outcome } = await close(world, ledger, edited, repos);
+    result.unwrap();
+
+    assert.match(
+      world.gitlab.mergeRequests[0]?.description ?? "",
+      /## Divergences avec l'US \(en attente de validation du PO\)\n- L'US dit : La liste s'ouvre sur toutes les feuilles\. → decide : La liste s'ouvre sur le mois en cours\. \(trop long a charger\)/,
+    );
+    assert.deepEqual(world.jira.descriptions, []);
+    assert.deepEqual(outcome?.jira.edits, { applied: 0, missed: [] });
+  });
+
   it("ne publie ni sur Slack ni sur le ticket quand ces services sont coupes, et ne fait pas ecrire leurs textes", async () => {
     world = await createWorld({
       issues: [ISSUE],
@@ -73,7 +93,7 @@ describe("la cloture", () => {
 
     assert.equal(world.gitlab.mergeRequests.length, 1);
     assert.equal(outcome?.slack, null);
-    assert.deepEqual(outcome?.jira, { transition: null, commented: false });
+    assert.deepEqual(outcome?.jira, { transition: null, commented: false, edits: { applied: 0, missed: [] } });
     assert.deepEqual([world.slack.channels.length, world.slack.messages.length, world.jira.transitions.length, world.jira.comments.length], [0, 0, 0, 0]);
     assert.match(world.agents.prompts.finalizer?.[0] ?? "", /une chaine vide : Slack est desactive/);
   });

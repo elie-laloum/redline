@@ -2,7 +2,7 @@ import type { TicketSnapshot } from "../domain/ticket.ts";
 import type { Exchange } from "../workflow/interview.ts";
 import { feedback, ticket, transcript } from "./render.ts";
 import { defineRole } from "./role.ts";
-import { grillSchema } from "./shared.ts";
+import { functionalGrillSchema } from "./shared.ts";
 
 export interface FunctionalGrillInput {
   readonly ticket: TicketSnapshot;
@@ -18,7 +18,7 @@ export interface FunctionalGrillInput {
 export const functionalGrill = defineRole({
   name: "functional-grill",
   tag: "grill",
-  schema: grillSchema(),
+  schema: (input: FunctionalGrillInput) => functionalGrillSchema(input.ticket.description),
   values: (input: FunctionalGrillInput) => ({
     TICKET: ticket(input.ticket, input.notes),
     FIGMA: input.figma,
