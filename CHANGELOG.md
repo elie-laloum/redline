@@ -44,6 +44,9 @@ releases are tagged `v<version>` and published to npm as
 
 ### Changed
 
+- Closing asks before moving the Jira ticket to its `afterMergeRequest` status, with the merge
+  request links: they are drafts, and nothing is merged yet. The comment is posted whatever the
+  answer. The ticket used to move as soon as the merge requests existed.
 - Upgrade outpost from 9.0.0 to 14.3.0. Outpost now appends the expected answer format to every
   agent brief, with a JSON Schema generated from each role's valibot schema by
   `@valibot/to-json-schema`; valibot alone still decides whether an answer is accepted. A run

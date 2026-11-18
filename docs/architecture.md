@@ -58,7 +58,7 @@ finished task.
 |---|---|
 | framing | `ticket`, `figma`, `memory-broad`, `functional`, `scope`, `memory-targeted`, `technical`, `plan`, `review` |
 | delivery | per repository: `<repo>.workspace`, `<repo>.tests`, `<repo>.code-<n>` per batch, `<repo>.code`, `<repo>.release` when a downstream repository in scope depends on it |
-| closing | `open-points`, `conformity`, `memory-plan`, `memory-apply`, `prose`, `push-branches`, `merge-requests`, `slack`, `jira` |
+| closing | `open-points`, `conformity`, `memory-plan`, `memory-apply`, `prose`, `push-branches`, `merge-requests`, `slack`, `jira-transition`, `jira` |
 
 Delivery chains the repositories by ascending level: a repository's workspace waits for the
 previous repository to finish and for the release of every upstream it depends on.
@@ -205,7 +205,10 @@ Each step is therefore idempotent, so a `resume` completes what is missing witho
 what is done. Branches are pushed with `--force-with-lease`; a merge request is found by branch and
 updated rather than opened twice; the Slack message is not reposted when the channel already has
 it; bookmarks and the Jira comment are not duplicated; the transition is skipped when the ticket
-already has the target status. `clear` removes local state and lists the remote traces it
+already has the target status. The `jira-transition` interview asks the human before the ticket
+moves — the merge requests are drafts, and nothing is merged yet — and is memoised, so a resumed
+closing does not ask twice; it asks nothing when Jira writes are off, when a point is still open,
+or when the ticket already has the target status. The comment goes out whatever the answer. `clear` removes local state and lists the remote traces it
 leaves.
 
 ## Memory

@@ -161,7 +161,7 @@ land on them, and a ticket from those projects touches no production repository.
 | `naming` | branch, merge request and Slack channel patterns with `{type}`, `{ticket}`, `{slug}`, `{titre}`, `{n}`; the allowed types; the mapping from Jira issue types |
 | `git.committer` | the identity of the commits redline makes, when it must differ from your git config |
 | `gitlab.mrDraft` | open merge requests as drafts |
-| `jira.transitions` | the status to move the ticket to once the merge requests are open, by default and per Jira project |
+| `jira.transitions` | the status to move the ticket to once the merge requests are open, by default and per Jira project. Closing asks you first, with the merge request links; you may keep the ticket where it is |
 | `slack` | channel visibility, and the strict allowlist of invitees, by default and per Jira project |
 | `agents` | the authentication mode, and the model and reasoning effort by default and per role |
 | `sandbox` | the agent image, container limits, `agentChecks` |

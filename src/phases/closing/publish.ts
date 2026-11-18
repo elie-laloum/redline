@@ -7,12 +7,13 @@ import { type ConformityReport, renderGap } from "../../domain/conformity.ts";
 import { RedlineError } from "../../domain/failure.ts";
 import { mergeRequestName, slackChannelName } from "../../domain/naming.ts";
 import { renderReviewedPoint, type ReviewedPoint, stillOpen } from "../../domain/open-points.ts";
+import { digest } from "../../domain/digest.ts";
 import { divergenceStatus } from "../../domain/respondent.ts";
 import type { Converged } from "../../workflow/converge.ts";
 import { Escalation } from "../../workflow/escalation.ts";
-import type { Interviewed } from "../../workflow/interview.ts";
+import { defineInterview, type Interviewed } from "../../workflow/interview.ts";
 import { renderDivergences } from "../framing/grills.ts";
-import { emit } from "../run.ts";
+import { emit, HUMAN } from "../run.ts";
 import type { ClosingContext } from "./context.ts";
 import type { Prose } from "./prose.ts";
 
@@ -155,22 +156,76 @@ export function slackTask(run: ClosingContext, prose: Task<Converged<Prose>>, re
   });
 }
 
-/** A ticket with points still open keeps its status: it is commented, never moved. */
-export function jiraTask(run: ClosingContext, prose: Task<Converged<Prose>>, reviewed: Task<Interviewed<readonly ReviewedPoint[]>>, after: readonly Task[]): Task<JiraPublication> {
+/** The status the human confirmed the ticket moves to; null when it keeps its own. */
+export interface TransitionDecision {
+  readonly to: string | null;
+}
+
+export const keepStatus = (current: string) => `Garder ${current}`;
+export const moveTo = (target: string) => `Passer en ${target}`;
+
+/**
+ * The merge requests are drafts when closing ends: the ticket moves on only when the human says so.
+ * Nothing is asked when Jira writes are off, when points are still open, or when the ticket already
+ * has the target status.
+ */
+export function transitionInterview(
+  run: ClosingContext,
+  requests: Task<readonly OpenedMergeRequest[]>,
+  reviewed: Task<Interviewed<readonly ReviewedPoint[]>>,
+): Task<Interviewed<TransitionDecision>> {
+  const { settings } = run.app.configuration;
+  const target = resolveBySquad(settings.jira.transitions, run.framing.ticket.squad).afterMergeRequest;
+  return defineInterview<TransitionDecision>({
+    key: "jira-transition",
+    workflow: "redline.closing",
+    title: "Ticket Jira",
+    actors: [HUMAN],
+    after: [requests, reviewed],
+    maxTurns: 1,
+    memo: { store: run.cache, version: "jira-transition-1", key: () => digest({ key: run.ledger.key, target }) },
+    think: async (context, transcript) => {
+      if (!settings.services.jiraWrites) return { done: { to: null } };
+      const current = (await run.app.services.tracker.getTicket(run.ledger.key)).status;
+      if (stillOpen(context.value(reviewed).output).length > 0) {
+        emit(run, { type: "warning", task: "jira-transition", text: `${run.ledger.key} garde son statut ${current} : des points restent ouverts` });
+        return { done: { to: null } };
+      }
+      if (sameStatus(current, target)) return { done: { to: null } };
+      const [answer] = transcript;
+      if (answer) return { done: { to: answer.answer === moveTo(target) ? target : null } };
+      const links = context.value(requests).map((request) => `- ${request.repo} : ${request.url}`);
+      return {
+        ask: [
+          {
+            id: "transition",
+            header: `Passer en ${target}`,
+            text: [`Les merge requests sont ouvertes, en brouillon :`, ...links, "", `${run.ledger.key} est en ${current}. Je le passe en ${target} ? Le commentaire part dans les deux cas.`].join("\n"),
+            options: [moveTo(target), keepStatus(current)],
+            freeText: false,
+          },
+        ],
+      };
+    },
+  });
+}
+
+function sameStatus(left: string, right: string): boolean {
+  return left.trim().toLowerCase() === right.trim().toLowerCase();
+}
+
+export function jiraTask(run: ClosingContext, prose: Task<Converged<Prose>>, decision: Task<Interviewed<TransitionDecision>>, after: readonly Task[]): Task<JiraPublication> {
   const { settings } = run.app.configuration;
   return defineTask({
     key: "jira",
-    after: [prose, reviewed, ...after],
+    after: [prose, decision, ...after],
     async perform(context) {
       if (!settings.services.jiraWrites) return { transition: null, commented: false, edits: { applied: 0, missed: [] } };
       const tracker = run.app.services.tracker;
-      const target = resolveBySquad(settings.jira.transitions, run.framing.ticket.squad).afterMergeRequest;
       const current = (await tracker.getTicket(run.ledger.key)).status;
       const edits = await editTicket(run);
-      const reserved = stillOpen(context.value(reviewed).output).length > 0;
-      const kept = reserved || current.trim().toLowerCase() === target.trim().toLowerCase();
-      const transition = kept ? null : (await tracker.transition(run.ledger.key, target)).name;
-      if (reserved) emit(run, { type: "warning", task: "jira", text: `${run.ledger.key} garde son statut ${current} : des points restent ouverts` });
+      const { to } = context.value(decision).output;
+      const transition = to === null || sameStatus(current, to) ? null : (await tracker.transition(run.ledger.key, to)).name;
       const text = context.value(prose).candidate.jira.trim();
       const already = (await tracker.comments(run.ledger.key)).some((comment) => comment.trim().startsWith(text.slice(0, 120)));
       if (transition) emit(run, { type: "publication", task: "jira", action: "jira", detail: `${run.ledger.key} passe en ${transition}`, url: run.framing.ticket.url });

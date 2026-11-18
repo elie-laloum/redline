@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { afterEach, describe, it } from "bun:test";
 import type { Script } from "../kit/agents.ts";
 import { approved, close, codePass, codeReply, conformityPass, deliver, IMPLEMENTATION, memoryReply, proseReply, testsPhase } from "../kit/delivery.ts";
+import { keepStatus, moveTo } from "../../src/phases/closing/publish.ts";
 import { ISSUE } from "../kit/framing.ts";
 import { createWorld, type World } from "../kit/world.ts";
 import { temporaryDirectory } from "../helpers.ts";
@@ -23,6 +24,7 @@ const delivery = {
   "conformity-checker": [{ reply: conformityPass(["F1"], ["T1", "C1"]) }],
 };
 const USERS = { "first.dev@example.com": "U1" };
+const MOVE = moveTo("VALIDATION");
 /** The package invites nobody by default: this squad's allowlist is declared here. */
 const INVITEES = (template: string) => template.replace(/ {4}bySquad: \{\}( +# par exemple :)/, "    bySquad:\n      FT: [first.dev@example.com, second.dev@example.com]");
 
@@ -43,7 +45,7 @@ describe("la cloture", () => {
       script: { ...delivery, "memory-planner": [{ reply: memoryReply }], finalizer: [{ reply: proseReply(["fixture-core"]) }] } as Script,
     });
     const { ledger, framing, repos } = await delivered(world);
-    const { result, outcome } = await close(world, ledger, framing, repos);
+    const { result, outcome } = await close(world, ledger, framing, repos, { answers: [MOVE] });
     result.unwrap();
 
     const home = world.app.paths.home;
@@ -131,7 +133,7 @@ describe("la cloture", () => {
     const { ledger, framing, repos } = await delivered(world);
     const divergence = { said: "La liste s'ouvre sur toutes les feuilles.", decided: "La liste s'ouvre sur le mois en cours.", why: "trop long a charger" };
     const edited = { ...framing, functional: { ...framing.functional, divergences: [divergence], respondent: "developer" as const } };
-    const { result, outcome, asked } = await close(world, ledger, edited, repos, { answers: ["Tranche", "Valide par le PO en daily."] });
+    const { result, outcome, asked } = await close(world, ledger, edited, repos, { answers: ["Tranche", "Valide par le PO en daily.", MOVE] });
     result.unwrap();
 
     assert.match(asked[0] ?? "", /Point ouvert D1\n\nA valider par le PO : l'US dit « La liste s'ouvre sur toutes les feuilles\. »/);
@@ -147,7 +149,7 @@ describe("la cloture", () => {
       script: { ...delivery, "conformity-checker": [{ reply: gap }], "memory-planner": [{ reply: memoryReply }], finalizer: [{ reply: proseReply(["fixture-core"]) }] } as Script,
     });
     const { ledger, framing, repos } = await delivered(world);
-    const { result, outcome } = await close(world, ledger, framing, repos);
+    const { result, outcome } = await close(world, ledger, framing, repos, { answers: [MOVE] });
     result.unwrap();
 
     const prompt = world.agents.prompts["conformity-checker"]?.[0] ?? "";
@@ -162,6 +164,24 @@ describe("la cloture", () => {
     assert.deepEqual(world.agents.remaining(), {});
   });
 
+  it("demande avant de deplacer le ticket, et le laisse a son statut quand l'humain le garde", async () => {
+    world = await createWorld({
+      issues: [ISSUE],
+      slackUsers: USERS,
+      script: { ...delivery, "memory-planner": [{ reply: memoryReply }], finalizer: [{ reply: proseReply(["fixture-core"]) }] } as Script,
+    });
+    const { ledger, framing, repos } = await delivered(world);
+    const current = "READY TO DEV";
+    const { result, outcome, asked } = await close(world, ledger, framing, repos, { answers: [keepStatus(current)] });
+    result.unwrap();
+
+    const mr = world.gitlab.mergeRequests[0]?.url ?? "";
+    assert.match(asked[0] ?? "", new RegExp(`^Ticket Jira · 1/1 — Passer en VALIDATION\\n\\nLes merge requests sont ouvertes, en brouillon :\\n- fixture-core : ${mr}\\n\\nFT-1 est en ${current}\\. Je le passe en VALIDATION \\?`));
+    assert.deepEqual(world.jira.transitions, []);
+    assert.equal(world.jira.comments.length, 1);
+    assert.equal(outcome?.jira.transition, null);
+  });
+
   it("ne publie ni sur Slack ni sur le ticket quand ces services sont coupes, et ne fait pas ecrire leurs textes", async () => {
     world = await createWorld({
       issues: [ISSUE],
@@ -170,7 +190,7 @@ describe("la cloture", () => {
       script: { ...delivery, "memory-planner": [{ reply: memoryReply }], finalizer: [{ reply: { ...proseReply(["fixture-core"]), slack: "", jira: "" } }] } as Script,
     });
     const { ledger, framing, repos } = await delivered(world);
-    const { result, outcome } = await close(world, ledger, framing, repos);
+    const { result, outcome } = await close(world, ledger, framing, repos, { answers: [MOVE] });
     result.unwrap();
 
     assert.equal(world.gitlab.mergeRequests.length, 1);
@@ -196,7 +216,7 @@ describe("la cloture", () => {
         script: { ...delivery, "memory-planner": [{ reply: memoryReply }], finalizer: [{ reply: proseReply(["fixture-core"]) }] } as Script,
       });
       const { ledger, framing, repos } = await delivered(world);
-      const { result, outcome } = await close(world, ledger, framing, repos);
+      const { result, outcome } = await close(world, ledger, framing, repos, { answers: [MOVE] });
       result.unwrap();
 
       assert.equal(world.app.paths.memory, clone);
@@ -217,7 +237,7 @@ describe("la cloture", () => {
       script: { ...delivery, "memory-planner": [{ reply: memoryReply }], finalizer: [{ reply: proseReply(["fixture-core"]) }] } as Script,
     });
     const { ledger, framing, repos } = await delivered(world, "Garder le format de date ISO.");
-    (await close(world, ledger, framing, repos)).result.unwrap();
+    (await close(world, ledger, framing, repos, { answers: [MOVE] })).result.unwrap();
 
     for (const role of ["test-writer", "test-adversary", "red-checker", "developer", "code-adversary", "memory-planner", "finalizer"] as const) {
       assert.match(world.agents.prompts[role]?.[0] ?? "", /Notes de l'humain au lancement : Garder le format de date ISO\./, role);
@@ -230,7 +250,7 @@ describe("la cloture", () => {
       script: { ...delivery, "memory-planner": [{ reply: memoryReply }], finalizer: [{ reply: proseReply(["fixture-core"], "ping @autopilot c'est pret") }, { reply: proseReply(["fixture-core"]) }] } as Script,
     });
     const { ledger, framing, repos } = await delivered(world);
-    const { result } = await close(world, ledger, framing, repos);
+    const { result } = await close(world, ledger, framing, repos, { answers: [MOVE] });
     result.unwrap();
     assert.match(world.agents.prompts.finalizer?.[1] ?? "", /mention interdite/);
     assert.doesNotMatch(world.slack.messages[0]?.text ?? "", /@autopilot/);
@@ -247,7 +267,7 @@ describe("la cloture", () => {
     });
     const { ledger, framing, repos } = await delivered(world);
     const contradicted = { ...framing, contradictions: [{ note: "repos/fixture-core/tests.md", claim: "les tests tournent sous vitest", evidence: "package.json:4 — node --test", raisedBy: "scope-scout/fixture-core" }] };
-    const { result } = await close(world, ledger, contradicted, repos);
+    const { result } = await close(world, ledger, contradicted, repos, { answers: [MOVE] });
     result.unwrap();
     assert.match(world.agents.prompts["memory-planner"]?.[0] ?? "", /tourn\w+ sous vitest/);
     const retry = world.agents.prompts["memory-planner"]?.[1] ?? "";
@@ -258,7 +278,7 @@ describe("la cloture", () => {
   it("ne duplique rien quand la publication est rejouee", async () => {
     world = await createWorld({ issues: [ISSUE], slackUsers: USERS, script: { ...delivery, "memory-planner": [{ reply: memoryReply }], finalizer: [{ reply: proseReply(["fixture-core"]) }] } as Script });
     const { ledger, framing, repos } = await delivered(world);
-    (await close(world, ledger, framing, repos)).result.unwrap();
+    (await close(world, ledger, framing, repos, { answers: [MOVE] })).result.unwrap();
     const again = await close(world, { ...ledger, closing: { attempt: 2 } }, framing, repos);
     again.result.unwrap();
     assert.equal(world.gitlab.mergeRequests.length, 1);
