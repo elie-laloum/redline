@@ -103,4 +103,4 @@ scope:
 services:                            # Jira et GitLab sont toujours lus
   slack: true                        # false : ni canal ni message
   figma: true                        # false : le cadrage ne lit aucune maquette
-  jiraWrites: true                   # false : ni transition ni commentaire sur le ticket
+  jiraWrites: true                   # false : ni transition, ni commentaire, ni passage de l'US reecrit

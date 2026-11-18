@@ -45,16 +45,17 @@ describe("une session redline", () => {
   it("va du ticket a la publication en posant les questions une a une", async () => {
     world = await createWorld({ issues: [ISSUE], script: merge(framing, testsPhase, { developer: [implement], "code-adversary": [{ reply: codePass(["C1"]) }] }, closing) as Script });
     world.ledger("FT-1");
-    const prompter = scripted(["Mois en cours", "Approuver"]);
+    const prompter = scripted(["Le PO", "Mois en cours", "Approuver"]);
     const outcome = await runSession(world.app, "FT-1", {}, { prompter, progress: silentProgress });
 
     assert.equal(outcome.status, "done");
-    assert.deepEqual(prompter.asked, ["Grill fonctionnel · 1/1 — Periode par defaut", "Revue du plan · 1/1 — Validation du plan"]);
+    assert.deepEqual(prompter.asked, ["Grill fonctionnel · 1/2 — Qui repond", "Grill fonctionnel · 2/2 — Periode par defaut", "Revue du plan · 1/1 — Validation du plan"]);
     const ledger = readLedger(world.app.paths, "FT-1");
     assert.equal(ledger?.phase, "done");
     assert.equal(ledger?.active, null);
     assert.deepEqual(ledger?.history.map((entry) => entry.event), ["run ouvert", "plan approuve", "livraison terminee", "publication terminee"]);
     assert.equal(world.gitlab.mergeRequests.length, 1);
+    assert.equal(world.jira.issues.get("FT-1")?.description, "La liste des feuilles se filtre par mois.\n\nCriteres d'acceptation :\n- La periode par defaut est le mois en cours");
     assert.equal(git(world.app.paths.home, "log", "--format=%s", "-1"), "memory: FT-1");
     assert.ok(!existsSync(lockFile(world.app.paths, "FT-1")));
     assert.deepEqual(world.agents.remaining(), {});
@@ -64,7 +65,7 @@ describe("une session redline", () => {
     world = await createWorld({ issues: [ISSUE], script: merge(framing, testsPhase, { developer: [implement], "code-adversary": [{ reply: codePass(["C1"]) }] }, closing) as Script });
     world.ledger("FT-1");
     const events: RunEvent[] = [];
-    await runSession(world.app, "FT-1", {}, { prompter: scripted(["Mois en cours", "Approuver"]), progress: { event: (event) => events.push(event), pause: () => {} } });
+    await runSession(world.app, "FT-1", {}, { prompter: scripted(["Le PO", "Mois en cours", "Approuver"]), progress: { event: (event) => events.push(event), pause: () => {} } });
 
     const phases = events.flatMap((event) => (event.type === "phase" ? [event] : []));
     assert.deepEqual([...new Set(phases.map((event) => event.phase))], ["framing", "delivery", "closing"]);
@@ -92,7 +93,7 @@ describe("une session redline", () => {
     assert.ok(commands.includes("fixture-core.code:ut:end"));
     assert.deepEqual(
       events.flatMap((event) => (event.type === "publication" ? [event.action] : [])),
-      ["push", "merge-request", "slack", "jira", "jira"],
+      ["push", "merge-request", "slack", "jira", "jira", "jira"],
     );
     const outputs = new Map(events.flatMap((event) => (event.type === "output" ? [[event.task, event.value] as const] : [])));
     assert.equal((outputs.get("ticket") as { key?: string } | undefined)?.key, "FT-1");
@@ -104,7 +105,7 @@ describe("une session redline", () => {
     assert.equal(first && "session" in first ? first.session.pid : null, process.pid);
     assert.equal(last && "outcome" in last ? last.outcome.status : null, "done");
     const written = journal.flatMap((line) => ("event" in line ? [line.event] : []));
-    assert.deepEqual(written.flatMap((event) => (event.type === "question" ? [event.request.key] : [])), ["functional", "review"]);
+    assert.deepEqual(written.flatMap((event) => (event.type === "question" ? [event.request.key] : [])), ["functional", "functional", "review"]);
     for (const type of ["phase", "gate", "publication"] as const) {
       assert.equal(written.filter((event) => event.type === type).length, events.filter((event) => event.type === type).length, type);
     }
@@ -144,7 +145,7 @@ describe("une session redline", () => {
       ) as Script,
     });
     world.ledger("FT-1");
-    const escalated = await runSession(world.app, "FT-1", {}, { prompter: scripted(["Mois en cours", "Approuver"]), progress: silentProgress });
+    const escalated = await runSession(world.app, "FT-1", {}, { prompter: scripted(["Le PO", "Mois en cours", "Approuver"]), progress: silentProgress });
     assert.equal(escalated.status, "escalated");
     assert.equal(escalated.status === "escalated" ? escalated.escalation.task : "", "fixture-core.code/adversaire");
 
@@ -166,7 +167,7 @@ describe("une session redline", () => {
       script: merge(framing, testsPhase, { developer: [implement, implement, implement, implement], "code-adversary": [1, 2, 3, 4].map(() => ({ reply: codeRefuse(["C1"]) })) }) as Script,
     });
     world.ledger("FT-1");
-    await runSession(world.app, "FT-1", {}, { prompter: scripted(["Mois en cours", "Approuver"]), progress: silentProgress });
+    await runSession(world.app, "FT-1", {}, { prompter: scripted(["Le PO", "Mois en cours", "Approuver"]), progress: silentProgress });
 
     const lines = await rebuildHistory(world.app.paths, readLedger(world.app.paths, "FT-1") as Ledger);
     const replayed = lines.flatMap((line) => ("event" in line ? [line.event] : []));
@@ -187,7 +188,7 @@ describe("une session redline", () => {
   it("nettoie l'etat local d'un ticket publie et liste ce qui reste a distance", async () => {
     world = await createWorld({ issues: [ISSUE], script: merge(framing, testsPhase, { developer: [implement], "code-adversary": [{ reply: codePass(["C1"]) }] }, closing) as Script });
     world.ledger("FT-1");
-    await runSession(world.app, "FT-1", {}, { prompter: scripted(["Mois en cours", "Approuver"]), progress: silentProgress });
+    await runSession(world.app, "FT-1", {}, { prompter: scripted(["Le PO", "Mois en cours", "Approuver"]), progress: silentProgress });
 
     const dry = await clearTicket(world.app, "FT-1", { force: false, dryRun: true });
     assert.ok(dry.removed.some((entry) => entry.includes("feature/FT-1-filtrer-la-liste-par-periode")));

@@ -9,8 +9,15 @@ export const ISSUE = {
 };
 
 export const question = { id: "defaut", header: "Periode par defaut", text: "Quelle periode a l'ouverture ?", options: ["Mois en cours", "Dernier mois clos"] };
-export const functionalAsk = { done: false, questions: [question], arbitrages: [], contradictions: [] };
-export const functionalDone = { done: true, questions: [], arbitrages: [{ question: "Periode par defaut ?", answer: "Mois en cours", why: "choix de l'humain" }], contradictions: [] };
+export const functionalAsk = { done: false, questions: [question], arbitrages: [], divergences: [], edits: [], contradictions: [] };
+export const functionalDone = {
+  done: true,
+  questions: [],
+  arbitrages: [{ question: "Periode par defaut ?", answer: "Mois en cours", why: "choix de l'humain" }],
+  divergences: [{ said: "La liste des feuilles doit se filtrer par periode.", decided: "La liste des feuilles se filtre par mois.", why: "choix de l'humain" }],
+  edits: [{ before: "doit se filtrer par periode", after: "se filtre par mois" }],
+  contradictions: [],
+};
 export const technicalDeparting = {
   done: true,
   questions: [],

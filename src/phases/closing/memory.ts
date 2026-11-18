@@ -38,7 +38,7 @@ export function memoryPlanTask(run: ClosingContext): Task<Converged<MemoryPlan>>
         ask(context, session, memoryPlanner, {
           ticket: run.framing.ticket,
           notes: run.ledger.notes,
-          arbitrages: framingArbitrages(run.framing.functional.arbitrages, run.framing.technical.arbitrages),
+          arbitrages: framingArbitrages(run.framing.functional, run.framing.technical.arbitrages),
           plan: renderPlan(run.framing.plan),
           delivered: run.delivered.map((repo) => `### ${repo.repo} (${repo.branch})\n${bullets(repo.commits)}`).join("\n\n"),
           contradictions: bullets(contradictions.map((entry) => `memory/${entry.note} : « ${entry.claim} » contredit par ${entry.evidence} (${entry.raisedBy})`), "(aucune)"),

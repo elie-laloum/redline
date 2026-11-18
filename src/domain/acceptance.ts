@@ -27,7 +27,10 @@ export function toDocument(text: string): unknown {
   return {
     type: "doc",
     version: 1,
-    content: text.split("\n\n").map((paragraph) => ({ type: "paragraph", content: [{ type: "text", text: paragraph || " " }] })),
+    content: text.split("\n\n").map((paragraph) => ({
+      type: "paragraph",
+      content: (paragraph || " ").split("\n").flatMap((line, index) => [...(index ? [{ type: "hardBreak" }] : []), ...(line ? [{ type: "text", text: line }] : [])]),
+    })),
   };
 }
 

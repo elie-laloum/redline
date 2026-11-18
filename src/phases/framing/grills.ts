@@ -1,8 +1,8 @@
 import type { Task, TaskContext } from "@elie-laloum/outpost/workflows";
 import { functionalGrill } from "../../agents/functional-grill.ts";
-import { functionalArbitrages } from "../../agents/render.ts";
+import { functionalFraming } from "../../agents/render.ts";
 import { ask } from "../../agents/role.ts";
-import type { GrillReply, TechnicalGrillReply } from "../../agents/shared.ts";
+import type { Divergence, FunctionalGrillReply, TechnicalGrillReply } from "../../agents/shared.ts";
 import { technicalGrill } from "../../agents/technical-grill.ts";
 import { findRepo } from "../../domain/config.ts";
 import {
@@ -10,12 +10,13 @@ import {
   type Derogation,
   derogationQuestionId,
   derogationRulings,
-  functionalId,
   GROUND_LABELS,
   REFUSE_DEROGATION,
   refusedDerogations,
 } from "../../domain/derogation.ts";
+import type { DescriptionEdit } from "../../domain/description-edits.ts";
 import { digest } from "../../domain/digest.ts";
+import { divergenceStatus, RESPONDENT_CHOICES, RESPONDENT_QUESTION_ID, type Respondent, respondentOf, storyFate } from "../../domain/respondent.ts";
 import type { Contradiction, Scope } from "../../domain/scope.ts";
 import type { TicketSnapshot } from "../../domain/ticket.ts";
 import { defineInterview, type Exchange, type Interviewed, type Question, type Turn } from "../../workflow/interview.ts";
@@ -37,17 +38,60 @@ export interface GrillOutcome {
   readonly contradictions: readonly Contradiction[];
 }
 
-function toTurn(reply: GrillReply | TechnicalGrillReply, raisedBy: string): Turn<GrillOutcome> {
+export interface FunctionalOutcome extends GrillOutcome {
+  /** Where the framing departs from the ticket, which it prevails over. */
+  readonly divergences: readonly Divergence[];
+  /** The passages of the ticket the framing rewrites; the rest of the ticket stays as it is. */
+  readonly edits: readonly DescriptionEdit[];
+  readonly respondent: Respondent | null;
+}
+
+function toTurn(reply: TechnicalGrillReply, raisedBy: string): Turn<GrillOutcome> {
   if (!reply.done) return { ask: reply.questions };
   return { done: { arbitrages: reply.arbitrages, contradictions: reply.contradictions.map((entry) => ({ ...entry, raisedBy })) } };
+}
+
+const RESPONDENT_QUESTION: Question = {
+  id: RESPONDENT_QUESTION_ID,
+  header: "Qui repond",
+  text: "Qui repond aux questions du cadrage fonctionnel ? Les reponses du PO remplacent la description de l'US dans Jira a la cloture ; les tiennes restent une alternative, en attente de sa validation, et la fiche Jira n'est pas modifiee.",
+  options: Object.keys(RESPONDENT_CHOICES),
+  freeText: false,
+};
+
+/** Who answers is asked once, ahead of the grill's first questions: a grill that asks nothing involves no one. */
+function functionalTurn(reply: FunctionalGrillReply, transcript: readonly Exchange[]): Turn<FunctionalOutcome> {
+  if (!reply.done) return { ask: respondentOf(transcript) ? reply.questions : [RESPONDENT_QUESTION, ...reply.questions] };
+  return {
+    done: {
+      arbitrages: reply.arbitrages,
+      divergences: reply.divergences,
+      edits: reply.edits,
+      respondent: respondentOf(transcript),
+      contradictions: reply.contradictions.map((entry) => ({ ...entry, raisedBy: "functional-grill" })),
+    },
+  };
 }
 
 function reopenNote(run: RunContext, target: "functional" | "technical"): string | null {
   return run.ledger.framing.reopen.filter((entry) => entry.target === target).at(-1)?.note ?? null;
 }
 
-export function renderGrill(outcome: GrillOutcome): string {
-  return functionalArbitrages(outcome.arbitrages);
+export function renderGrill(outcome: FunctionalOutcome): string {
+  return functionalFraming(outcome);
+}
+
+export function renderDivergences(outcome: FunctionalOutcome): string[] {
+  return outcome.divergences.map((entry) => `- L'US dit : ${entry.said} → decide : ${entry.decided} (${entry.why})`);
+}
+
+/** The divergences and the edits to the ticket, as the human reviews them with the plan; empty when the grill left the ticket as it was. */
+export function renderStoryEdits(outcome: FunctionalOutcome): string[] {
+  const divergences = outcome.divergences.length ? [`Divergences avec l'US (${divergenceStatus(outcome.respondent)}) :`, ...renderDivergences(outcome), ""] : [];
+  const edits = outcome.edits.length
+    ? [`Passages de l'US reecrits — ${storyFate(outcome.respondent)}`, ...outcome.edits.map((edit) => `- « ${edit.before} » → « ${edit.after} »`), ""]
+    : [];
+  return [...divergences, ...edits];
 }
 
 /**
@@ -79,10 +123,10 @@ export function derogationQuestions(reply: TechnicalGrillReply, functional: read
   });
 }
 
-export function functionalInterview(run: RunContext, deps: { ticket: Task<TicketSnapshot>; figma: Task<FigmaBrief>; memory: Task<MemoryBrief> }): Task<Interviewed<GrillOutcome>> {
+export function functionalInterview(run: RunContext, deps: { ticket: Task<TicketSnapshot>; figma: Task<FigmaBrief>; memory: Task<MemoryBrief> }): Task<Interviewed<FunctionalOutcome>> {
   const { settings } = run.app.configuration;
   const reopen = run.ledger.framing.reopen.filter((entry) => entry.target === "functional").map((entry) => entry.note);
-  return defineInterview<GrillOutcome>({
+  return defineInterview<FunctionalOutcome>({
     key: "functional",
     workflow: "redline.framing",
     title: "Grill fonctionnel",
@@ -91,7 +135,7 @@ export function functionalInterview(run: RunContext, deps: { ticket: Task<Ticket
     maxTurns: run.ledger.budgets.grillRounds,
     memo: {
       store: run.cache,
-      version: "functional-1",
+      version: "functional-2",
       key: (context: TaskContext) => digest({ ticket: context.value(deps.ticket), notes: run.ledger.notes, figma: context.value(deps.figma).frames.map((frame) => frame.url), reopen }),
     },
     think: (context, transcript, turn) =>
@@ -110,7 +154,7 @@ export function functionalInterview(run: RunContext, deps: { ticket: Task<Ticket
             maxTurns: settings.budgets.grillRounds,
             reopen: reopenNote(run, "functional"),
           });
-          return toTurn(reply, "functional-grill");
+          return functionalTurn(reply, transcript);
         },
         [`figma/${run.ledger.key}`],
       ),
@@ -119,7 +163,7 @@ export function functionalInterview(run: RunContext, deps: { ticket: Task<Ticket
 
 export function technicalInterview(
   run: RunContext,
-  deps: { ticket: Task<TicketSnapshot>; functional: Task<Interviewed<GrillOutcome>>; scope: Task<{ scope: Scope }>; memory: Task<MemoryBrief> },
+  deps: { ticket: Task<TicketSnapshot>; functional: Task<Interviewed<FunctionalOutcome>>; scope: Task<{ scope: Scope }>; memory: Task<MemoryBrief> },
 ): Task<Interviewed<GrillOutcome>> {
   const { registry } = run.app.configuration;
   const reopen = run.ledger.framing.reopen.filter((entry) => entry.target === "technical").map((entry) => entry.note);
@@ -139,11 +183,12 @@ export function technicalInterview(
       withReader(run, "technical-grill", { task: "technical" }, async (session, reader) => {
         const scope = context.value(deps.scope).scope;
         const repos = scope.impacted.flatMap((entry) => findRepo(registry, entry.repo) ?? []);
-        const functional = context.value(deps.functional).output.arbitrages;
+        const { arbitrages: functional, divergences } = context.value(deps.functional).output;
         const reply = await ask(context, session, technicalGrill, {
           ticket: context.value(deps.ticket),
           notes: run.ledger.notes,
           functional,
+          divergences,
           refused: refusedDerogations(transcript),
           scope: renderScope(scope, reader.repoPath),
           conventions: renderConventions(repos, reader),

@@ -19,15 +19,17 @@ describe("le cadrage", () => {
       issues: [ISSUE],
       script: { "functional-grill": [{ reply: functionalAsk }, { reply: functionalDone }], "scope-scout": scouts(), "technical-grill": [{ reply: technicalDone() }], planner: [{ reply: plan() }] },
     });
-    const { outcome, asked } = await frame(world, world.ledger("FT-1"), ["Mois en cours", "Approuver"]);
+    const { outcome, asked } = await frame(world, world.ledger("FT-1"), ["Le PO", "Mois en cours", "Approuver"]);
 
     assert.equal(outcome?.decision, "approve");
     assert.deepEqual(outcome?.scope.impacted.map((entry) => entry.repo), ["fixture-core"]);
     assert.deepEqual(outcome?.scope.excluded.map((entry) => entry.repo).sort(), ["fixture-app", "fixture-flaky", "fixture-mono"]);
     assert.deepEqual(outcome?.ticket.criteria, [{ id: "AC1", text: "La periode par defaut est le mois en cours" }]);
     assert.deepEqual(outcome?.figma.frames, []);
-    assert.match(asked[0] ?? "", /Grill fonctionnel · 1\/1 — Periode par defaut/);
-    assert.match(asked[1] ?? "", /Revue du plan[\s\S]*T1 \[ut\] Sans periode/);
+    assert.match(asked[0] ?? "", /Grill fonctionnel · 1\/2 — Qui repond/);
+    assert.match(asked[1] ?? "", /Grill fonctionnel · 2\/2 — Periode par defaut/);
+    assert.match(asked[2] ?? "", /Revue du plan[\s\S]*Passages de l'US reecrits — le PO a repondu[\s\S]*« doit se filtrer par periode » → « se filtre par mois »[\s\S]*T1 \[ut\] Sans periode/);
+    assert.equal(outcome?.functional.respondent, "po");
     assert.match(world.agents.prompts["functional-grill"]?.[1] ?? "", /Reponse : Mois en cours/);
     assert.match(world.agents.prompts.planner?.[0] ?? "", /echanges bruts[\s\S]*\*\*Periode par defaut\*\* — Quelle periode a l'ouverture \?\n  Reponse : Mois en cours/);
     assert.match(world.agents.prompts.planner?.[0] ?? "", /aucune question : le grill a conclu sur le ticket seul/);
@@ -68,7 +70,7 @@ describe("le cadrage", () => {
       issues: [ISSUE],
       script: { "functional-grill": [{ reply: functionalAsk }, { reply: functionalDone }], "scope-scout": scouts(), "technical-grill": [{ reply: technicalDone() }], planner: [{ reply: plan() }, { reply: plan() }] },
     });
-    const first = await frame(world, world.ledger("FT-1"), ["Mois en cours", "Amender le plan", "Ajoute un test sur le mois de fevrier"]);
+    const first = await frame(world, world.ledger("FT-1"), ["Le PO", "Mois en cours", "Amender le plan", "Ajoute un test sur le mois de fevrier"]);
     assert.deepEqual({ decision: first.outcome?.decision, note: first.outcome?.note }, { decision: "amend", note: "Ajoute un test sur le mois de fevrier" });
 
     const reopened = world.ledger("FT-1", { framing: { attempt: 2, reopen: [{ target: "plan", note: "Ajoute un test sur le mois de fevrier", at: "2026-09-30" }] } });
@@ -90,7 +92,7 @@ describe("le cadrage", () => {
         planner: [{ reply: plan() }, { reply: plan() }],
       },
     });
-    await frame(world, world.ledger("FT-1"), ["Mois en cours", "Rejeter : revoir le technique", "Ne touche pas a clamp"]);
+    await frame(world, world.ledger("FT-1"), ["Le PO", "Mois en cours", "Rejeter : revoir le technique", "Ne touche pas a clamp"]);
     const reopened = world.ledger("FT-1", { framing: { attempt: 2, reopen: [{ target: "technical", note: "Ne touche pas a clamp", at: "2026-09-30" }] } });
     const second = await frame(world, reopened, ["Approuver"]);
 
@@ -173,7 +175,7 @@ describe("le cadrage", () => {
     const ledger = world.ledger("FT-1");
     const interrupted = await frame(world, ledger, []);
     assert.equal(interrupted.result.status, "waiting-input");
-    const resumed = await frame(world, ledger, ["Mois en cours", "Approuver"]);
+    const resumed = await frame(world, ledger, ["Le PO", "Mois en cours", "Approuver"]);
     assert.equal(resumed.outcome?.decision, "approve");
     assert.equal(world.agents.prompts["functional-grill"]?.length, 2);
   });

@@ -4,7 +4,7 @@ import type { Contradiction, Scope } from "../../domain/scope.ts";
 import type { TicketSnapshot } from "../../domain/ticket.ts";
 import type { RunContext } from "../run.ts";
 import { type FigmaBrief, figmaTask } from "./figma.ts";
-import { functionalInterview, type GrillOutcome, technicalInterview } from "./grills.ts";
+import { type FunctionalOutcome, functionalInterview, type GrillOutcome, technicalInterview } from "./grills.ts";
 import { memoryTask } from "./memory.ts";
 import { planTask } from "./planning.ts";
 import { type Decision, reviewInterview } from "./review.ts";
@@ -16,7 +16,7 @@ export interface FramingOutcome {
   readonly note: string | null;
   readonly ticket: TicketSnapshot;
   readonly figma: FigmaBrief;
-  readonly functional: GrillOutcome;
+  readonly functional: FunctionalOutcome;
   readonly technical: GrillOutcome;
   readonly scope: Scope;
   readonly plan: Plan;
@@ -40,7 +40,7 @@ export function defineFraming(run: RunContext): Framing {
   }));
   const technical = technicalInterview(run, { ticket, functional, scope, memory: targeted });
   const plan = planTask(run, { ticket, functional, technical, scope, memory: targeted });
-  const review = reviewInterview(run, { ticket, scope, plan });
+  const review = reviewInterview(run, { ticket, functional, scope, plan });
   const workflow = defineWorkflow("redline.framing", [ticket, figma, broad, functional, scope, targeted, technical, plan, review]);
 
   return {

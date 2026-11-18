@@ -33,11 +33,25 @@ export function technicalArbitrages(entries: readonly Ruling[]): string {
   );
 }
 
+interface FunctionalFraming {
+  readonly arbitrages: readonly Ruling[];
+  readonly divergences?: readonly { readonly said: string; readonly decided: string; readonly why: string }[];
+}
+
+/** The functional arbitrages, then where they depart from the ticket. */
+export function functionalFraming(functional: FunctionalFraming): string {
+  const divergences = functional.divergences ?? [];
+  const departures = divergences.length
+    ? ["", "Ce qu'ils changent au ticket, qu'ils completent ou modifient et sur lequel ils priment :", bullets(divergences.map((entry) => `le ticket dit : ${entry.said} → decide : ${entry.decided} (${entry.why})`))]
+    : [];
+  return [functionalArbitrages(functional.arbitrages), ...departures].join("\n");
+}
+
 /** Both framings, in their order of precedence: the functional one prevails over the ticket and over the technical one. */
-export function framingArbitrages(functional: readonly Ruling[], technical: readonly Ruling[]): string {
+export function framingArbitrages(functional: FunctionalFraming, technical: readonly Ruling[]): string {
   return [
     "Cadrage fonctionnel — il fait foi : il prime sur le ticket et sur le cadrage technique.",
-    functionalArbitrages(functional),
+    functionalFraming(functional),
     "",
     "Cadrage technique — le comment, subordonne au cadrage fonctionnel. Il ne s'en ecarte que par une derogation acceptee par l'humain, signalee comme telle.",
     technicalArbitrages(technical),

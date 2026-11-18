@@ -24,8 +24,13 @@ interface Case {
 }
 
 const CASES: Case[] = [
-  { role: roles.functionalGrill, input: { ticket: TICKET, notes: null, figma: "(aucune)", memory: "", transcript: [], turn: 1, maxTurns: 5, reopen: null }, ok: grill, ko: { ...grill, questions: [] } },
-  { role: roles.technicalGrill, input: { ticket: TICKET, notes: null, functional: [], refused: [], scope: "", conventions: "", memory: "", transcript: [], turn: 1, maxTurns: 5, reopen: null }, ok: { ...grill, done: true, questions: [] }, ko: { ...grill, done: true } },
+  {
+    role: roles.functionalGrill,
+    input: { ticket: TICKET, notes: null, figma: "(aucune)", memory: "", transcript: [], turn: 1, maxTurns: 5, reopen: null },
+    ok: { ...grill, divergences: [], edits: [] },
+    ko: { ...grill, questions: [], divergences: [], edits: [] },
+  },
+  { role: roles.technicalGrill, input: { ticket: TICKET, notes: null, functional: [], divergences: [], refused: [], scope: "", conventions: "", memory: "", transcript: [], turn: 1, maxTurns: 5, reopen: null }, ok: { ...grill, done: true, questions: [] }, ko: { ...grill, done: true } },
   {
     role: roles.scopeScout,
     input: { ticket: TICKET, notes: null, functional: "", repo: { name: "core", level: 1, layer: "backend", description: "d" }, path: "/repos/core", memory: "", feedback: null },

@@ -113,6 +113,17 @@ answer. The transcript is checkpointed, so an answered question is never asked t
 functional and technical grills are interviews with an agent behind `think`; the plan review is an
 interview with plain code behind it.
 
+The functional grill's `think` prepends one question to its first batch: who answers, the product
+owner or the developer. The answer lives in the transcript under the id `respondent`, and a grill
+that asks nothing has no respondent. Its final answer carries `divergences` — what the ticket
+says, what was decided instead, and why — and `edits`, each a passage of the ticket quoted exactly
+with its replacement; the response schema refuses a passage the description does not contain.
+Closing applies the edits only when the product owner answered: `editDescription()`
+(`domain/description-edits.ts`) rewrites each passage inside the one block of Jira's document that
+holds it, whitespace-insensitively, and leaves every other node — images, tables, marks — as it
+was. A passage found nowhere or twice is not applied and is reported; one already rewritten by an
+earlier run is recognised, so a resume does not rewrite twice.
+
 The technical grill's `think` adds questions of its own. A technical arbitrage that departs from
 a functional one names it — `overrides: { functional: "F2", ground }`, the ground being
 `impossibilite-technique` or `raison-metier` — and each derogation the transcript has not ruled

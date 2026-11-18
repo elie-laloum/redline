@@ -51,7 +51,7 @@ export async function withTarget<T>(run: DeliveryContext, target: RepoTarget, wo
 }
 
 export function arbitragesOf(run: DeliveryContext): string {
-  return framingArbitrages(run.framing.functional.arbitrages, run.framing.technical.arbitrages);
+  return framingArbitrages(run.framing.functional, run.framing.technical.arbitrages);
 }
 
 export function seedOf(run: DeliveryContext, key: string): string | null {

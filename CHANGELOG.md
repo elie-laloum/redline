@@ -16,6 +16,13 @@ releases are tagged `v<version>` and published to npm as
   arbitrages first, as prevailing, then the technical ones with each accepted derogation marked.
   The two lists used to be merged into one block, so a technical choice could silently undo a
   functional one.
+- The functional grill asks who answers it — the product owner, or the developer until the
+  product owner validates — and concludes with the divergences from the ticket and the passages
+  of the ticket to rewrite. The plan review shows both, every agent downstream receives the
+  divergences, and the merge request lists them. When the product owner answered, closing rewrites
+  only those passages in the Jira description, leaving images, tables and formatting elsewhere
+  untouched, and reports any passage it could not find; a developer's answers never touch the
+  ticket.
 - The dashboard's right panel has three views, cycled with `v`: the inspector; the changes the
   run made in each worktree — path, branch, commits and diff stat against the base branch, read
   from git while the view is shown; and an explanation of the run in plain words — where it is,
@@ -37,6 +44,8 @@ releases are tagged `v<version>` and published to npm as
 
 ### Fixed
 
+- A text sent to Jira — comment or description — carries the line breaks inside a paragraph as
+  hard breaks, the line break of Jira's document format, instead of raw newlines inside the text.
 - The test adversary receives the arbitrages the test writer is bound by, and its brief states
   that an arbitrage binds its judgement too: a point an arbitrage puts out of scope is a
   conformance, not a weakness. The writer obeyed an arbitrage and the adversary reported that

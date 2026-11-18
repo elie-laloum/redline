@@ -1,6 +1,7 @@
 import * as v from "valibot";
 import { COMMIT_TYPES } from "../domain/commit-message.ts";
 import { DEROGATION_GROUNDS } from "../domain/derogation.ts";
+import { quotable } from "../domain/description-edits.ts";
 
 export const text = v.pipe(v.string(), v.trim(), v.minLength(1));
 
@@ -44,15 +45,29 @@ function questionsMatchDone(reply: { done: boolean; questions: readonly unknown[
   return reply.done ? reply.questions.length === 0 : reply.questions.length > 0;
 }
 
-export function grillSchema() {
+/** What the ticket says, what the functional framing decided instead, and why. */
+export const DivergenceSchema = v.object({ said: text, decided: text, why: text });
+
+/** A passage of the ticket, quoted exactly, and the text that replaces it. */
+export const EditSchema = v.object({ before: text, after: v.string() });
+
+/** `description` is the ticket's text, which every edit must quote. */
+export function functionalGrillSchema(description: string) {
+  const quoted = quotable(description);
   return v.pipe(
     v.object({
       done: v.boolean(),
       questions: v.array(QuestionSchema),
       arbitrages: v.array(ArbitrageSchema),
+      divergences: v.array(DivergenceSchema),
+      edits: v.array(EditSchema),
       contradictions: v.array(ContradictionSchema),
     }),
     v.check((reply) => questionsMatchDone(reply), QUESTIONS_MATCH_DONE),
+    v.check(
+      (reply) => reply.edits.every((edit) => quoted.includes(quotable(edit.before))),
+      "un `before` ne se trouve pas tel quel dans la description du ticket : cite un passage exact d'un seul paragraphe ou element de liste, sans URL de lien",
+    ),
   );
 }
 
@@ -80,5 +95,6 @@ export function technicalGrillSchema(functional: number, refused: readonly strin
   );
 }
 
-export type GrillReply = v.InferOutput<ReturnType<typeof grillSchema>>;
+export type FunctionalGrillReply = v.InferOutput<ReturnType<typeof functionalGrillSchema>>;
+export type Divergence = v.InferOutput<typeof DivergenceSchema>;
 export type TechnicalGrillReply = v.InferOutput<ReturnType<typeof technicalGrillSchema>>;

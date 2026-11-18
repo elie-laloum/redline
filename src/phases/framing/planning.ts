@@ -9,7 +9,7 @@ import type { TicketSnapshot } from "../../domain/ticket.ts";
 import { briefOf, type Converged, converge } from "../../workflow/converge.ts";
 import type { Interviewed } from "../../workflow/interview.ts";
 import { cached, type RunContext, withReader } from "../run.ts";
-import { type GrillOutcome, renderGrill, renderScope } from "./grills.ts";
+import { type FunctionalOutcome, type GrillOutcome, renderGrill, renderScope } from "./grills.ts";
 import type { MemoryBrief } from "./memory.ts";
 import type { ScopeOutcome } from "./scope.ts";
 
@@ -23,7 +23,7 @@ export function planTask(
   run: RunContext,
   deps: {
     ticket: Task<TicketSnapshot>;
-    functional: Task<Interviewed<GrillOutcome>>;
+    functional: Task<Interviewed<FunctionalOutcome>>;
     technical: Task<Interviewed<GrillOutcome>>;
     scope: Task<ScopeOutcome>;
     memory: Task<MemoryBrief>;

@@ -14,7 +14,7 @@ import type { Interviewed } from "../../workflow/interview.ts";
 import { Escalation } from "../../workflow/escalation.ts";
 import { pool } from "../../workflow/pool.ts";
 import { cached, type RunContext, withReader } from "../run.ts";
-import { type GrillOutcome, renderGrill } from "./grills.ts";
+import { type FunctionalOutcome, renderGrill } from "./grills.ts";
 
 export interface ScopeOutcome {
   readonly scope: Scope;
@@ -34,7 +34,7 @@ export function evidenceProblems(root: string, evidence: readonly string[]): str
   });
 }
 
-export function scopeTask(run: RunContext, deps: { ticket: Task<TicketSnapshot>; functional: Task<Interviewed<GrillOutcome>> }): Task<ScopeOutcome> {
+export function scopeTask(run: RunContext, deps: { ticket: Task<TicketSnapshot>; functional: Task<Interviewed<FunctionalOutcome>> }): Task<ScopeOutcome> {
   const { registry, settings } = run.app.configuration;
   return defineTask({
     key: "scope",

@@ -132,6 +132,8 @@ const DESCRIBE: Readonly<Record<string, (value: Json) => OutputLine[]>> = {
   jira: (publication) => [
     line(publication.transition ? `ticket passe en ${text(publication.transition)}` : "statut inchange", publication.transition ? "success" : "muted"),
     line(publication.commented ? "commentaire poste" : "commentaire deja present", "muted"),
+    ...(Number(object(publication.edits).applied) ? [line(`${Number(object(publication.edits).applied)} passage(s) de la description reecrit(s)`, "success")] : []),
+    ...section("Passages introuvables, non reecrits", list(object(publication.edits).missed).map((before) => line(`« ${text(before)} »`, "warning"))),
   ],
 };
 
@@ -157,6 +159,13 @@ function grill(interviewed: Json): OutputLine[] {
         })
       : [line("Aucun arbitrage.", "muted")]),
     ...(list(interviewed.transcript).length ? [line(`${list(interviewed.transcript).length} echange(s) avec toi`, "muted")] : []),
+    ...section(
+      "Divergences avec l'US",
+      list(outcome.divergences).flatMap((divergence) => {
+        const entry = object(divergence);
+        return [line(`• l'US dit : ${text(entry.said)}`, "title"), line(`→ ${text(entry.decided)}`, "warning", 2), line(text(entry.why), "muted", 2)];
+      }),
+    ),
     ...contradictions(outcome.contradictions),
   ];
 }
