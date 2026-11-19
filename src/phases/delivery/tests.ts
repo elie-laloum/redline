@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { defineTask, type LoopTaskContext, type Task } from "@elie-laloum/outpost/workflows";
+import { defineTask, type LoopTaskContext, type Task, type WorkflowJson } from "@elie-laloum/outpost/workflows";
 import { redChecker } from "../../agents/red-checker.ts";
 import { bullets } from "../../agents/render.ts";
 import { ask } from "../../agents/role.ts";
@@ -11,6 +11,7 @@ import { declaredTestKinds, type TestKind } from "../../domain/config.ts";
 import { digest } from "../../domain/digest.ts";
 import { failingLines, renderCheck, renderVerdicts } from "../../domain/feedback.ts";
 import { ruledLines, uncoverableDetail } from "../../domain/rulings.ts";
+import { citedFile, readRounds, trendNote } from "../../domain/trend.ts";
 import { isTestFile } from "../../domain/zones.ts";
 import type { CheckResult } from "../../ports/checks.ts";
 import type { RepoWorkspace } from "../../ports/sandboxes.ts";
@@ -116,10 +117,13 @@ function adversaryGate(run: DeliveryContext, target: RepoTarget, budget: number)
         if (failing.length === 0 && verdict.weaknesses.length === 0) return { kind: "pass" };
         const weaknesses = verdict.weaknesses.map((entry) => `${entry.file} : ${entry.problem}`);
         const fragile = `Tests fragiles :\n${bullets(weaknesses)}`;
+        const lastTurn = (carry.spent[adversaryName] ?? 0) + 1 > budget;
         // The last turn is spent: a checklist fully proven is delivered with the residual
         // weaknesses reported, since only a line the adversary reports as missing is a gap.
-        if (failing.length === 0 && (carry.spent[adversaryName] ?? 0) + 1 > budget) return { kind: "pass", note: fragile };
-        return { kind: "feedback", text: [renderVerdicts(failing), weaknesses.length ? fragile : ""].filter(Boolean).join("\n\n") };
+        if (failing.length === 0 && lastTurn) return { kind: "pass", note: fragile };
+        const rounds = [...readRounds(carry.memo[adversaryName]), { count: failing.length + verdict.weaknesses.length, files: [...failing.map((line) => citedFile(line.evidence)), ...verdict.weaknesses.map((entry) => citedFile(entry.file))] }];
+        const text = [renderVerdicts(failing), weaknesses.length ? fragile : "", lastTurn ? trendNote(rounds) : ""].filter(Boolean).join("\n\n");
+        return { kind: "feedback", text, memo: { rounds } as unknown as WorkflowJson };
       }),
   };
 }

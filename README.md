@@ -177,6 +177,12 @@ When an `arbitrage` escalation names checklist lines the registry cannot test, t
 with is recorded as your ruling on those lines: they never escalate again, and every agent of the
 delivery reads the ruling with the other arbitrages.
 
+When an adversary spends its last turn, its final feedback counts its findings round by round and
+says which way they go: decreasing is a slow convergence, where one more turn would likely do;
+not decreasing is a critic without a stopping point, whose scope needs bounding rather than more
+turns. A file it has cited in each of the last three rounds is named, for you to remove from the
+branch when the checklist does not ask for it.
+
 An escalation says how many escalations the same task has had before it, and of which kinds;
 from the third on, it suggests taking the branch over by hand. It ends with the path of the run's
 journal, `~/.redline/runs/<KEY>/events.jsonl`, which keeps every verdict untruncated.

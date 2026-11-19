@@ -8,6 +8,10 @@ releases are tagged `v<version>` and published to npm as
 
 ### Added
 
+- When the test or code adversary spends its last turn, its feedback — the escalation's text —
+  counts its findings round by round and tells a slow convergence (decreasing) from a critic
+  without a stopping point (not decreasing), and names a file it has cited in each of the last
+  three rounds. Both used to end on the same `budget epuise`.
 - The note given to `resume --fresh` after an escalation on lines the registry cannot test is
   recorded as the human's ruling on those lines, in the ledger's `delivery.rulings`. A ruled line
   no longer escalates, and the ruling reaches every delivery agent with the arbitrages. Nothing

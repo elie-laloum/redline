@@ -12,6 +12,7 @@ import { digest } from "../../domain/digest.ts";
 import { failingLines, renderCheck, renderVerdicts } from "../../domain/feedback.ts";
 import { batches, type PlanCode } from "../../domain/plan.ts";
 import type { Contradiction } from "../../domain/scope.ts";
+import { citedFile, readRounds, trendNote } from "../../domain/trend.ts";
 import { isTestFile } from "../../domain/zones.ts";
 import { briefOf, type Converged, converge, type Gate, type Verdict } from "../../workflow/converge.ts";
 import { cached, commandObserver, session } from "../run.ts";
@@ -206,18 +207,24 @@ function greenGate(run: DeliveryContext, target: RepoTarget, key: string, budget
   };
 }
 
+const ADVERSARY = "adversaire";
+
 function codeAdversaryGate(run: DeliveryContext, target: RepoTarget, budget: number): Gate<CodeCandidate> {
   return {
-    name: "adversaire",
+    name: ADVERSARY,
     budget,
-    judge: (context) =>
+    judge: (context, _candidate, carry) =>
       withTarget(run, target, async (opened): Promise<Verdict> => {
         const base = await git(opened.directory, ["merge-base", "HEAD", `origin/${target.repo.baseBranch}`]);
         const verdict = await opened.withSandbox((sandbox) =>
           ask(context, session(run, sandbox, { task: codeKey(target) }), codeAdversary, { ticket: run.framing.ticket, notes: run.ledger.notes, repo: target.repo.name, code: target.entry.code, arbitrages: arbitragesOf(run), base }),
         );
         const failing = failingLines(verdict.lines);
-        return failing.length === 0 ? { kind: "pass" } : { kind: "feedback", text: `L'adversaire du code refuse ces lignes :\n${renderVerdicts(failing)}` };
+        if (failing.length === 0) return { kind: "pass" };
+        const rounds = [...readRounds(carry.memo[ADVERSARY]), { count: failing.length, files: failing.map((line) => citedFile(line.evidence)) }];
+        const lastTurn = (carry.spent[ADVERSARY] ?? 0) + 1 > budget;
+        const text = [`L'adversaire du code refuse ces lignes :\n${renderVerdicts(failing)}`, lastTurn ? trendNote(rounds) : ""].filter(Boolean).join("\n\n");
+        return { kind: "feedback", text, memo: { rounds } as unknown as WorkflowJson };
       }),
   };
 }

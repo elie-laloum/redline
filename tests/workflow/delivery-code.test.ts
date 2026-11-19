@@ -37,6 +37,8 @@ describe("la convergence du code", () => {
     assert.deepEqual([escalation?.kind, escalation?.task], ["convergence", "fixture-core.code/adversaire"]);
     assert.equal(world.agents.prompts["code-adversary"]?.length, 4);
     assert.match(world.agents.prompts.developer?.[1] ?? "", /le mois est fige/);
+    assert.match(escalation?.detail ?? "", /Constats par tour : 1 → 1 → 1 → 1\. Ils ne decroissent pas/);
+    assert.match(escalation?.detail ?? "", /src\/period\.js est cite a chacun des 3 derniers tours/);
     assert.equal(world.gitlab.mergeRequests.length, 0);
     assert.equal(world.slack.channels.length, 0);
   });
