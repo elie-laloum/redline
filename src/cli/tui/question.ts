@@ -60,7 +60,8 @@ export function askedOf(request: WorkflowInputRequest): Asked {
 export function createQuestionPanel(renderer: CliRenderer, grillSlot: BoxRenderable, reviewSlot: BoxRenderable): QuestionPanel {
   const grill = {
     heading: new TextRenderable(renderer, { id: "grill-heading", content: "", fg: THEME.text, wrapMode: "none", height: 1 }),
-    body: new ScrollBoxRenderable(renderer, { id: "grill-body", flexGrow: 1, flexShrink: 1, backgroundColor: THEME.panel }),
+    // As tall as its text, so the choices follow it; it shrinks, and scrolls, when the panel is short.
+    body: new ScrollBoxRenderable(renderer, { id: "grill-body", flexGrow: 0, flexShrink: 1, height: 1, backgroundColor: THEME.panel }),
     bodyText: new TextRenderable(renderer, { id: "grill-body-text", content: "", fg: THEME.text, wrapMode: "none" }),
     form: createForm(renderer, "grill", () => choiceRoom()),
   };
@@ -127,6 +128,7 @@ export function createQuestionPanel(renderer: CliRenderer, grillSlot: BoxRendera
         grill.heading.height = heading.length;
         const body = wrap(asked.body, width);
         bodyLines = body.length;
+        grill.body.height = Math.max(1, body.length);
         grill.bodyText.content = styled(body.map((line): Line => [span(line)]));
         grill.body.scrollTop = 0;
       }
