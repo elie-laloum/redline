@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "bun:test";
 import { reopenAfterEscalation } from "../../src/app/driver.ts";
 import { newLedger } from "../../src/app/ledger.ts";
+import { clearNotes, notesOf } from "../../src/app/notes.ts";
 import { escalationFooter } from "../../src/cli/report.ts";
 import { earlierEscalations } from "../../src/domain/escalation.ts";
 import { invocation } from "../../src/domain/invocation.ts";
@@ -88,5 +89,29 @@ describe("le dernier retour d'un adversaire", () => {
 
   it("lit le fichier d'une citation", () => {
     assert.deepEqual(["src/x.ts:12", "src/x.ts:12:4", "src/x.ts:3-9", "src/x.ts"].map(citedFile), ["src/x.ts", "src/x.ts", "src/x.ts", "src/x.ts"]);
+  });
+});
+
+describe("les notes de reprise", () => {
+  const base = newLedger({ key: "FT-1", squad: "FT", title: "Titre", url: "https://jira/FT-1", notes: null, figmaOverrides: [], budgets: exampleSettings().budgets });
+  const noted = { ...base, delivery: { ...base.delivery, seeds: { "core.tests": "Garde clamp.", "core.code": "Pas de nouvelle dependance." } } };
+
+  it("se lisent par tache", () => {
+    assert.deepEqual(notesOf(noted), [
+      { task: "core.tests", note: "Garde clamp." },
+      { task: "core.code", note: "Pas de nouvelle dependance." },
+    ]);
+  });
+
+  it("s'effacent une a une ou toutes, en retirant la cle plutot qu'en ecrivant null", () => {
+    const one = clearNotes(noted, "core.tests");
+    assert.deepEqual(one.delivery.seeds, { "core.code": "Pas de nouvelle dependance." });
+    assert.equal(one.history.at(-1)?.event, "note effacee sur core.tests");
+    assert.deepEqual(clearNotes(noted, null).delivery.seeds, {});
+    assert.throws(() => clearNotes(noted, "app.tests"), /Aucune note sur app\.tests/);
+  });
+
+  it("ne se touchent pas pendant qu'un run tourne", () => {
+    assert.throws(() => clearNotes({ ...noted, active: { runId: "FT-1/delivery/2", pid: 42 } }, null), /en cours \(pid 42\)/);
   });
 });

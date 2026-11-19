@@ -8,6 +8,9 @@ releases are tagged `v<version>` and published to npm as
 
 ### Added
 
+- `redline note <ticket> [task] [--clear]` shows the note each task reads since a `resume --note`,
+  with the rulings on uncoverable lines, and clears a note — one task's, or all — by removing its
+  key. Clearing a note meant editing the ledger by hand, where a `null` blocks the next run.
 - When the test or code adversary spends its last turn, its feedback — the escalation's text —
   counts its findings round by round and tells a slow convergence (decreasing) from a critic
   without a stopping point (not decreasing), and names a file it has cited in each of the last

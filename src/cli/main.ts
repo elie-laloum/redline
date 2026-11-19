@@ -9,6 +9,7 @@ import { clearCommand } from "./commands/clear.ts";
 import { imageBuildCommand, imageDoctorCommand } from "./commands/image.ts";
 import { initCommand } from "./commands/init.ts";
 import { migrateHomeCommand } from "./commands/migrate-home.ts";
+import { noteCommand } from "./commands/note.ts";
 import { resumeCommand, startCommand } from "./commands/run.ts";
 import { showCommand } from "./commands/show.ts";
 import { statusCommand } from "./commands/status.ts";
@@ -42,6 +43,14 @@ program
   .option("--note <texte>", "consigne transmise a la tache rouverte")
   .option("--plain", "sortie texte au lieu du tableau de bord plein ecran")
   .action((ticket: string, options: { fresh?: boolean; note?: string; plain?: boolean }) => guarded(() => resumeCommand(ticket, options)));
+
+program
+  .command("note")
+  .description("Affiche les notes de reprise d'un ticket et ses arbitrages, ou efface une note")
+  .argument("<ticket>", "cle ou URL du ticket")
+  .argument("[task]", "tache, par exemple core.tests ; toutes par defaut")
+  .option("--clear", "efface la note de la tache, ou toutes les notes")
+  .action((ticket: string, task: string | undefined, options: { clear?: boolean }) => guarded(async () => noteCommand(ticket, task, options)));
 
 program
   .command("status")
