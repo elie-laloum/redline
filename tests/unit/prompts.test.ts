@@ -86,6 +86,12 @@ const CASES: Case[] = [
     ko: { decisions: [], checklist: [{ id: "C1", verdict: "manque", evidence: "", comment: "" }] },
   },
   {
+    role: roles.runExplainer,
+    input: { key: "FT-1", title: "Filtrer", question: "Pourquoi le run s'est arrete", task: null, brief: "10:00:00 VERDICT core.tests · adversaire · tour 4 · refuse (4/3)" },
+    ok: { findings: [{ headline: "L'adversaire a epuise son budget.", detail: "Quatre refus sur core.tests." }], conclusion: "Relance avec --fresh." },
+    ko: { findings: [], conclusion: "Relance avec --fresh." },
+  },
+  {
     role: roles.memoryPlanner,
     input: { ticket: TICKET, notes: null, arbitrages: "", plan: "", delivered: "", contradictions: "", index: "", today: "2026-09-30", maxNoteLines: 100, feedback: null },
     ok: { operations: [{ action: "delete", path: "changes/x.md", why: "fusionnee" }], decisions: [] },
