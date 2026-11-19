@@ -6,6 +6,7 @@ import { escalationFooter } from "../../src/cli/report.ts";
 import { earlierEscalations } from "../../src/domain/escalation.ts";
 import { invocation } from "../../src/domain/invocation.ts";
 import { ruledLines, uncoverableDetail, uncoverableLines } from "../../src/domain/rulings.ts";
+import { citedFile, trendNote } from "../../src/domain/trend.ts";
 import { exampleSettings } from "../helpers.ts";
 
 describe("les commandes que redline suggere", () => {
@@ -63,5 +64,29 @@ describe("les arbitrages rendus sur des lignes non couvrables", () => {
     assert.deepEqual(reopenAfterEscalation(escalated, { note: null }).delivery.rulings, []);
     const convergence = { ...escalated, escalation: { ...escalated.escalation, kind: "convergence" as const, task: "core.tests/adversaire" } };
     assert.deepEqual(reopenAfterEscalation(convergence, { note: "Allege l'assertion." }).delivery.rulings, []);
+  });
+});
+
+describe("le dernier retour d'un adversaire", () => {
+  it("distingue une convergence lente d'un adversaire sans point d'arret", () => {
+    const slow = trendNote([{ count: 5, files: ["a.ts"] }, { count: 3, files: ["b.ts"] }, { count: 1, files: ["c.ts"] }]);
+    assert.equal(slow, "Constats par tour : 5 → 3 → 1. Ils decroissent : convergence lente, un tour de plus suffirait sans doute.");
+    const endless = trendNote([{ count: 2, files: [] }, { count: 3, files: [] }]);
+    assert.match(endless, /^Constats par tour : 2 → 3\. Ils ne decroissent pas : l'adversaire n'a pas de point d'arret/);
+    assert.equal(trendNote([{ count: 2, files: [] }]), "");
+  });
+
+  it("nomme le fichier cite a chacun des trois derniers tours", () => {
+    const note = trendNote([
+      { count: 2, files: ["tests/lock.test.ts", "a.ts"] },
+      { count: 2, files: ["tests/lock.test.ts"] },
+      { count: 2, files: ["b.ts", "tests/lock.test.ts"] },
+    ]);
+    assert.match(note, /\ntests\/lock\.test\.ts est cite a chacun des 3 derniers tours/);
+    assert.doesNotMatch(note, /a\.ts est cite|b\.ts est cite/);
+  });
+
+  it("lit le fichier d'une citation", () => {
+    assert.deepEqual(["src/x.ts:12", "src/x.ts:12:4", "src/x.ts:3-9", "src/x.ts"].map(citedFile), ["src/x.ts", "src/x.ts", "src/x.ts", "src/x.ts"]);
   });
 });
