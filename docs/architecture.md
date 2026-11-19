@@ -48,7 +48,11 @@ framing → delivery → closing → done
 ```
 
 `app/driver.ts` runs the workflow of the current phase, records its outcome in the ledger and
-moves on. Each phase runs under its own outpost run id — `<KEY>/framing/<attempt>`,
+moves on. Answers to questions go to whichever phase is waiting, framing or closing. A
+`resume` without `--fresh` after a `convergence` escalation is refused: the spent budget lives in
+the loop's checkpoint, so the same generation would escalate again at once. Each escalation is
+recorded in the ledger's `history` (`escalade <kind> sur <task>`); the escalated outcome carries
+the kinds of the earlier ones on the same task and the journal's path, which the footer prints. Each phase runs under its own outpost run id — `<KEY>/framing/<attempt>`,
 `<KEY>/delivery/<generation>`, `<KEY>/closing/<attempt>` — with a checkpoint under
 `~/.redline/runs/<KEY>/`. A workflow that stops for a question, a cancellation or a quota pause
 returns to the caller; the next `resume` starts the same run id and outpost restores every
@@ -94,7 +98,20 @@ Budgets are per gate, so a talkative adversary cannot use up the turns meant for
 verdict is published as a `gate` event with the spent and total budget.
 
 A `resume --note` is the loop's seed. It travels in the carry beside the gate's feedback, so every
-round of the reopened task reads it under the latest verdict, not only the first.
+round of the reopened task reads it under the latest verdict, not only the first. `redline note` shows the seeds by
+task and clears one by removing its key.
+
+The test and code adversaries keep their findings round by round in the carry's `memo`: a count
+and the files they cite. On the turn that spends their budget, the feedback — and so the
+escalation's text — adds the counts (`5 → 3 → 1`), says whether they decrease, a slow convergence,
+or not, a critic without a stopping point, and names a file cited in each of the last three
+rounds.
+
+An `arbitrage` escalation on uncoverable lines writes them in its detail (`domain/rulings.ts`).
+`resume --fresh --note` after it records the note as a ruling in the ledger's `delivery.rulings`,
+by task and line. The tests task escalates only on lines no ruling covers, and `arbitragesOf`
+appends the rulings to the arbitrages every delivery agent reads — which also changes the tests
+task's cache key, so it reruns.
 
 | Loop | Gates, in order |
 |---|---|
@@ -110,8 +127,12 @@ round of the reopened task reads it under the latest verdict, not only the first
 Each turn, `think` reads the transcript and either asks questions or returns a result. A question
 makes the workflow wait for input; the CLI or the dashboard asks it and resumes the run with the
 answer. The transcript is checkpointed, so an answered question is never asked twice. The
-functional and technical grills are interviews with an agent behind `think`; the plan review is an
-interview with plain code behind it.
+functional and technical grills are interviews with an agent behind `think`; the plan review, the
+open points review and the Jira transition are interviews with plain code behind them. Every
+question a grill agent asks gets one more option, `DECIDE_FOR_ME` (`domain/arbitrage-scope.ts`):
+answered, the grill decides and its arbitrage's `why` starts with `Hypothese a confirmer :`, which
+the planner turns into an open point. `resume` warns when its note names a proof technique
+(`proofTechniqueWords`), the kind of order that collides with the adversaries' mandate.
 
 The functional grill's `think` prepends one question to its first batch: who answers, the product
 owner or the developer. The answer lives in the transcript under the id `respondent`, and a grill

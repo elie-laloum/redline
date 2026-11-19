@@ -90,7 +90,7 @@ export function explain(state: Dashboard): ExplainLine[] {
 
   out.push(blank(), title("Si le run s'arrete"));
   out.push(line("convergence — les agents n'ont pas converge dans le budget. Lis le dernier retour, puis reprends avec --fresh.", "muted"));
-  out.push(line("arbitrage — une decision te revient. Tranche-la dans les arbitrages du ticket, puis reprends.", "muted"));
+  out.push(line("arbitrage — une decision te revient. Reprends avec --fresh --note \"ta decision\" : sur des lignes non testables, elle est consignee et la ligne n'est plus reposee.", "muted"));
   out.push(line("environment — la machine a bloque (commande, conteneur, reseau). Repare, puis reprends sans --fresh.", "muted"));
 
   return out;
