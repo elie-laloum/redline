@@ -1,6 +1,9 @@
 import type { CliRenderer, KeyEvent } from "@opentui/core";
 import { collectChanges } from "../dashboard/changes.ts";
+import { describeError } from "../../domain/failure.ts";
+import type { Insight, InsightRequest } from "../../domain/insight.ts";
 import type { RunEvent } from "../../domain/run-events.ts";
+import { INSIGHT_KEYS, type InsightKey, MENU, pressInsight } from "../dashboard/insight.ts";
 import { createDashboard, type Dashboard, reduce, tick, type Tone } from "../dashboard/model.ts";
 import { createDashboardView, type DashboardView, RIGHT_VIEWS, type Screen } from "./view.ts";
 
@@ -15,15 +18,20 @@ export interface Board {
   feed(event: RunEvent, at: number): void;
   set(change: Partial<Screen>): void;
   notify(tone: Tone, text: string | null): void;
-  /** Arrows, j / k, PgUp / PgDn and f; false for any other key. */
+  /** Arrows, j / k, PgUp / PgDn, f, v and e — and, while the explanation view's questions have the focus, their keys; false for any other key. */
   navigate(key: KeyEvent): boolean;
+  /** True while the questions to the explainer take the keys, Esc and Enter included. */
+  readonly asking: boolean;
   /** Stops the clock at the moment a run ended, or starts it again with null. */
   freeze(at: number | null): void;
   /** Takes the board off the screen; the renderer stays open. */
   dispose(): void;
 }
 
-export function createBoard(renderer: CliRenderer, ticket: { readonly key: string; readonly title: string }, first: Screen): Board {
+/** Puts one question to the run explainer; absent where no agent can be called. */
+export type Explainer = (request: InsightRequest) => Promise<Insight>;
+
+export function createBoard(renderer: CliRenderer, ticket: { readonly key: string; readonly title: string }, first: Screen, explainer: Explainer | null = null): Board {
   let state: Dashboard = createDashboard(ticket, Date.now());
   let screen: Screen = first;
   let scheduled: ReturnType<typeof setTimeout> | null = null;
@@ -86,6 +94,27 @@ export function createBoard(renderer: CliRenderer, ticket: { readonly key: strin
   renderer.on("resize", schedule);
   schedule();
 
+  // Answers already paid for are kept for the screen's lifetime; r asks again.
+  const answers = new Map<string, Insight>();
+  let question = 0;
+  const askExplainer = (request: InsightRequest, fresh: boolean) => {
+    const cacheKey = `${request.question}:${request.task ?? ""}`;
+    const known = fresh ? undefined : answers.get(cacheKey);
+    if (known) return set({ insight: { mode: "answer", request, insight: known, cursor: 0, open: [] } });
+    if (!explainer) return set({ insight: { mode: "failed", request, text: "Aucun agent n'est joignable depuis cet ecran." } });
+    const asked = ++question;
+    const current = () => asked === question && screen.insight?.mode === "asking";
+    explainer(request)
+      .then((insight) => {
+        answers.set(cacheKey, insight);
+        if (current()) set({ insight: { mode: "answer", request, insight, cursor: 0, open: [] } });
+      })
+      .catch((error: unknown) => {
+        if (current()) set({ insight: { mode: "failed", request, text: describeError(error) } });
+      });
+  };
+  const insightHasKeys = () => screen.view === "explain" && screen.insight !== null && screen.focus === "inspector";
+
   return {
     view,
     get state() {
@@ -98,7 +127,20 @@ export function createBoard(renderer: CliRenderer, ticket: { readonly key: strin
     feed: (event, at) => apply((current) => reduce(current, event, at)),
     set,
     notify: (tone, text) => set({ notice: text === null ? null : { tone, text } }),
+    get asking() {
+      return insightHasKeys();
+    },
     navigate(key) {
+      if (key.name === "e" && !key.ctrl) {
+        set({ view: "explain", insight: screen.insight ?? MENU, focus: "inspector", changes: null });
+        return true;
+      }
+      if (insightHasKeys() && screen.insight && INSIGHT_KEYS.has(key.name)) {
+        const move = pressInsight(screen.insight, key.name as InsightKey, screen.selected);
+        set({ insight: move.panel });
+        if (move.ask) askExplainer(move.ask.request, move.ask.fresh);
+        return true;
+      }
       switch (key.name) {
         case "up":
         case "k":

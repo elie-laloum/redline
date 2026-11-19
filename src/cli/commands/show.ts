@@ -1,18 +1,20 @@
 import { existsSync, type FSWatcher, watch } from "node:fs";
 import type { CliRenderer } from "@opentui/core";
+import { createContext } from "../../app/context.ts";
 import { followJournal, type JournalLine } from "../../app/event-journal.ts";
+import { explainRun } from "../../app/insight.ts";
 import { readLedger } from "../../app/ledger.ts";
 import { homeDirectory, journalFile, type Paths, pathsOf, runDirectory } from "../../app/paths.ts";
 import { rebuildHistory } from "../../app/run-history.ts";
 import { listRuns, runningPid } from "../../app/runs.ts";
 import { fail } from "../../domain/failure.ts";
+import { REDLINE } from "../../domain/invocation.ts";
 import { normalizeKey } from "../../domain/ticket.ts";
 import { begin, interrupt } from "../dashboard/model.ts";
 import { NO_SESSION, readSessions, type Sessions, type Watched, watched } from "../dashboard/watch.ts";
 import { pickRun } from "../tui/picker.ts";
 import { openTerminal } from "../tui/terminal.ts";
 import { openViewer } from "../tui/viewer.ts";
-import { REDLINE } from "../../domain/invocation.ts";
 
 /** inotify misses changes on some file systems, /mnt/c under WSL among them: a poll backs the watch up. */
 const POLL_MS = 500;
@@ -44,7 +46,8 @@ export async function showCommand(input: string | undefined): Promise<number> {
 async function watchRun(renderer: CliRenderer, paths: Paths, key: string, back: boolean): Promise<void> {
   const ledger = readLedger(paths, key);
   if (!ledger) return;
-  const viewer = openViewer(renderer, { key, title: ledger.title }, back);
+  // The context loads the settings and the agents only when a question is asked: show opens without them.
+  const viewer = openViewer(renderer, { key, title: ledger.title }, back, (request) => explainRun(createContext(), key, request));
   const { board } = viewer;
   const reader = followJournal(paths, key);
   let sessions: Sessions = NO_SESSION;

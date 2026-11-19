@@ -5,7 +5,7 @@ import type { Prompter } from "../ask.ts";
 import { begin, type Tone } from "../dashboard/model.ts";
 import type { Progress } from "../progress.ts";
 import { outcomeNotice } from "../report.ts";
-import { createBoard } from "./board.ts";
+import { createBoard, type Explainer } from "./board.ts";
 import { type Asked, askedOf, createQuestionPanel } from "./question.ts";
 import { openTerminal } from "./terminal.ts";
 import type { Focus, Layout } from "./view.ts";
@@ -30,6 +30,8 @@ export interface DashboardSession {
 export interface DashboardHooks {
   /** Same as a Ctrl-C outside the dashboard: first call stops cleanly, second kills. */
   interrupt(): void;
+  /** Answers the explanation view's questions about the run. */
+  readonly explain?: Explainer;
 }
 
 const PANELS: readonly Focus[] = ["tasks", "inspector", "journal"];
@@ -38,7 +40,7 @@ const BELL = "\u0007";
 export async function openDashboard(ticket: { readonly key: string; readonly title: string }, hooks: DashboardHooks): Promise<DashboardSession> {
   const terminal = await openTerminal();
   const { renderer } = terminal;
-  const board = createBoard(renderer, ticket, { selected: null, follow: true, focus: "tasks", view: "inspector", changes: null, layout: "dashboard", notice: null, ended: false, watching: null });
+  const board = createBoard(renderer, ticket, { selected: null, follow: true, focus: "tasks", view: "inspector", changes: null, layout: "dashboard", notice: null, ended: false, watching: null, insight: null }, hooks.explain ?? null);
   const panel = createQuestionPanel(renderer, board.view.slots.question, board.view.slots.review);
 
   let confirming = false;
@@ -68,6 +70,8 @@ export async function openDashboard(ticket: { readonly key: string; readonly tit
   };
 
   const onKey = (key: KeyEvent) => {
+    // The questions to the explainer keep Esc and Enter for themselves, on the end screen too.
+    if (board.asking && (key.name === "return" || key.name === "escape")) return board.navigate(key);
     // The end screen still browses: every step's result stays readable until the human leaves.
     if (board.screen.ended && (key.name === "q" || key.name === "return" || key.name === "escape" || (key.ctrl && key.name === "c"))) return leave?.();
     if (key.ctrl && key.name === "c") return hooks.interrupt();
