@@ -132,9 +132,9 @@ the quoted passages of the ticket's description are rewritten — images, tables
 elsewhere stay as they were; a developer's answers never touch the ticket, and the merge request
 lists the divergences as awaiting the product owner's validation.
 
-**Thirteen roles**, one brief each in [src/prompts/](src/prompts/): functional grill, scope scout,
+**Fourteen roles**, one brief each in [src/prompts/](src/prompts/): functional grill, scope scout,
 technical grill, planner, test writer, test adversary, red checker, developer, appeal arbiter,
-code adversary, conformity checker, memory planner and finalizer. The model and reasoning effort of each role are
+code adversary, conformity checker, memory planner, finalizer and run explainer. The model and reasoning effort of each role are
 set in `redline.yaml`.
 
 Agents never commit. Redline folds their changes into a commit whose message it builds itself,
@@ -203,6 +203,11 @@ delivered; the selected task's result and its agents live; and a journal of verd
 and public actions. Grill questions and the plan review are answered in its panels, and a pending
 one rings the bell. When the run ends the screen stays on the outcome until `q`, then the plain
 report is printed. `--plain`, a pipe or CI keep the plain-text output.
+
+`e` asks an AI about the run, on demand: why it stopped, what its successive failures say, what
+the selected task's verdicts mean, what that task did. The run explainer reads the run's journal
+and answers in three to five findings and what to do next. Nothing is asked before you press
+`Enter`. It works in `show` too.
 
 Design decisions, keys and the event channel behind it: [docs/tui.md](docs/tui.md).
 
