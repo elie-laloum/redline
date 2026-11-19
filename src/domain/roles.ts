@@ -12,6 +12,7 @@ export const ROLE_NAMES = [
   "conformity-checker",
   "memory-planner",
   "finalizer",
+  "run-explainer",
 ] as const;
 
 export type RoleName = (typeof ROLE_NAMES)[number];

@@ -7,6 +7,7 @@ export { functionalGrill } from "./functional-grill.ts";
 export { memoryPlanner } from "./memory-planner.ts";
 export { planner } from "./planner.ts";
 export { redChecker } from "./red-checker.ts";
+export { runExplainer } from "./run-explainer.ts";
 export { scopeScout } from "./scope-scout.ts";
 export { technicalGrill } from "./technical-grill.ts";
 export { testAdversary } from "./test-adversary.ts";
