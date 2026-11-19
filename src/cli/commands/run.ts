@@ -5,7 +5,9 @@ import type { DriveRequest } from "../../app/driver.ts";
 import { newLedger, readLedger, writeLedger } from "../../app/ledger.ts";
 import { type ImageBuild, type Preflight, preflightOf, runPreflight } from "../../app/preflight.ts";
 import { loadHistory } from "../../app/run-history.ts";
+import { proofTechniqueWords } from "../../domain/arbitrage-scope.ts";
 import { describeError, fail } from "../../domain/failure.ts";
+import { REDLINE } from "../../domain/invocation.ts";
 import { normalizeKey } from "../../domain/ticket.ts";
 import { clackPrompter } from "../ask.ts";
 import { clackProgress } from "../progress.ts";
@@ -13,7 +15,6 @@ import { report } from "../report.ts";
 import { runSession } from "../session.ts";
 import { type DashboardSession, openDashboard } from "../tui/dashboard.ts";
 import { buildImage, offerImageBuild } from "./image.ts";
-import { REDLINE } from "../../domain/invocation.ts";
 
 const BUILD = "Construire";
 
@@ -37,6 +38,12 @@ export async function resumeCommand(input: string, options: { fresh?: boolean; n
   const key = normalizeKey(input);
   const app = createContext();
   const request: DriveRequest = { resume: true, ...(options.fresh ? { fresh: { note: options.note ?? null } } : {}) };
+  const technique = options.note ? proofTechniqueWords(options.note) : [];
+  if (technique.length) {
+    clack.log.warn(
+      `La note parle d'une technique de preuve (${technique.join(", ")}). Un arbitrage tranche un perimetre ou une lecture, jamais la facon de prouver : l'adversaire doit refuser un test couple a l'implementation, et la boucle ne converge plus.`,
+    );
+  }
   return launch(app, key, request, options, `redline ${key} — reprise`, (preflight, build) => runPreflight(app, preflight, { layoutHome: false, build }));
 }
 

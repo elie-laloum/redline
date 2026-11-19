@@ -4,6 +4,7 @@ import { reopenAfterEscalation } from "../../src/app/driver.ts";
 import { newLedger } from "../../src/app/ledger.ts";
 import { clearNotes, notesOf } from "../../src/app/notes.ts";
 import { escalationFooter } from "../../src/cli/report.ts";
+import { proofTechniqueWords } from "../../src/domain/arbitrage-scope.ts";
 import { earlierEscalations } from "../../src/domain/escalation.ts";
 import { invocation } from "../../src/domain/invocation.ts";
 import { ruledLines, uncoverableDetail, uncoverableLines } from "../../src/domain/rulings.ts";
@@ -113,5 +114,12 @@ describe("les notes de reprise", () => {
 
   it("ne se touchent pas pendant qu'un run tourne", () => {
     assert.throws(() => clearNotes({ ...noted, active: { runId: "FT-1/delivery/2", pid: 42 } }, null), /en cours \(pid 42\)/);
+  });
+});
+
+describe("les arbitrages", () => {
+  it("signalent une note qui prescrit une technique de preuve plutot qu'un perimetre", () => {
+    assert.deepEqual(proofTechniqueWords("Prouve la structure du verrou dans la trace SQL, via un trigger plpgsql."), ["trace sql", "trigger", "plpgsql"]);
+    assert.deepEqual(proofTechniqueWords("Le verrou est hors de ce que les tests prouvent : il se relit en revue."), []);
   });
 });

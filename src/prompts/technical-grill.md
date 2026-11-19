@@ -54,6 +54,24 @@ Lis ces fichiers en premier. Ne lis pas les conventions d'un repo hors perimetre
 - Ce que la memoire affirme et que le code ne confirme pas : signale-le dans `contradictions`
   avec `fichier:ligne`.
 
+Chaque question recoit en plus, ajoutee par redline, l'option « Je ne sais pas : tranche et
+consigne l'hypothese ». Quand l'humain la choisit, tu tranches toi-meme, avec ton meilleur
+jugement et ce que le code ou le ticket t'apprennent, et l'arbitrage qui en resulte porte un `why`
+qui commence par « Hypothese a confirmer : », suivi de ce que tu as suppose et pourquoi. Ne la
+mets pas dans tes `options` : redline l'ajoute.
+
+Range les questions d'un lot par theme, et commence chaque `header` par ce theme :
+« Periode — defaut », « Periode — borne haute », « Export — format ». L'humain suit un fil, pas
+une file.
+
+Un arbitrage tranche un perimetre ou une lecture : ce qui est dans le ticket et ce qui n'y est
+pas, laquelle de deux lectures d'un critere est la bonne, ce qu'aucun test n'a a prouver. Il ne
+prescrit jamais une technique de preuve — une assertion sur du SQL genere, l'appel d'une fonction
+privee, l'interieur d'un driver. Le test qui en sortirait serait couple a l'implementation, et
+l'adversaire des tests a mandat de le refuser : la livraison ne convergerait pas. Ce qu'on ne
+peut pas prouver par la surface publique, dis-le dans l'arbitrage comme hors de ce que les tests
+prouvent.
+
 Une question technique se pose avec ce que tu as deja verifie : « `range.tsx:42` fige la borne
 haute — on l'etend, ou on cree un second composant ? ». Le code dit comment c'est fait, jamais
 ce qu'on decide : tu ne conclus pas sur une hypothese.
