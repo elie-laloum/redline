@@ -92,6 +92,10 @@ releases are tagged `v<version>` and published to npm as
 
 ### Fixed
 
+- A grill question keeps room for its own text when the dashboard leaves its panel short: the
+  choices take what the panel has left once the text has up to half of it, and scroll. They used
+  to take up to half the terminal, which left the text one line. A header that holds a dash of
+  its own, `Theme — subject`, is shown whole instead of losing its subject.
 - The commands redline suggests in its messages name the way it is actually run: `redline` once
   installed, `bun redline` from a clone. They always said `bun redline`, which fails on an
   installed binary with `Script not found "redline"`.

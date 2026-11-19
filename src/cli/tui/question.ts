@@ -35,11 +35,16 @@ export interface QuestionPanel {
 }
 
 const OTHER = "Autre reponse…";
+/** The form's hint, one line under a blank one. */
+const HINT_ROWS = 2;
+const MIN_CHOICES = 3;
 const EMPTY = "Une reponse vide ne tranche rien.";
 
 export function askedOf(request: WorkflowInputRequest): Asked {
   const [first = "", ...rest] = request.question.split("\n");
-  const [title = first, header = ""] = first.split(" — ");
+  // A header may hold a dash of its own, `Theme — subject`: only the first one ends the title.
+  const [title = first, ...headed] = first.split(" — ");
+  const header = headed.join(" — ");
   const choices = request.choices ?? [];
   return {
     key: request.key,
@@ -57,9 +62,19 @@ export function createQuestionPanel(renderer: CliRenderer, grillSlot: BoxRendera
     heading: new TextRenderable(renderer, { id: "grill-heading", content: "", fg: THEME.text, wrapMode: "none", height: 1 }),
     body: new ScrollBoxRenderable(renderer, { id: "grill-body", flexGrow: 1, flexShrink: 1, backgroundColor: THEME.panel }),
     bodyText: new TextRenderable(renderer, { id: "grill-body-text", content: "", fg: THEME.text, wrapMode: "none" }),
-    form: createForm(renderer, "grill"),
+    form: createForm(renderer, "grill", () => choiceRoom()),
   };
   grill.body.add(grill.bodyText);
+  let bodyLines = 0;
+  /**
+   * The rows the choices may take in the question panel: what the panel holds once its heading and
+   * hint are placed, less what the question's text keeps — all of it, up to half of that room. The
+   * text is what the human must read to choose; the choices scroll.
+   */
+  const choiceRoom = () => {
+    const room = Math.max(0, grillSlot.height - 2 - grill.heading.height - HINT_ROWS);
+    return Math.max(MIN_CHOICES, room - Math.min(bodyLines, Math.floor(room / 2)));
+  };
   for (const child of [grill.heading, grill.body, grill.form.box]) grillSlot.add(child);
 
   const review = {
@@ -110,7 +125,9 @@ export function createQuestionPanel(renderer: CliRenderer, grillSlot: BoxRendera
         grillSlot.title = ` ${asked.title} `;
         grill.heading.content = styled(heading.map((line): Line => [span(line, "warning", { bold: true })]));
         grill.heading.height = heading.length;
-        grill.bodyText.content = styled(wrap(asked.body, width).map((line): Line => [span(line)]));
+        const body = wrap(asked.body, width);
+        bodyLines = body.length;
+        grill.bodyText.content = styled(body.map((line): Line => [span(line)]));
         grill.body.scrollTop = 0;
       }
       form.start({
@@ -152,9 +169,9 @@ interface Form {
 }
 
 /** Choices first, then a text area for a free answer or a note; Enter sends it. */
-function createForm(renderer: CliRenderer, id: string): Form {
+function createForm(renderer: CliRenderer, id: string, limit?: () => number): Form {
   const box = new BoxRenderable(renderer, { id: `${id}-form`, flexDirection: "column", flexShrink: 0, backgroundColor: THEME.panel });
-  const select = new ChoiceList(renderer, `${id}-select`, (choice) => take(choice));
+  const select = new ChoiceList(renderer, `${id}-select`, (choice) => take(choice), limit);
   const label = new TextRenderable(renderer, { id: `${id}-label`, content: "", fg: THEME.muted, wrapMode: "word", visible: false });
   const textarea = new TextareaRenderable(renderer, {
     id: `${id}-textarea`,

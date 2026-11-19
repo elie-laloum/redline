@@ -8,9 +8,16 @@ import { THEME } from "../../src/cli/tui/theme.ts";
 const LONG = "Les 30 derniers jours glissants, calcules depuis la date du jour, parce que la maquette montre cette fenetre";
 
 /** The question panel on a screen `width` wide, with a question already asked. */
-async function panelOf(width: number, request: { key: string; question: string; choices: string[]; allowFreeText?: boolean }) {
-  const { renderer, renderOnce, captureCharFrame, mockInput } = await createTestRenderer({ width, height: 30 });
-  const question = new BoxRenderable(renderer, { id: "question", flexGrow: 1, flexDirection: "column", border: true, borderColor: THEME.focus, backgroundColor: THEME.panel });
+async function panelOf(width: number, request: { key: string; question: string; choices: string[]; allowFreeText?: boolean }, screen: { height?: number; panel?: number } = {}) {
+  const { renderer, renderOnce, captureCharFrame, mockInput } = await createTestRenderer({ width, height: screen.height ?? 30 });
+  const question = new BoxRenderable(renderer, {
+    id: "question",
+    ...(screen.panel ? { height: screen.panel } : { flexGrow: 1 }),
+    flexDirection: "column",
+    border: true,
+    borderColor: THEME.focus,
+    backgroundColor: THEME.panel,
+  });
   const review = new BoxRenderable(renderer, { id: "review", flexGrow: 1, flexDirection: "row", visible: false });
   renderer.root.add(question);
   renderer.root.add(review);
@@ -20,7 +27,9 @@ async function panelOf(width: number, request: { key: string; question: string; 
     answer = given;
   });
   panel.focus();
-  // The choices are wrapped at the width the layout gives them, which the first pass settles.
+  // The choices are wrapped at the width the layout gives them, and sized to the room the panel
+  // leaves: each pass settles what the previous one laid out.
+  await renderOnce();
   await renderOnce();
   await renderOnce();
   return {
@@ -94,5 +103,19 @@ describe("les propositions de reponse", () => {
     for (const line of frame.split("\n")) assert.ok([...line].length <= 80, `ligne trop longue : ${line}`);
     for (const word of choices.flatMap((choice) => choice.split(" "))) assert.ok(frame.includes(word), `mot coupe de l'ecran : ${word}`);
     renderer.destroy();
+  });
+
+  it("laissent au texte de la question la place de se lire quand le panneau est bas, et defilent", async () => {
+    const question = "A la validation de la modale, une ligne de detail est ajoutee dans la famille concernee, a la date de l'ecriture. Cote feuille de travail, une operation est rangee dans une valorisation, c'est-a-dire une periode de revision de la famille. Il peut y en avoir deux qui couvrent la meme date, ou aucune. Ou va la ligne de detail ?";
+    const choices = [1, 2, 3, 4].map((n) => `Choix ${n} : dans la valorisation dont la periode contient la date, le bilan si plusieurs, et sinon une consequence decrite en detail`);
+    const panel = await panelOf(90, { key: "functional", question: `Grill fonctionnel · 2/5 — Rattachement — valorisation cible\n\n${question}`, choices, allowFreeText: true }, { height: 40, panel: 16 });
+    const frame = panel.frame();
+    assert.match(frame, /Rattachement — valorisation cible/);
+    assert.match(frame, /A la validation de la modale/);
+    assert.match(frame, /│detail \?/);
+    assert.match(frame, /Choix 1/);
+    await panel.press("down", "down", "down");
+    assert.match(panel.frame(), /Choix 4/);
+    panel.renderer.destroy();
   });
 });
