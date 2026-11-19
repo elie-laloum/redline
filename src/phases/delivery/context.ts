@@ -6,6 +6,7 @@ import { expandTilde } from "../../app/paths.ts";
 import { findRepo, type RepoEntry } from "../../domain/config.ts";
 import { fail } from "../../domain/failure.ts";
 import { branchName } from "../../domain/naming.ts";
+import { renderRulings } from "../../domain/rulings.ts";
 import type { PlanRepo } from "../../domain/plan.ts";
 import type { RepoWorkspace } from "../../ports/sandboxes.ts";
 import type { FramingOutcome } from "../framing/workflow.ts";
@@ -51,7 +52,7 @@ export async function withTarget<T>(run: DeliveryContext, target: RepoTarget, wo
 }
 
 export function arbitragesOf(run: DeliveryContext): string {
-  return framingArbitrages(run.framing.functional, run.framing.technical.arbitrages);
+  return framingArbitrages(run.framing.functional, run.framing.technical.arbitrages) + renderRulings(run.ledger.delivery.rulings);
 }
 
 export function seedOf(run: DeliveryContext, key: string): string | null {

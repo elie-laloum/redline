@@ -173,6 +173,10 @@ bun redline resume <KEY>                        # after fixing the environment; 
 bun redline resume <KEY> --fresh --note "…"     # reopen the escalated task with a new budget; every round reads the note
 ```
 
+When an `arbitrage` escalation names checklist lines the registry cannot test, the note you resume
+with is recorded as your ruling on those lines: they never escalate again, and every agent of the
+delivery reads the ruling with the other arbitrages.
+
 An escalation says how many escalations the same task has had before it, and of which kinds;
 from the third on, it suggests taking the branch over by hand. It ends with the path of the run's
 journal, `~/.redline/runs/<KEY>/events.jsonl`, which keeps every verdict untruncated.

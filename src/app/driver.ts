@@ -2,6 +2,8 @@ import type { Logging } from "@elie-laloum/outpost/core";
 import type { Workflow, WorkflowAnswer, WorkflowCheckpoint, WorkflowCheckpointStore, WorkflowEvent, WorkflowInputRequest, WorkflowResult } from "@elie-laloum/outpost/workflows";
 import { earlierEscalations, type EscalationKind, escalationEvent, type EscalationRecord, parseEscalation } from "../domain/escalation.ts";
 import { describeError, fail } from "../domain/failure.ts";
+import { REDLINE } from "../domain/invocation.ts";
+import { uncoverableLines } from "../domain/rulings.ts";
 import { addTokens, NO_TOKENS, type PhaseTask, type RunEvent, type RunObserver, type RunPhase, type Tokens } from "../domain/run-events.ts";
 import type { ClosingContext } from "../phases/closing/context.ts";
 import { defineClosing, type Publication } from "../phases/closing/workflow.ts";
@@ -13,7 +15,6 @@ import { approvedOf, deliveredOf, type Ledger, publicationOf, readLedger, record
 import { journalFile } from "./paths.ts";
 import { storageFor } from "./storage.ts";
 import { checkpointVersion } from "./version.ts";
-import { REDLINE } from "../domain/invocation.ts";
 
 export interface DriveRequest {
   readonly answers?: readonly WorkflowAnswer[];
@@ -274,11 +275,15 @@ export function reopenAfterEscalation(ledger: Ledger, fresh: { note: string | nu
   if (!fresh) return recordEvent(base, `reprise de ${phase}`);
   const task = ledger.escalation?.task.split("/")[0] ?? "";
   switch (phase) {
-    case "delivery":
+    case "delivery": {
+      const seeds = fresh.note ? { ...ledger.delivery.seeds, [task]: fresh.note } : ledger.delivery.seeds;
+      const ruled = fresh.note && ledger.escalation?.kind === "arbitrage" ? uncoverableLines(ledger.escalation.detail) : [];
+      const rulings = ruled.length && fresh.note ? [...ledger.delivery.rulings, { task, lines: ruled, ruling: fresh.note, at: new Date().toISOString() }] : ledger.delivery.rulings;
       return recordEvent(
-        { ...base, delivery: { generation: ledger.delivery.generation + 1, seeds: fresh.note ? { ...ledger.delivery.seeds, [task]: fresh.note } : ledger.delivery.seeds } },
+        { ...base, delivery: { generation: ledger.delivery.generation + 1, seeds, rulings } },
         `reprise de la livraison avec un budget neuf${fresh.note ? ` : ${fresh.note}` : ""}`,
       );
+    }
     case "closing":
       return recordEvent({ ...base, closing: { attempt: ledger.closing.attempt + 1 } }, "reprise de la cloture");
     default: {
