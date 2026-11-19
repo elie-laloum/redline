@@ -8,6 +8,10 @@ releases are tagged `v<version>` and published to npm as
 
 ### Added
 
+- An escalation says how many escalations its task has had before it, and of which kinds — `3e
+  escalade sur core.tests — les precedentes : arbitrage, arbitrage` — and from the third on
+  suggests taking the branch over by hand. It ends with the path of the run's journal, which keeps
+  every verdict untruncated where the banner cuts it.
 - The functional framing prevails over the ticket and over the technical framing. The technical
   grill may depart from a functional arbitrage only for a technical impossibility or a defensible
   business reason, and must say so: each derogation becomes a question to the human before the

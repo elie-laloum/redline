@@ -1,6 +1,7 @@
 import * as clack from "@clack/prompts";
 import type { DriveOutcome } from "../app/driver.ts";
 import { gapCount, renderGap } from "../domain/conformity.ts";
+import { escalatedTask } from "../domain/escalation.ts";
 import { REDLINE } from "../domain/invocation.ts";
 import { renderReviewedPoint, stillOpen } from "../domain/open-points.ts";
 import type { Tone } from "./dashboard/model.ts";
@@ -13,6 +14,24 @@ const NEXT: Readonly<Record<string, string>> = {
 
 export function nextStep(key: string, kind: string): string {
   return (NEXT[kind] ?? "").replaceAll("{KEY}", key);
+}
+
+/** From this count on the same task, another turn usually costs more than taking the branch over by hand. */
+const TAKE_OVER_AFTER = 3;
+
+/** What follows an escalation: the escalations before it on the same task, the next step, and where the full journal is. */
+export function escalationFooter(key: string, outcome: Extract<DriveOutcome, { status: "escalated" }>): string {
+  const { escalation } = outcome;
+  const earlier = outcome.earlier ?? [];
+  const count = earlier.length + 1;
+  const task = escalatedTask(escalation.task);
+  const history = earlier.length ? [`${count}e escalade sur ${task} — les precedentes : ${earlier.join(", ")}.`] : [];
+  const takeOver =
+    count >= TAKE_OVER_AFTER
+      ? [`Au-dela de ${TAKE_OVER_AFTER - 1} escalades, reprendre la branche a la main coute souvent moins qu'un tour de plus : le worktree est dans git worktree list, depuis le repo.`]
+      : [];
+  const journal = outcome.journal ? [`Journal complet, verdicts non tronques : ${outcome.journal}`] : [];
+  return [...history, nextStep(key, escalation.kind), ...takeOver, ...journal].join("\n");
 }
 
 export function report(key: string, outcome: DriveOutcome): number {
@@ -37,7 +56,7 @@ export function report(key: string, outcome: DriveOutcome): number {
     case "escalated": {
       const { escalation } = outcome;
       clack.log.error(`Escalade ${escalation.kind} sur ${escalation.task}\n${escalation.detail}`);
-      clack.outro(nextStep(key, escalation.kind));
+      clack.outro(escalationFooter(key, outcome));
       return 2;
     }
     case "paused":
@@ -66,7 +85,7 @@ export function outcomeNotice(key: string, outcome: DriveOutcome): { readonly to
     }
     case "escalated": {
       const { escalation } = outcome;
-      return { tone: "error", text: `Escalade ${escalation.kind} sur ${escalation.task} : ${escalation.detail}\n${nextStep(key, escalation.kind)}` };
+      return { tone: "error", text: `Escalade ${escalation.kind} sur ${escalation.task} : ${escalation.detail}\n${escalationFooter(key, outcome)}` };
     }
     case "paused":
       return { tone: "warning", text: outcome.detail };

@@ -1,6 +1,6 @@
 import type { Logging } from "@elie-laloum/outpost/core";
 import type { Workflow, WorkflowAnswer, WorkflowCheckpoint, WorkflowCheckpointStore, WorkflowEvent, WorkflowInputRequest, WorkflowResult } from "@elie-laloum/outpost/workflows";
-import { type EscalationRecord, parseEscalation } from "../domain/escalation.ts";
+import { earlierEscalations, type EscalationKind, escalationEvent, type EscalationRecord, parseEscalation } from "../domain/escalation.ts";
 import { describeError } from "../domain/failure.ts";
 import { addTokens, NO_TOKENS, type PhaseTask, type RunEvent, type RunObserver, type RunPhase, type Tokens } from "../domain/run-events.ts";
 import type { ClosingContext } from "../phases/closing/context.ts";
@@ -10,6 +10,7 @@ import { defineFraming, type FramingOutcome } from "../phases/framing/workflow.t
 import type { RunContext } from "../phases/run.ts";
 import type { AppContext } from "./context.ts";
 import { approvedOf, deliveredOf, type Ledger, publicationOf, readLedger, recordEvent, REOPEN_TARGETS, runIdOf, writeLedger } from "./ledger.ts";
+import { journalFile } from "./paths.ts";
 import { storageFor } from "./storage.ts";
 import { checkpointVersion } from "./version.ts";
 import { REDLINE } from "../domain/invocation.ts";
@@ -22,7 +23,14 @@ export interface DriveRequest {
 
 export type DriveOutcome =
   | { readonly status: "waiting"; readonly requests: readonly WorkflowInputRequest[] }
-  | { readonly status: "escalated"; readonly escalation: EscalationRecord }
+  | {
+      readonly status: "escalated";
+      readonly escalation: EscalationRecord;
+      /** The kinds of the escalations recorded earlier on the same task, oldest first. */
+      readonly earlier?: readonly EscalationKind[];
+      /** The run's journal, where every verdict is kept untruncated. */
+      readonly journal?: string;
+    }
   | { readonly status: "cancelled" }
   | { readonly status: "paused"; readonly detail: string }
   | { readonly status: "done"; readonly publication: Publication };
@@ -62,7 +70,7 @@ export async function drive(app: AppContext, key: string, request: DriveRequest,
   let ledger = readLedger(app.paths, key) ?? failMissing(key);
   let answers = request.answers;
   if (ledger.phase === "escalated") {
-    if (!request.resume) return { status: "escalated", escalation: ledger.escalation ?? unknownEscalation() };
+    if (!request.resume) return escalated(app, ledger, ledger.escalation ?? unknownEscalation());
     ledger = save(app, reopenAfterEscalation(ledger, request.fresh ?? null));
   }
 
@@ -94,7 +102,7 @@ async function step(app: AppContext, ledger: Ledger, answers: readonly WorkflowA
     case "done":
       return { outcome: { status: "done", publication: publicationOf(ledger) } };
     case "escalated":
-      return { outcome: { status: "escalated", escalation: ledger.escalation ?? unknownEscalation() } };
+      return { outcome: escalated(app, ledger, ledger.escalation ?? unknownEscalation()) };
     case "framing": {
       const framing = defineFraming(run);
       const result = await start(app, ledger, framing.workflow, { phase: "framing", runId: runIdOf(ledger, "framing"), repos: [] }, answers, options);
@@ -230,8 +238,12 @@ async function halt(app: AppContext, ledger: Ledger, phase: "framing" | "deliver
 }
 
 function escalate(app: AppContext, ledger: Ledger, phase: "framing" | "delivery" | "closing", escalation: EscalationRecord): DriveOutcome {
-  save(app, recordEvent({ ...(readLedger(app.paths, ledger.key) ?? ledger), phase: "escalated", resumePhase: phase, escalation }, `escalade ${escalation.kind} sur ${escalation.task}`));
-  return { status: "escalated", escalation };
+  const saved = save(app, recordEvent({ ...(readLedger(app.paths, ledger.key) ?? ledger), phase: "escalated", resumePhase: phase, escalation }, escalationEvent(escalation.kind, escalation.task)));
+  return escalated(app, saved, escalation);
+}
+
+function escalated(app: AppContext, ledger: Ledger, escalation: EscalationRecord): DriveOutcome {
+  return { status: "escalated", escalation, earlier: earlierEscalations(ledger.history, escalation.task), journal: journalFile(app.paths, ledger.key) };
 }
 
 export function escalationOf(result: Pick<WorkflowResult, "errors" | "tasks">, phase: string): EscalationRecord {

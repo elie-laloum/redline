@@ -168,6 +168,10 @@ feedback and the phase's total tokens. The event journal keeps the rest
   a tool call keeps its string arguments, cut at 400 characters. A task value outpost hands
   again at each start of the workflow is written once.
 - Writing the journal never fails a run: after a first error, the session stops writing it.
+- It is the place to read a run without the dashboard: everything the screen shows, every verdict
+  untruncated, the whole history. An escalation names its path. Two things are not in it: a failure
+  before the run opens — a ledger that does not load, a missing token — is only on the terminal,
+  since no event was written; and nothing notifies the end of a run, apart from its last line.
 - It is not tracked in the home's git repository, and `clear` deletes it with the rest of the
   run.
 - The reducer takes each event's time from its line, so a replay shows the durations the live
