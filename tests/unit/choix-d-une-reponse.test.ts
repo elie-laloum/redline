@@ -118,4 +118,13 @@ describe("les propositions de reponse", () => {
     assert.match(panel.frame(), /Choix 4/);
     panel.renderer.destroy();
   });
+
+  it("suivent le texte de la question sans laisser de vide entre eux quand le panneau est grand", async () => {
+    const panel = await panelOf(90, { key: "functional", question: "Grill fonctionnel · 2/5 — Rattachement — valorisation cible\n\nOu va la ligne de detail ?", choices: ["Dans la valorisation", "Nulle part"], allowFreeText: true }, { height: 40, panel: 30 });
+    const lines = panel.frame().split("\n");
+    const question = lines.findIndex((line) => line.includes("Ou va la ligne de detail ?"));
+    const choice = lines.findIndex((line) => line.includes("Dans la valorisation"));
+    assert.ok(question > 0 && choice === question + 1, `le premier choix est a la ligne ${choice}, la question a la ligne ${question}`);
+    panel.renderer.destroy();
+  });
 });
