@@ -1,13 +1,14 @@
 import * as clack from "@clack/prompts";
 import type { DriveOutcome } from "../app/driver.ts";
 import { gapCount, renderGap } from "../domain/conformity.ts";
+import { REDLINE } from "../domain/invocation.ts";
 import { renderReviewedPoint, stillOpen } from "../domain/open-points.ts";
 import type { Tone } from "./dashboard/model.ts";
 
 const NEXT: Readonly<Record<string, string>> = {
-  convergence: "Les agents n'ont pas converge dans leur budget. Lis le dernier retour, puis relance avec une consigne : bun redline resume {KEY} --fresh --note \"...\"",
-  environment: "L'environnement a bloque (commande, conteneurs, CI, reseau). Repare-le, puis : bun redline resume {KEY}",
-  arbitrage: "Une decision te revient. Tranche-la, puis : bun redline resume {KEY} --fresh --note \"ta decision\"",
+  convergence: `Les agents n'ont pas converge dans leur budget. Lis le dernier retour, puis relance avec une consigne : ${REDLINE} resume {KEY} --fresh --note "..."`,
+  environment: `L'environnement a bloque (commande, conteneurs, CI, reseau). Repare-le, puis : ${REDLINE} resume {KEY}`,
+  arbitrage: `Une decision te revient. Tranche-la, puis : ${REDLINE} resume {KEY} --fresh --note "ta decision"`,
 };
 
 export function nextStep(key: string, kind: string): string {
@@ -43,10 +44,10 @@ export function report(key: string, outcome: DriveOutcome): number {
       clack.outro(outcome.detail);
       return 3;
     case "cancelled":
-      clack.outro(`Interrompu. Reprends avec : bun redline resume ${key}`);
+      clack.outro(`Interrompu. Reprends avec : ${REDLINE} resume ${key}`);
       return 130;
     case "waiting":
-      clack.outro(`Des questions attendent. Reprends avec : bun redline resume ${key}`);
+      clack.outro(`Des questions attendent. Reprends avec : ${REDLINE} resume ${key}`);
       return 130;
   }
 }
@@ -70,8 +71,8 @@ export function outcomeNotice(key: string, outcome: DriveOutcome): { readonly to
     case "paused":
       return { tone: "warning", text: outcome.detail };
     case "cancelled":
-      return { tone: "warning", text: `Interrompu. Reprends avec : bun redline resume ${key}` };
+      return { tone: "warning", text: `Interrompu. Reprends avec : ${REDLINE} resume ${key}` };
     case "waiting":
-      return { tone: "warning", text: `Des questions attendent. Reprends avec : bun redline resume ${key}` };
+      return { tone: "warning", text: `Des questions attendent. Reprends avec : ${REDLINE} resume ${key}` };
   }
 }

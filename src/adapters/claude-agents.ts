@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { type AgentAuthentication, createAgent, createClaudeHarness, type DispatchAgent } from "@elie-laloum/outpost/core";
 import type { AuthMode, Settings } from "../domain/config.ts";
 import { fail } from "../domain/failure.ts";
+import { REDLINE } from "../domain/invocation.ts";
 import type { RoleName } from "../domain/roles.ts";
 import type { AgentFactory } from "../ports/agents.ts";
 import type { SecretKey, Secrets } from "./secrets.ts";
@@ -26,15 +27,15 @@ export function credentialsFile(env: Readonly<Record<string, string | undefined>
 /** What the mode lacks to authenticate the agents, or null when it has it. */
 export function authenticationProblem(mode: AuthMode, secrets: Pick<Secrets, "get">, env: Readonly<Record<string, string | undefined>> = process.env): string | null {
   const secret = AUTH_SECRETS[mode];
-  if (secret) return secrets.get(secret) ? null : `${secret} manquant : bun redline init, section Claude`;
+  if (secret) return secrets.get(secret) ? null : `${secret} manquant : ${REDLINE} init, section Claude`;
   const file = credentialsFile(env);
-  return existsSync(file) ? null : `${file} absent : connecte-toi avec claude, ou passe en oauth avec bun redline init, section Claude`;
+  return existsSync(file) ? null : `${file} absent : connecte-toi avec claude, ou passe en oauth avec ${REDLINE} init, section Claude`;
 }
 
 export function authenticationFor(mode: AuthMode, secrets: Pick<Secrets, "get">): AgentAuthentication {
   const secret = AUTH_SECRETS[mode];
   if (!secret) return "account";
-  const value = secrets.get(secret) ?? fail(`Authentification ${mode} : ${secret} manquant.`, "Renseigne-le avec : bun redline init, section Claude");
+  const value = secrets.get(secret) ?? fail(`Authentification ${mode} : ${secret} manquant.`, `Renseigne-le avec : ${REDLINE} init, section Claude`);
   return mode === "oauth" ? { account: { key: value } } : { usage: { key: value } };
 }
 

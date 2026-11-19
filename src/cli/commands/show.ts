@@ -12,6 +12,7 @@ import { NO_SESSION, readSessions, type Sessions, type Watched, watched } from "
 import { pickRun } from "../tui/picker.ts";
 import { openTerminal } from "../tui/terminal.ts";
 import { openViewer } from "../tui/viewer.ts";
+import { REDLINE } from "../../domain/invocation.ts";
 
 /** inotify misses changes on some file systems, /mnt/c under WSL among them: a poll backs the watch up. */
 const POLL_MS = 500;
@@ -20,8 +21,8 @@ export async function showCommand(input: string | undefined): Promise<number> {
   // Only the paths: show reads a run and never needs the settings or the tokens.
   const paths = pathsOf(homeDirectory());
   const key = input ? normalizeKey(input) : null;
-  if (!process.stdout.isTTY || !process.stdin.isTTY) fail("show a besoin d'un terminal.", `Pour l'etat en texte : bun redline status${key ? ` ${key}` : ""}`);
-  if (key && !readLedger(paths, key)) fail(`Aucun run pour ${key}.`, `Lance-le avec : bun redline start ${key}`);
+  if (!process.stdout.isTTY || !process.stdin.isTTY) fail("show a besoin d'un terminal.", `Pour l'etat en texte : ${REDLINE} status${key ? ` ${key}` : ""}`);
+  if (key && !readLedger(paths, key)) fail(`Aucun run pour ${key}.`, `Lance-le avec : ${REDLINE} start ${key}`);
 
   const terminal = await openTerminal();
   try {

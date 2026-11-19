@@ -11,6 +11,7 @@ import { addRepository, detectRepository, proposedLevel, removeRepository, type 
 import { resetSetting, writeSetting } from "../../../app/settings.ts";
 import type { SetupSnapshot } from "../../../app/setup.ts";
 import { AUTH_MODES, COMMAND_KINDS, type CommandKind, type RepoEntry, SettingsSchema, TEST_KINDS } from "../../../domain/config.ts";
+import { REDLINE } from "../../../domain/invocation.ts";
 import type { Tone } from "../../dashboard/model.ts";
 import { buildImage, imageDoctorCommand } from "../../commands/image.ts";
 import { formatValue, type Input, parseInput, type Path, seedFor, settingRows } from "../../setup/fields.ts";
@@ -597,7 +598,7 @@ function fieldFor(input: Input, optional: boolean, label: string, value: unknown
 // -------------------------------------------------------------------- check ----
 
 function check(context: PageContext): Row[] {
-  const rows: Row[] = [{ kind: "action", label: "Lancer la verification", detail: "comme bun redline check", run: () => context.runCheck() }];
+  const rows: Row[] = [{ kind: "action", label: "Lancer la verification", detail: `comme ${REDLINE} check`, run: () => context.runCheck() }];
   const findings = context.findings();
   if (!findings) return [...rows, note("Elle relit tout, demande a chaque service a qui sont les jetons, regarde Docker, l'image, les identifiants de Claude et les checkouts du registre.")];
   for (const [section, entries] of Map.groupBy(findings, (finding) => finding.section)) {

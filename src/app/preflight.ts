@@ -2,6 +2,7 @@ import { authenticationProblem } from "../adapters/claude-agents.ts";
 import { inspectImage, runtimeStatus, startRuntime } from "../adapters/container-runtime.ts";
 import { requiredSecrets } from "../adapters/secrets.ts";
 import { describeError, fail } from "../domain/failure.ts";
+import { REDLINE } from "../domain/invocation.ts";
 import type { AppContext } from "./context.ts";
 import { ensureHome } from "./home.ts";
 import { ensureMemory } from "./memory-repository.ts";
@@ -91,13 +92,13 @@ async function agentImage(app: AppContext, cli: string, build: ImageBuild | unde
   const inspected = await inspectImage(app.paths.home, cli, image);
   if (inspected.state === "error") fail(`Image des agents ${image} illisible : ${inspected.detail}`, "Le daemon de conteneurs a repondu en erreur : repare-le, puis relance.");
   if (inspected.state === "present") return image;
-  if (!(await build?.(image, output))) fail(`Image des agents ${image} absente.`, "Construis-la avec : bun redline image build, ou depuis bun redline init");
+  if (!(await build?.(image, output))) fail(`Image des agents ${image} absente.`, `Construis-la avec : ${REDLINE} image build, ou depuis ${REDLINE} init`);
   return `${image} construite`;
 }
 
 /** Without a registry no repository can be in scope: the run would escalate after framing. */
 export function registryPreflight(app: AppContext): void {
-  if (!app.configuration.sources.registry) fail(`Aucun registre de repos dans ${app.paths.registry}.`, "Declare tes repos avec : bun redline init");
+  if (!app.configuration.sources.registry) fail(`Aucun registre de repos dans ${app.paths.registry}.`, `Declare tes repos avec : ${REDLINE} init`);
 }
 
 /**
@@ -107,7 +108,7 @@ export function registryPreflight(app: AppContext): void {
 export function servicesPreflight(app: AppContext): void {
   const missing = requiredSecrets(app.configuration.settings.services).filter((key) => !app.secrets.get(key));
   if (missing.length > 0) {
-    fail(`Jetons manquants dans ${app.paths.env} : ${missing.join(", ")}.`, "Renseigne-les, ou desactive le service qui en a besoin, avec : bun redline init");
+    fail(`Jetons manquants dans ${app.paths.env} : ${missing.join(", ")}.`, `Renseigne-les, ou desactive le service qui en a besoin, avec : ${REDLINE} init`);
   }
 }
 

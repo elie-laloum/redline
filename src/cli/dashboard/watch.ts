@@ -1,6 +1,7 @@
 import type { DriveOutcome } from "../../app/driver.ts";
 import type { JournalLine } from "../../app/event-journal.ts";
 import { type Ledger, publicationOf } from "../../app/ledger.ts";
+import { REDLINE } from "../../domain/invocation.ts";
 import type { RunPhase } from "../../domain/run-events.ts";
 import { outcomeNotice } from "../report.ts";
 import { phaseLabel, type Tone } from "./model.ts";
@@ -48,7 +49,7 @@ export interface WatchInput {
 
 /** Whether a watched run is running, and how it ended otherwise. */
 export function watched({ key, sessions, running, journaled, ledger }: WatchInput): Watched {
-  const resume = `Reprends avec : bun redline resume ${key}`;
+  const resume = `Reprends avec : ${REDLINE} resume ${key}`;
   if (sessions.outcome) return { kind: "ended", ...outcomeNotice(key, sessions.outcome), at: sessions.at ?? Date.now(), interrupted: false };
   if (running !== null) return { kind: "running", pid: running };
   if (journaled && sessions.pid !== null) {

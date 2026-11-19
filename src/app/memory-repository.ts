@@ -3,6 +3,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { git, gitAllowFailure } from "../adapters/git.ts";
 import type { Settings } from "../domain/config.ts";
 import { fail } from "../domain/failure.ts";
+import { REDLINE } from "../domain/invocation.ts";
 import { GITIGNORE_WITHOUT_MEMORY, REDLINE_IDENTITY } from "./home.ts";
 import { expandTilde, type Paths } from "./paths.ts";
 
@@ -26,9 +27,9 @@ export function memoryRepository(settings: Settings, home: string): MemoryReposi
 /** A memory cloned from a URL is cloned on the first run of a new machine; a path must exist. */
 export async function ensureMemory(memory: MemoryRepository): Promise<void> {
   if (!memory.separate || existsSync(join(memory.directory, ".git"))) return;
-  if (!memory.url) fail(`La memoire ${memory.directory} n'est pas un depot git.`, "Corrige memory.path avec : bun redline init");
+  if (!memory.url) fail(`La memoire ${memory.directory} n'est pas un depot git.`, `Corrige memory.path avec : ${REDLINE} init`);
   if (existsSync(memory.directory) && readdirSync(memory.directory).length > 0) {
-    fail(`${memory.directory} existe deja et n'est pas un clone de ${memory.url}.`, "Raccorde la memoire avec : bun redline init, qui propose d'importer ces notes");
+    fail(`${memory.directory} existe deja et n'est pas un clone de ${memory.url}.`, `Raccorde la memoire avec : ${REDLINE} init, qui propose d'importer ces notes`);
   }
   mkdirSync(dirname(memory.directory), { recursive: true });
   await git(dirname(memory.directory), ["clone", "-q", memory.url, memory.directory], 300_000);

@@ -60,6 +60,9 @@ releases are tagged `v<version>` and published to npm as
 
 ### Fixed
 
+- The commands redline suggests in its messages name the way it is actually run: `redline` once
+  installed, `bun redline` from a clone. They always said `bun redline`, which fails on an
+  installed binary with `Script not found "redline"`.
 - An answer given during closing reaches the closing workflow. The driver passed answers to the
   framing only, so the open points review asked the same question again after every answer.
 - A text sent to Jira — comment or description — carries the line breaks inside a paragraph as
