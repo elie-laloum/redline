@@ -33,10 +33,15 @@ export class ChoiceList extends TextRenderable {
   /** The width the rows were wrapped at, so a resize rewraps them and nothing else does. */
   private wrappedAt = -1;
 
-  constructor(renderer: CliRenderer, id: string, chosen: (choice: string) => void) {
+  /** The most rows the list may take; it scrolls past them. */
+  private readonly limit: () => number;
+  private limitedAt = -1;
+
+  constructor(renderer: CliRenderer, id: string, chosen: (choice: string) => void, limit?: () => number) {
     super(renderer, { id, content: "", fg: THEME.text, bg: THEME.panel, wrapMode: "none", flexShrink: 0, height: 1 });
     this.renderer = renderer;
     this.chosen = chosen;
+    this.limit = limit ?? (() => Math.max(3, Math.floor(this.renderer.height / 2)));
     this.focusable = true;
   }
 
@@ -77,7 +82,7 @@ export class ChoiceList extends TextRenderable {
 
   protected renderSelf(buffer: Parameters<TextRenderable["render"]>[0]): void {
     // The panel is laid out after the question is shown, and resizing it rewraps the choices.
-    if (this.width !== this.wrappedAt) this.relayout();
+    if (this.width !== this.wrappedAt || this.limit() !== this.limitedAt) this.relayout();
     super.renderSelf(buffer);
   }
 
@@ -92,8 +97,8 @@ export class ChoiceList extends TextRenderable {
     const width = Math.max(NARROWEST, this.width - GUTTER);
     this.rows = this.choices.flatMap((choice, index) => wrap(choice, width).map((text, line): Row => ({ choice: index, text, head: line === 0 })));
     this.wrappedAt = this.width;
-    // Half the screen at most: the question's own text keeps the rest, and the list scrolls.
-    this.height = Math.max(1, Math.min(this.rows.length, Math.max(3, Math.floor(this.renderer.height / 2))));
+    this.limitedAt = this.limit();
+    this.height = Math.max(1, Math.min(this.rows.length, this.limitedAt));
     this.reveal();
     this.paint();
   }
