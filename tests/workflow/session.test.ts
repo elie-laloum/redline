@@ -200,10 +200,11 @@ describe("une session redline", () => {
   it("nettoie l'etat local d'un ticket publie et liste ce qui reste a distance", async () => {
     world = await createWorld({ issues: [ISSUE], script: merge(framing, testsPhase, { developer: [implement], "code-adversary": [{ reply: codePass(["C1"]) }] }, closing) as Script });
     world.ledger("FT-1");
-    await runSession(world.app, "FT-1", {}, { prompter: scripted(["Le PO", "Mois en cours", "Approuver", "Passer en VALIDATION"]), progress: silentProgress });
+    const outcome = await runSession(world.app, "FT-1", {}, { prompter: scripted(["Le PO", "Mois en cours", "Approuver", "Passer en VALIDATION"]), progress: silentProgress });
+    assert.equal(outcome.status, "done", JSON.stringify(outcome));
 
     const dry = await clearTicket(world.app, "FT-1", { force: false, dryRun: true });
-    assert.ok(dry.removed.some((entry) => entry.includes("feature/FT-1-filtrer-la-liste-par-periode")));
+    assert.ok(dry.removed.some((entry) => entry.includes("feature/FT-1-filtrer-la-liste-par-periode")), `bloque : ${JSON.stringify(dry.blocked)}`);
     assert.ok(existsSync(runDirectory(world.app.paths, "FT-1")));
     assert.ok(dry.remote.some((entry) => entry.startsWith("MR fixture-core")));
 
