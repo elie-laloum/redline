@@ -173,6 +173,10 @@ bun redline resume <KEY>                        # after fixing the environment
 bun redline resume <KEY> --fresh --note "…"     # reopen the escalated task with a new budget; every round reads the note
 ```
 
+An escalation says how many escalations the same task has had before it, and of which kinds;
+from the third on, it suggests taking the branch over by hand. It ends with the path of the run's
+journal, `~/.redline/runs/<KEY>/events.jsonl`, which keeps every verdict untruncated.
+
 ## Watching a run
 
 In a terminal, `start` and `resume` open a full-screen dashboard: every task seen, phase by phase,

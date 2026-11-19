@@ -1,6 +1,7 @@
 import type { DriveOutcome } from "../../app/driver.ts";
 import type { JournalLine } from "../../app/event-journal.ts";
 import { type Ledger, publicationOf } from "../../app/ledger.ts";
+import { earlierEscalations } from "../../domain/escalation.ts";
 import { REDLINE } from "../../domain/invocation.ts";
 import type { RunPhase } from "../../domain/run-events.ts";
 import { outcomeNotice } from "../report.ts";
@@ -72,7 +73,9 @@ function fromLedger(key: string, ledger: Ledger, resume: string): { readonly ton
         return { tone: "success", text: `${key} publie.` };
       }
     case "escalated":
-      return ledger.escalation ? outcomeNotice(key, { status: "escalated", escalation: ledger.escalation }) : { tone: "error", text: `Escalade. ${resume}` };
+      return ledger.escalation
+        ? outcomeNotice(key, { status: "escalated", escalation: ledger.escalation, earlier: earlierEscalations(ledger.history, ledger.escalation.task) })
+        : { tone: "error", text: `Escalade. ${resume}` };
     default:
       return { tone: "warning", text: `Arrete en ${phaseLabel(ledger.phase as RunPhase).toLowerCase()}. ${resume}` };
   }
