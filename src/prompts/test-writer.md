@@ -43,6 +43,8 @@ ecrit sur une signature inventee rougit pour une mauvaise raison.
 
 Si une ligne de la checklist ne peut etre couverte par aucun type declare, ne l'approxime pas :
 declare-la dans `uncoverable` avec la raison.
+Une ligne que l'humain a deja arbitree (voir les arbitrages ci-dessus) reste dans `uncoverable`
+si elle n'est pas couverte, et l'arbitrage s'applique : redline ne te la reposera pas.
 
 ## Ta reponse
 

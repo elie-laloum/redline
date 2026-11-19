@@ -8,6 +8,11 @@ releases are tagged `v<version>` and published to npm as
 
 ### Added
 
+- The note given to `resume --fresh` after an escalation on lines the registry cannot test is
+  recorded as the human's ruling on those lines, in the ledger's `delivery.rulings`. A ruled line
+  no longer escalates, and the ruling reaches every delivery agent with the arbitrages. Nothing
+  recorded the answer before: the test writer is bound to declare such a line, so it escalated
+  again on every resume.
 - An escalation says how many escalations its task has had before it, and of which kinds — `3e
   escalade sur core.tests — les precedentes : arbitrage, arbitrage` — and from the third on
   suggests taking the branch over by hand. It ends with the path of the run's journal, which keeps

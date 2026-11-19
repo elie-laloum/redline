@@ -3,7 +3,8 @@ import { execFileSync } from "node:child_process";
 import { afterEach, describe, it } from "bun:test";
 import { parseEscalation } from "../../src/domain/escalation.ts";
 import { allPass, approved, codePass, codeReply, deliver, FAILING_TEST, goodRed, IMPLEMENTATION, PASSING_TEST, testsReply } from "../kit/delivery.ts";
-import { ISSUE } from "../kit/framing.ts";
+import { ISSUE, plan } from "../kit/framing.ts";
+import type { Plan } from "../../src/domain/plan.ts";
 import { createWorld, type World } from "../kit/world.ts";
 
 let world: World | null = null;
@@ -73,6 +74,32 @@ describe("la convergence des tests", () => {
     const escalation = parseEscalation(String(result.errors[0]));
     assert.equal(escalation?.kind, "arbitrage");
     assert.match(escalation?.detail ?? "", /e2e/);
+  });
+
+  it("n'escalade plus une ligne non couvrable que l'humain a deja arbitree, et transmet sa decision", async () => {
+    const lines = [
+      { id: "T1", criterion: "Sans periode, clamp rend le mois en cours.", kind: "ut" as const, covers: ["AC1"] },
+      { id: "T2", criterion: "Deux sessions ne prennent pas le meme verrou.", kind: "ut" as const, covers: ["AC1"] },
+    ];
+    const twoLines = plan({ tests: lines }) as Plan;
+    world = await createWorld({
+      issues: [ISSUE],
+      script: {
+        "test-writer": [{ writes: { "tests/period-default.test.js": FAILING_TEST }, reply: { ...testsReply(), uncoverable: [{ id: "T2", reason: "PGlite ne sert qu'une connexion" }] } }],
+        "test-adversary": [{ reply: allPass(["T1", "T2"]) }],
+        "red-checker": [{ reply: goodRed }],
+        developer: [{ writes: { "src/period.js": IMPLEMENTATION }, reply: codeReply() }],
+        "code-adversary": [{ reply: codePass(["C1"]) }],
+      },
+    });
+    const ruling = { task: "fixture-core.tests", lines: [{ id: "T2", reason: "PGlite ne sert qu'une connexion" }], ruling: "Hors perimetre des tests : le verrou se relit en revue.", at: "2026-11-19T10:00:00.000Z" };
+    const ledger = world.ledger("FT-1", { delivery: { generation: 2, seeds: {}, rulings: [ruling] } });
+    const { result } = await deliver(world, ledger, approved(world, twoLines));
+    result.unwrap();
+
+    assert.match(world.agents.prompts["test-writer"]?.[0] ?? "", /- T2 \(fixture-core\.tests\), declaree non couvrable : PGlite ne sert qu'une connexion → Hors perimetre des tests : le verrou se relit en revue\./);
+    assert.match(world.agents.prompts["test-adversary"]?.[0] ?? "", /T2 \(fixture-core\.tests\), declaree non couvrable/);
+    assert.deepEqual(world.agents.remaining(), {});
   });
 });
 

@@ -10,6 +10,7 @@ import { git } from "../../adapters/git.ts";
 import { declaredTestKinds, type TestKind } from "../../domain/config.ts";
 import { digest } from "../../domain/digest.ts";
 import { failingLines, renderCheck, renderVerdicts } from "../../domain/feedback.ts";
+import { ruledLines, uncoverableDetail } from "../../domain/rulings.ts";
 import { isTestFile } from "../../domain/zones.ts";
 import type { CheckResult } from "../../ports/checks.ts";
 import type { RepoWorkspace } from "../../ports/sandboxes.ts";
@@ -63,9 +64,9 @@ export function testsTask(run: DeliveryContext, target: RepoTarget, workspace: T
             feedback: briefOf(carry),
           }),
         );
-        if (reply.uncoverable.length > 0) {
-          throw new Escalation("arbitrage", key, `lignes que le registre ne permet pas de tester :\n${bullets(reply.uncoverable.map((entry) => `${entry.id} : ${entry.reason}`))}`);
-        }
+        const ruled = ruledLines(run.ledger.delivery.rulings, key);
+        const unruled = reply.uncoverable.filter((entry) => !ruled.has(entry.id));
+        if (unruled.length > 0) throw new Escalation("arbitrage", key, uncoverableDetail(unruled));
         const committed = await commitWork({
           directory: opened.directory,
           zone: "tests",
