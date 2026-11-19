@@ -1,7 +1,7 @@
 import type { Logging } from "@elie-laloum/outpost/core";
 import type { Workflow, WorkflowAnswer, WorkflowCheckpoint, WorkflowCheckpointStore, WorkflowEvent, WorkflowInputRequest, WorkflowResult } from "@elie-laloum/outpost/workflows";
 import { earlierEscalations, type EscalationKind, escalationEvent, type EscalationRecord, parseEscalation } from "../domain/escalation.ts";
-import { describeError } from "../domain/failure.ts";
+import { describeError, fail } from "../domain/failure.ts";
 import { addTokens, NO_TOKENS, type PhaseTask, type RunEvent, type RunObserver, type RunPhase, type Tokens } from "../domain/run-events.ts";
 import type { ClosingContext } from "../phases/closing/context.ts";
 import { defineClosing, type Publication } from "../phases/closing/workflow.ts";
@@ -71,6 +71,7 @@ export async function drive(app: AppContext, key: string, request: DriveRequest,
   let answers = request.answers;
   if (ledger.phase === "escalated") {
     if (!request.resume) return escalated(app, ledger, ledger.escalation ?? unknownEscalation());
+    if (ledger.escalation?.kind === "convergence" && !request.fresh) refuseSpentBudget(key, ledger.escalation);
     ledger = save(app, reopenAfterEscalation(ledger, request.fresh ?? null));
   }
 
@@ -294,6 +295,17 @@ function save(app: AppContext, ledger: Ledger): Ledger {
 
 function failMissing(key: string): never {
   throw new Error(`Aucun run pour ${key} : ${REDLINE} start ${key}`);
+}
+
+/**
+ * A convergence escalation is a spent budget, kept in the loop's checkpoint: a resume of the same
+ * generation would escalate again at once, without calling an agent.
+ */
+function refuseSpentBudget(key: string, escalation: EscalationRecord): never {
+  fail(
+    `Le budget de ${escalation.task} est deja epuise : une reprise sans --fresh re-escaladerait aussitot, sans appeler un agent.`,
+    `Relance avec un budget neuf : ${REDLINE} resume ${key} --fresh --note "..." (les taches finies sont restituees par le cache).`,
+  );
 }
 
 function unknownEscalation(): EscalationRecord {
