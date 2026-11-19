@@ -48,6 +48,9 @@ releases are tagged `v<version>` and published to npm as
 
 ### Changed
 
+- `resume` without `--fresh` after a convergence escalation is refused, with the command to run.
+  The spent budget lives in the loop's checkpoint, so such a resume escalated again at once,
+  without calling an agent, and looked like a run that had failed again.
 - Closing asks before moving the Jira ticket to its `afterMergeRequest` status, with the merge
   request links: they are drafts, and nothing is merged yet. The comment is posted whatever the
   answer. The ticket used to move as soon as the merge requests existed.

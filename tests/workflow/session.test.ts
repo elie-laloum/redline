@@ -236,4 +236,13 @@ describe("une session redline", () => {
     assert.equal(fresh.status, "waiting");
     assert.equal(readLedger(world.app.paths, "FT-1")?.framing.attempt, 2);
   });
+
+  it("refuse une reprise sans --fresh apres une escalade de convergence, au lieu de la rejouer", async () => {
+    world = await createWorld({ issues: [ISSUE], script: {} as Script });
+    const escalation = { kind: "convergence" as const, task: "fixture-core.tests/adversaire", detail: "budget de 3 tour(s) epuise", at: "2026-11-19T10:00:00.000Z" };
+    world.ledger("FT-1", { phase: "escalated", resumePhase: "delivery", escalation });
+
+    await assert.rejects(() => drive(world!.app, "FT-1", { resume: true }), (error: Error & { hint?: string }) => /deja epuise/.test(error.message) && /resume FT-1 --fresh/.test(error.hint ?? ""));
+    assert.equal(readLedger(world.app.paths, "FT-1")?.phase, "escalated");
+  });
 });

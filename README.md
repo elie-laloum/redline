@@ -169,7 +169,7 @@ public, irreversible actions. What can still stop a run is an escalation:
 | `arbitrage` | the decision belongs to a human: a line the registry cannot test, a test contested too often, no repository in scope |
 
 ```
-bun redline resume <KEY>                        # after fixing the environment
+bun redline resume <KEY>                        # after fixing the environment; refused after a convergence, whose budget is spent
 bun redline resume <KEY> --fresh --note "…"     # reopen the escalated task with a new budget; every round reads the note
 ```
 
