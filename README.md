@@ -96,6 +96,14 @@ impossibility or a defensible business reason, and only once the human accepts i
 derogation sends the grill back to another way. Every agent downstream receives the two framings
 in that order, with the accepted derogations marked.
 
+Both grills group their questions by theme, and every question offers one more answer: « Je ne
+sais pas : tranche et consigne l'hypothese ». The grill then decides, and its arbitrage says what
+it assumed; the planner turns each such hypothesis into an open point, which closing asks you
+about. An arbitrage rules on a scope or on a reading, never on a proof technique: a test made to
+show how the code works is one the test adversary must refuse, and the loop cannot converge. A
+resume note that prescribes one — generated SQL, a private function, a trigger — is flagged when
+you run `resume`.
+
 **Delivery** takes the repositories by ascending `level`. In each one, the test writer writes
 failing tests, which must stay inside test files, survive a test adversary, fail when run — a
 test that is already green proves nothing — and fail for the right reason, as judged by the red

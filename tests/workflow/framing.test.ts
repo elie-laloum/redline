@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "bun:test";
+import { DECIDE_FOR_ME } from "../../src/domain/arbitrage-scope.ts";
 import { ACCEPT_DEROGATION, REFUSE_DEROGATION } from "../../src/domain/derogation.ts";
 import { parseEscalation } from "../../src/domain/escalation.ts";
 import { frame, functionalAsk, functionalDone, ISSUE, plan, scoutCore, technicalDeparting, technicalDone } from "../kit/framing.ts";
@@ -34,6 +35,26 @@ describe("le cadrage", () => {
     assert.match(world.agents.prompts.planner?.[0] ?? "", /echanges bruts[\s\S]*\*\*Periode par defaut\*\* — Quelle periode a l'ouverture \?\n  Reponse : Mois en cours/);
     assert.match(world.agents.prompts.planner?.[0] ?? "", /aucune question : le grill a conclu sur le ticket seul/);
     assert.deepEqual(world.agents.remaining(), {});
+  });
+
+  it("laisse le grill trancher une question a la place de l'humain, sans le proposer sur la question de qui repond", async () => {
+    world = await createWorld({
+      issues: [ISSUE],
+      script: { "functional-grill": [{ reply: functionalAsk }, { reply: functionalDone }], "scope-scout": scouts(), "technical-grill": [{ reply: technicalDone() }], planner: [{ reply: plan() }] },
+    });
+    const choices: (readonly string[])[] = [];
+    const answer = (value: string) => (request: { choices?: readonly string[] }) => {
+      choices.push(request.choices ?? []);
+      return value;
+    };
+    await frame(world, world.ledger("FT-1"), [answer("Le PO"), answer(DECIDE_FOR_ME), "Approuver"]);
+
+    assert.deepEqual(choices, [
+      ["Le PO", "Moi, en attendant la validation du PO"],
+      ["Mois en cours", "Dernier mois clos", DECIDE_FOR_ME],
+    ]);
+    assert.match(world.agents.prompts["functional-grill"]?.[1] ?? "", /Reponse : Je ne sais pas : tranche et consigne l'hypothese/);
+    assert.match(world.agents.prompts["functional-grill"]?.[0] ?? "", /commence par « Hypothese a confirmer : »/);
   });
 
   it("donne aux agents les tickets lies, parents, sous-taches et cites, et les notes du lancement", async () => {

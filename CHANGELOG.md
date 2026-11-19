@@ -8,6 +8,12 @@ releases are tagged `v<version>` and published to npm as
 
 ### Added
 
+- Every question of the functional and technical grills offers « Je ne sais pas : tranche et
+  consigne l'hypothese »: the grill decides, its arbitrage starts with `Hypothese a confirmer :`,
+  and the planner turns it into an open point. The grills group their questions by theme.
+- An arbitrage rules on a scope or a reading, never on a proof technique: the technical grill's
+  brief says so, and `resume` flags a note that prescribes one (generated SQL, a private function,
+  a trigger…), since the test it would force is one the test adversary must refuse.
 - `redline note <ticket> [task] [--clear]` shows the note each task reads since a `resume --note`,
   with the rulings on uncoverable lines, and clears a note — one task's, or all — by removing its
   key. Clearing a note meant editing the ledger by hand, where a `null` blocks the next run.

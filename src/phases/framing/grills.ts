@@ -4,6 +4,7 @@ import { functionalFraming } from "../../agents/render.ts";
 import { ask } from "../../agents/role.ts";
 import type { Divergence, FunctionalGrillReply, TechnicalGrillReply } from "../../agents/shared.ts";
 import { technicalGrill } from "../../agents/technical-grill.ts";
+import { DECIDE_FOR_ME } from "../../domain/arbitrage-scope.ts";
 import { findRepo } from "../../domain/config.ts";
 import {
   ACCEPT_DEROGATION,
@@ -46,8 +47,13 @@ export interface FunctionalOutcome extends GrillOutcome {
   readonly respondent: Respondent | null;
 }
 
+/** Every question of a grill agent may be answered by letting the grill decide and record its hypothesis. */
+function withDecideForMe(questions: readonly Question[]): Question[] {
+  return questions.map((question) => ({ ...question, options: [...question.options.filter((option) => option !== DECIDE_FOR_ME), DECIDE_FOR_ME] }));
+}
+
 function toTurn(reply: TechnicalGrillReply, raisedBy: string): Turn<GrillOutcome> {
-  if (!reply.done) return { ask: reply.questions };
+  if (!reply.done) return { ask: withDecideForMe(reply.questions) };
   return { done: { arbitrages: reply.arbitrages, contradictions: reply.contradictions.map((entry) => ({ ...entry, raisedBy })) } };
 }
 
@@ -61,7 +67,7 @@ const RESPONDENT_QUESTION: Question = {
 
 /** Who answers is asked once, ahead of the grill's first questions: a grill that asks nothing involves no one. */
 function functionalTurn(reply: FunctionalGrillReply, transcript: readonly Exchange[]): Turn<FunctionalOutcome> {
-  if (!reply.done) return { ask: respondentOf(transcript) ? reply.questions : [RESPONDENT_QUESTION, ...reply.questions] };
+  if (!reply.done) return { ask: respondentOf(transcript) ? withDecideForMe(reply.questions) : [RESPONDENT_QUESTION, ...withDecideForMe(reply.questions)] };
   return {
     done: {
       arbitrages: reply.arbitrages,

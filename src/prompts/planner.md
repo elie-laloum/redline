@@ -75,6 +75,9 @@ lui est repose a la cloture : tranche, reporte ou encore ouvert, et un point enc
 partir la livraison avec des reserves.
 
 Si tu decouvres une ambiguite en planifiant, ne la tranche pas : mets-la dans `openPoints`.
+Un arbitrage dont le `why` commence par « Hypothese a confirmer : » a ete tranche par un grill
+faute de reponse humaine : planifie-le tel quel, et mets l'hypothese dans `openPoints`, pour
+qu'elle soit reprise a la cloture.
 
 ## Ta reponse
 
