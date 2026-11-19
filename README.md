@@ -240,6 +240,7 @@ means, and how to set redline up by hand on a machine without a terminal, is in
 | `init` | sets redline up on a full screen: tokens tested against their service, Claude, services, memory, agent image, registry, voice and every setting |
 | `start <ticket> [--notes …] [--figma <url>…] [--plain]` | frames, delivers and publishes a ticket; on a ticket that already has a run, resumes it |
 | `resume <ticket> [--fresh] [--note …] [--plain]` | resumes an interrupted, waiting or escalated run; `--fresh` reopens the escalated task with a new budget |
+| `note <ticket> [task] [--clear]` | shows the notes a resume handed to each task, and the rulings recorded on uncoverable lines; `--clear` removes a task's note, or every note, without editing the ledger |
 | `status [ticket] [--plan]` | lists the runs, or shows one run's phase, escalation, history and approved plan |
 | `show [ticket]` | opens a run's dashboard read-only — finished, or followed live while it runs in another terminal; without a ticket, the list of runs |
 | `clear <ticket> [--force] [--dry-run]` | removes a ticket's local state: worktrees, local branches, run, ledger, logs; lists the remote traces it leaves |
