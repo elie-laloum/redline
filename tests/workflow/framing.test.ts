@@ -172,8 +172,9 @@ describe("le cadrage", () => {
       issues: [ISSUE],
       script: { "functional-grill": [{ reply: functionalDone }], "scope-scout": scouts(), "technical-grill": [{ reply: technicalDeparting }, { reply: technicalDeparting }], planner: [{ reply: plan() }] },
     });
-    const { outcome } = await frame(world, world.ledger("FT-1"), [ACCEPT_DEROGATION, "Approuver"]);
+    const { outcome, result, asked } = await frame(world, world.ledger("FT-1"), [ACCEPT_DEROGATION, "Approuver"]);
 
+    assert.equal(result.status, "done", JSON.stringify({ status: result.status, asked, errors: result.errors.map(String), remaining: world.agents.remaining() }));
     assert.deepEqual(outcome?.technical.arbitrages.map((entry) => entry.overrides), [{ functional: "F1", ground: "raison-metier" }]);
     assert.match(world.agents.prompts.planner?.[0] ?? "", /Le mois precedent \(la cloture mensuelle le fige\) — derogation a F1 acceptee par l'humain \(raison metier\)/);
     assert.deepEqual(world.agents.remaining(), {});
