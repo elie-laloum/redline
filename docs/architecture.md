@@ -190,9 +190,11 @@ breach comes back to the agent as valibot's message on the repair turn.
 
 Agents work in two kinds of sandboxes:
 
-- **Readers** — the scouts, the grills, the planner, the memory planner and the finalizer — run
-  over the redline home: the memory and a short reading guide, with every registry repository
-  mounted read-only under `/repos/<name>`. Anything a reader writes is discarded when it closes.
+- **Readers** — the scouts, the grills, the planner, the memory planner, the finalizer and the run
+  explainer — run over the redline home: the memory and a short reading guide, with every
+  registry repository mounted read-only under `/repos/<name>`. Anything a reader writes is
+  discarded when it closes. The run explainer is the only agent called outside a phase: a
+  one-task workflow, `redline.explain`, started without a checkpoint each time a question is put.
 - **Delivery roles** — the test writer, the test adversary, the red checker, the developer, the
   arbiter and the code adversary, and at closing the conformity checker — run over the
   repository's git worktree, on the ticket's branch. Only the test writer, the developer and the arbiter produce commits.

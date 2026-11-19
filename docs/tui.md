@@ -75,6 +75,15 @@ tokens in a single file.
   shown. Explanation reads the run back in plain words — where it is, what is working, what each
   judge of the current loop checks, which budgets are spent or one turn from spent, and what each
   kind of escalation asks of you. It is derived from the dashboard alone and asks no agent.
+- `e`, from any panel, opens the explanation view on its questions to the run explainer: why the
+  run stopped, the successive failures, the verdicts of the selected task, what that task did.
+  Nothing is asked before `Enter`, so tokens are spent only on demand. The explainer reads the
+  run's journal (`app/insight.ts` builds the part of it the question needs, the latest kept when it
+  is too long) in a reader sandbox, outside any phase: nothing is checkpointed. Its answer is three
+  to five one-line findings — `↑` `↓` to move, `→` to unfold one's paragraph, `←` to fold it — and
+  a conclusion that says what to do next. An answer is kept while the screen is open; `r` asks
+  again, `Esc` goes back to the menu, then to the plain reading. A failure is shown in the panel,
+  with `r` to retry. `show` asks too: it loads the settings and the agents only then.
 - The inspector does not wrap long lines: `←` `→`, or a sideways wheel, scrolls it horizontally.
 - The usage card shows the ticket's total tokens, with the current phase's underneath. The phase's
   are restored from its checkpoint when it starts, then counted from the workflow's usage events;
@@ -120,6 +129,7 @@ Questions are panels that appear and disappear, not overlays:
 | `PgUp` `PgDn` | scroll the focused panel; in a question, its text or the plan |
 | `←` `→` | scroll the inspector sideways |
 | `v` | cycle the right panel: inspector → changes → explanation |
+| `e` | the explanation view's questions to the run explainer; in it, `↑` `↓` choose, `Enter` asks, `→` `←` unfold and fold a finding, `r` asks again, `Esc` goes back |
 | `f` | follow the active task again |
 | `Enter` | confirm a choice |
 | `Enter` in a text area | send the answer |
