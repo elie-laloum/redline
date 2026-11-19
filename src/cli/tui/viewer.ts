@@ -1,5 +1,5 @@
 import type { CliRenderer, KeyEvent } from "@opentui/core";
-import { type Board, createBoard } from "./board.ts";
+import { type Board, createBoard, type Explainer } from "./board.ts";
 import type { Focus } from "./view.ts";
 
 export interface Viewer {
@@ -13,14 +13,15 @@ export interface Viewer {
 const PANELS: readonly Focus[] = ["tasks", "inspector", "journal"];
 
 /** The dashboard, read-only: nothing here reaches the run, and leaving never stops it. */
-export function openViewer(renderer: CliRenderer, ticket: { readonly key: string; readonly title: string }, back: boolean): Viewer {
-  const board = createBoard(renderer, ticket, { selected: null, follow: true, focus: "tasks", view: "inspector", changes: null, layout: "dashboard", notice: null, ended: false, watching: { pid: null, back } });
+export function openViewer(renderer: CliRenderer, ticket: { readonly key: string; readonly title: string }, back: boolean, explainer: Explainer | null = null): Viewer {
+  const board = createBoard(renderer, ticket, { selected: null, follow: true, focus: "tasks", view: "inspector", changes: null, layout: "dashboard", notice: null, ended: false, watching: { pid: null, back }, insight: null }, explainer);
   let leave: () => void = () => {};
   const left = new Promise<void>((resolve) => {
     leave = resolve;
   });
 
   const onKey = (key: KeyEvent) => {
+    if (board.asking && (key.name === "return" || key.name === "escape")) return board.navigate(key);
     if (key.name === "q" || key.name === "escape" || (key.ctrl && key.name === "c")) return leave();
     if (key.name === "tab") {
       key.preventDefault();

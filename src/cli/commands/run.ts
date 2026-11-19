@@ -2,6 +2,7 @@ import * as clack from "@clack/prompts";
 import { killRunningCommands } from "../../adapters/exec.ts";
 import { type AppContext, createContext } from "../../app/context.ts";
 import type { DriveRequest } from "../../app/driver.ts";
+import { explainRun } from "../../app/insight.ts";
 import { newLedger, readLedger, writeLedger } from "../../app/ledger.ts";
 import { type ImageBuild, type Preflight, preflightOf, runPreflight } from "../../app/preflight.ts";
 import { loadHistory } from "../../app/run-history.ts";
@@ -70,7 +71,7 @@ async function launch(app: AppContext, key: string, request: DriveRequest, optio
   process.on("SIGINT", interrupt);
   try {
     if (!options.plain && process.stdout.isTTY && process.stdin.isTTY) {
-      dashboard = await openDashboard({ key, title: readLedger(app.paths, key)?.title ?? "" }, { interrupt });
+      dashboard = await openDashboard({ key, title: readLedger(app.paths, key)?.title ?? "" }, { interrupt, explain: (request) => explainRun(app, key, request) });
       const board = dashboard;
       try {
         await prepare(

@@ -17,6 +17,7 @@ import {
 } from "../dashboard/model.ts";
 import type { RepoChanges } from "../dashboard/changes.ts";
 import { explain } from "../dashboard/explain.ts";
+import { type InsightPanel, insightLines } from "../dashboard/insight.ts";
 import { formatDuration, formatTokens } from "../dashboard/format.ts";
 import { describeOutput, type OutputTone } from "../dashboard/outputs.ts";
 import type { RunPhase } from "../../domain/run-events.ts";
@@ -47,6 +48,8 @@ export interface Screen {
   readonly ended: boolean;
   /** Set when the screen only watches a run that another process drives. */
   readonly watching: { readonly pid: number | null; readonly back: boolean } | null;
+  /** The questions to the run explainer, open in the explanation view; null for its plain reading. */
+  readonly insight: InsightPanel | null;
 }
 
 export interface DashboardView {
@@ -80,8 +83,8 @@ const PHASE_ORDER: readonly RunPhase[] = ["framing", "delivery", "closing"];
 const JOURNAL_LINES = 200;
 const NOTICE_LINES = 8;
 const RIGHT_TITLES: Record<RightView, string> = { inspector: " Inspecteur ", changes: " Changements ", explain: " Explication " };
-const FOOTER = "↑↓ tache · Tab panneau · v vue · ←→ defiler · PgUp/PgDn defiler · f suivre l'active · q quitter · Ctrl-C arreter";
-const WATCH_FOOTER = "↑↓ tache · Tab panneau · PgUp/PgDn defiler · f suivre l'active";
+const FOOTER = "↑↓ tache · Tab panneau · v vue · e demander a l'IA · ←→ defiler · PgUp/PgDn defiler · f suivre l'active · q quitter · Ctrl-C arreter";
+const WATCH_FOOTER = "↑↓ tache · Tab panneau · v vue · e demander a l'IA · PgUp/PgDn defiler · f suivre l'active";
 const QUESTION_FOOTER = "Entree envoyer · Shift/Alt+Entree nouvelle ligne · Esc revenir aux choix · Tab relire le tableau de bord · Ctrl-C arreter";
 
 export function createDashboardView(renderer: CliRenderer, onSelect: (task: string) => void): DashboardView {
@@ -295,7 +298,7 @@ export function createDashboardView(renderer: CliRenderer, onSelect: (task: stri
         inspector.scrollTop = 0;
         inspector.scrollLeft = 0;
       }
-      inspector.title = RIGHT_TITLES[screen.view];
+      inspector.title = screen.view === "explain" && screen.insight ? " Explication · IA " : RIGHT_TITLES[screen.view];
       inspectorText.content = styled(rightPanel(state, screen, selected, inspectorWidth));
 
       const journalWidth = Math.max(20, width - 6);
@@ -423,7 +426,10 @@ function inspect(state: Dashboard, row: TaskRow, width: number): Line[] {
 
 function rightPanel(state: Dashboard, screen: Screen, selected: TaskRow | null, width: number): Line[] {
   if (screen.view === "changes") return changesPanel(state, screen, width);
-  if (screen.view === "explain") return explain(state).flatMap((entry): Line[] => (entry.text ? wrap(entry.text, width).map((part) => [span(part, OUTPUT_TONES[entry.tone], { bold: entry.tone === "title" })]) : [[]]));
+  if (screen.view === "explain") {
+    const entries = screen.insight ? insightLines(screen.insight, screen.selected, labelOf) : [{ text: "e : demander a l'IA pourquoi le run s'est arrete, ce que disent ses echecs, ou ce qu'a fait une tache.", tone: "muted" as const }, { text: "", tone: "muted" as const }, ...explain(state)];
+    return entries.flatMap((entry): Line[] => (entry.text ? wrap(entry.text, width).map((part) => [span(part, OUTPUT_TONES[entry.tone], { bold: entry.tone === "title" })]) : [[]]));
+  }
   return selected ? inspect(state, selected, width) : [[span("Aucune tache selectionnee.", "muted")]];
 }
 

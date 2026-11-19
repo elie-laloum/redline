@@ -8,6 +8,13 @@ releases are tagged `v<version>` and published to npm as
 
 ### Added
 
+- The explanation view answers questions about the run, on demand: `e` opens a menu — why the run
+  stopped, the successive failures, the verdicts of the selected task, what that task did — and
+  `Enter` puts the chosen one to a run explainer, a fourteenth role that reads the run's journal.
+  The answer is three to five one-line findings, browsed with `↑` `↓`, unfolded with `→` and
+  folded with `←`, and a conclusion that says what to do next. Nothing is asked before `Enter`;
+  an answer is kept for the screen's lifetime, and `r` asks again. It works in `start`, `resume`
+  and `show`.
 - Every question of the functional and technical grills offers « Je ne sais pas : tranche et
   consigne l'hypothese »: the grill decides, its arbitrage starts with `Hypothese a confirmer :`,
   and the planner turns it into an open point. The grills group their questions by theme.
