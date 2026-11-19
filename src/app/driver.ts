@@ -12,6 +12,7 @@ import type { AppContext } from "./context.ts";
 import { approvedOf, deliveredOf, type Ledger, publicationOf, readLedger, recordEvent, REOPEN_TARGETS, runIdOf, writeLedger } from "./ledger.ts";
 import { storageFor } from "./storage.ts";
 import { checkpointVersion } from "./version.ts";
+import { REDLINE } from "../domain/invocation.ts";
 
 export interface DriveRequest {
   readonly answers?: readonly WorkflowAnswer[];
@@ -73,7 +74,7 @@ export async function drive(app: AppContext, key: string, request: DriveRequest,
       ledger = next.ledger;
     } catch (error) {
       if (!staleCheckpoint(error) || ledger.phase === "done" || ledger.phase === "escalated") throw error;
-      const detail = `le checkpoint de ${ledger.phase} a ete refuse par outpost ("${error.message}") : ${refusedCheckpoint(error)}. Reprends avec bun redline resume ${key} --fresh : les taches finies sont restituees par le cache.`;
+      const detail = `le checkpoint de ${ledger.phase} a ete refuse par outpost ("${error.message}") : ${refusedCheckpoint(error)}. Reprends avec ${REDLINE} resume ${key} --fresh : les taches finies sont restituees par le cache.`;
       return escalate(app, ledger, ledger.phase, { kind: "environment", task: ledger.phase, detail, at: new Date().toISOString() });
     }
   }
@@ -222,7 +223,7 @@ async function halt(app: AppContext, ledger: Ledger, phase: "framing" | "deliver
     case "cancelled":
       return { outcome: { status: "cancelled" } };
     case "paused":
-      return { outcome: { status: "paused", detail: "quota atteint : reprends plus tard avec bun redline resume" } };
+      return { outcome: { status: "paused", detail: `quota atteint : reprends plus tard avec ${REDLINE} resume` } };
     default:
       return { outcome: escalate(app, ledger, phase, escalationOf(result, phase)) };
   }
@@ -280,7 +281,7 @@ function save(app: AppContext, ledger: Ledger): Ledger {
 }
 
 function failMissing(key: string): never {
-  throw new Error(`Aucun run pour ${key} : bun redline start ${key}`);
+  throw new Error(`Aucun run pour ${key} : ${REDLINE} start ${key}`);
 }
 
 function unknownEscalation(): EscalationRecord {

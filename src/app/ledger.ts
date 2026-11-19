@@ -6,6 +6,7 @@ import { SettingsSchema } from "../domain/config.ts";
 import { DEROGATION_GROUNDS } from "../domain/derogation.ts";
 import { ESCALATION_KINDS } from "../domain/escalation.ts";
 import { fail } from "../domain/failure.ts";
+import { REDLINE } from "../domain/invocation.ts";
 import { OPEN_POINT_STATUSES } from "../domain/open-points.ts";
 import { type OpenPoint, OpenPointSchema, type Plan, PlanSchema } from "../domain/plan.ts";
 import { RESPONDENTS } from "../domain/respondent.ts";
@@ -179,7 +180,7 @@ export function writeLedger(paths: Paths, ledger: Ledger): Ledger {
 }
 
 export function updateLedger(paths: Paths, key: string, change: (ledger: Ledger) => Ledger): Ledger {
-  const current = readLedger(paths, key) ?? fail(`Aucun run pour ${key}.`, `Lance d'abord : bun redline start ${key}`);
+  const current = readLedger(paths, key) ?? fail(`Aucun run pour ${key}.`, `Lance d'abord : ${REDLINE} start ${key}`);
   return writeLedger(paths, change(current));
 }
 

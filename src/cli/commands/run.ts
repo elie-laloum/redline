@@ -13,13 +13,14 @@ import { report } from "../report.ts";
 import { runSession } from "../session.ts";
 import { type DashboardSession, openDashboard } from "../tui/dashboard.ts";
 import { buildImage, offerImageBuild } from "./image.ts";
+import { REDLINE } from "../../domain/invocation.ts";
 
 const BUILD = "Construire";
 
 export async function startCommand(input: string, options: { notes?: string; figma?: string[]; plain?: boolean }): Promise<number> {
   const key = normalizeKey(input);
   const app = createContext();
-  if (options.figma?.length && !app.configuration.settings.services.figma) fail("Figma est desactive : --figma n'aurait aucun effet.", "Active-le avec : bun redline init");
+  if (options.figma?.length && !app.configuration.settings.services.figma) fail("Figma est desactive : --figma n'aurait aucun effet.", `Active-le avec : ${REDLINE} init`);
   return launch(app, key, {}, options, `redline ${key}`, async (preflight, build) => {
     await runPreflight(app, preflight, { layoutHome: true, build });
     // A ticket that already has a run resumes it; a new one is read from the tracker.

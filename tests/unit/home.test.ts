@@ -121,7 +121,7 @@ describe("le ledger", () => {
 
   it("n'existe pas avant le premier start", () => {
     assert.equal(readLedger(paths, "FT-404"), null);
-    assert.throws(() => updateLedger(paths, "FT-404", (ledger) => ledger), (error: Error & { hint?: string }) => /bun redline start FT-404/.test(error.hint ?? ""));
+    assert.throws(() => updateLedger(paths, "FT-404", (ledger) => ledger), (error: Error & { hint?: string }) => /: redline start FT-404/.test(error.hint ?? ""));
   });
 });
 

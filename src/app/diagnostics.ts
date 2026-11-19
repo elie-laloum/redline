@@ -4,6 +4,7 @@ import { inspectImage, runtimeStatus } from "../adapters/container-runtime.ts";
 import { gitAllowFailure } from "../adapters/git.ts";
 import type { SecretKey } from "../adapters/secrets.ts";
 import { COMMAND_KINDS, commandFor, targetingFor } from "../domain/config.ts";
+import { REDLINE } from "../domain/invocation.ts";
 import { globCrossesSecondShell } from "../domain/targeting.ts";
 import { type Connection, testChat, testDesign, testForge, testTracker } from "./connections.ts";
 import type { AppContext } from "./context.ts";
@@ -28,7 +29,7 @@ function configuration(app: AppContext): Finding[] {
     { section: "configuration", label: "reglages", status: "ok", detail: sources.settings ? `${sources.settings} — surcharges des defauts du paquet` : "defauts du paquet" },
     sources.registry
       ? { section: "configuration", label: "registre", status: "ok", detail: `${registry.repositories.length} repos — ${sources.registry}` }
-      : { section: "configuration", label: "registre", status: "fail", detail: `aucun registre dans ${app.paths.registry} : declare tes repos avec bun redline init` },
+      : { section: "configuration", label: "registre", status: "fail", detail: `aucun registre dans ${app.paths.registry} : declare tes repos avec ${REDLINE} init` },
   ];
 }
 
@@ -47,7 +48,7 @@ async function containers(app: AppContext): Promise<Finding[]> {
   if (!status.available || !status.cli) return findings;
   const image = app.configuration.settings.sandbox.image;
   const inspected = await inspectImage(app.paths.home, status.cli, image);
-  const details = { present: image, absent: `${image} absente : bun redline image build` };
+  const details = { present: image, absent: `${image} absente : ${REDLINE} image build` };
   findings.push({
     section: "conteneurs",
     label: "image des agents",

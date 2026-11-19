@@ -94,7 +94,7 @@ async function imageOf(paths: Paths, snapshot: SetupSnapshot): Promise<ImageProb
   return { state: "error", detail: inspected.detail };
 }
 
-/** check, as bun redline check runs it; a configuration that does not load is itself the finding. */
+/** check, as `redline check` runs it; a configuration that does not load is itself the finding. */
 async function checked(paths: Paths): Promise<Finding[]> {
   try {
     return await diagnose(createContext({ home: paths.home }));

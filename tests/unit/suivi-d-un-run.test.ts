@@ -32,7 +32,7 @@ describe("le suivi d'un run depuis un autre terminal", () => {
   it("dit interrompu un run dont le process est mort sans ecrire d'issue", () => {
     const state = watch({ pid: 10, outcome: null, at: 7 }, null);
     assert.ok(state.kind === "ended" && state.interrupted && state.at === 7);
-    assert.match(state.kind === "ended" ? state.text : "", /sans fin propre \(pid 10\)\. Reprends avec : bun redline resume FT-1/);
+    assert.match(state.kind === "ended" ? state.text : "", /sans fin propre \(pid 10\)\. Reprends avec : redline resume FT-1/);
   });
 
   it("lit l'issue d'un run anterieur au journal dans son ledger, et le dit", () => {
